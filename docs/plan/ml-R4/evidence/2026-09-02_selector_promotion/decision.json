@@ -1,0 +1,29 @@
+{
+  "decision": "PROMOTED_FOR_NEW_VERSIONED_CANDIDATE_ONLY",
+  "decision_id": "R4-D-012",
+  "evidence": {
+    "control_equivalence_report_sha256": "636838f376d8991e9ac07d26105aa2f907e535bbf90e4504e11d663f0c656021",
+    "cpu_selector_summary_sha256": "9308fb5fc8970c9288d1e94c69ed2de7225fec7306846468055870cf51fa1b0a",
+    "cuda_selector_report_sha256": "e8b0e9541d50032ad7de5c13616b2a5ef79236854c9d30ffa4fdd2e65dac19d8",
+    "selector_implementation_sha256": "9eea0f837f77a512628efaa3dde444f039be81e98bf1828aa61b9099d2c87866",
+    "target_span_implementation_sha256": "7e6f2017e43425285fd51186cd0788ec2ba5f2fe56c90f6dc7b9ef190ee4a910"
+  },
+  "guarded_cpu": {
+    "analyzed_records": 1018,
+    "control_fallback_records": 261,
+    "failed_records": 0,
+    "improved_records": 476,
+    "over_cap_records": 737,
+    "regressed_records": 0,
+    "target_coverage_p50_control": 0.6300634455832114,
+    "target_coverage_p50_guarded": 0.8794466403162056
+  },
+  "model_architecture_changed": false,
+  "physical_candidate_build_authorized": true,
+  "r4_d_011_mutation_authorized": false,
+  "schema": "sentinel-r4-selector-promotion-decision-v1",
+  "selector": "target_aware_guarded_v1",
+  "selector_promoted": true,
+  "status": "ACCEPTED",
+  "training_authorized": false
+}

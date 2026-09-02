@@ -31,8 +31,8 @@
 | V10 V2.5 bounded structural correction | PASSED / 20 OF 20 CLOSED | Extractor `v2.5-r4-call-semantics-deterministic-cfg`; three fresh 20-identity generations under exact Slither 0.10.0; 8 exact node-index-invariant graph-equivalence identities + 12 deterministic persistent-storage WRITE corrections; bounded verifier passed with zero unexplained drift and no blockers. |
 | Historical V10 V2.5 full-candidate gate | BLOCKED AT STAGE E / PRESERVED | Protected-local Stages A-D passed, but Stage E found 311 raw non-parse-only drifts and left 298 outside the approved bounded evidence classes. This historical failure motivated V2.6 and is not current physical authority. |
 | V10 V2.6 physical representation | ACCEPTED / IMMUTABLE LOCAL | R4-D-011 accepts the exact 22,540-identity root and digest `d9f925588913e66476cfbc097bace7daa7e673295fe2a243760313d0bef5ebdd`. V4 re-proves all 355 current drifts as 349 WRITE corrections plus 6 index-equivalent graphs with zero unexplained drift. Runtime split is 22,539 Slither-0.10 + one Slither-0.11.5 exception; all tokens are byte-identical to accepted V9. |
-| Selector promotion | NOT AUTHORIZED / CONTROL EQUIVALENCE PASSED | The historical control dynamically reproduces all 22,540 R4-D-011 token tensors and selected indices exactly, with zero failures. Guarded promotion still requires source-first review and a separate versioned decision. |
-| Full training / G8 | HOLD | V10 V2.6 physical representations are accepted, but there are no confirmed negatives; threshold/calibration/untouched acceptance remain unsupported; selector is unpromoted; objective/evaluation design and explicit launch authority remain unresolved. |
+| Selector promotion | ACCEPTED FOR NEW VERSIONED CANDIDATE / PHYSICAL BUILD PENDING | R4-D-012 promotes `target_aware_guarded_v1` only for a fresh token lineage. R4-D-011 remains immutable/current physical authority until the new candidate is generated, bound, reviewed, and separately accepted. |
+| Full training / G8 | HOLD | V10 V2.6 physical representations are accepted, but there are no confirmed negatives; threshold/calibration/untouched acceptance remain unsupported; the promoted guarded selector lacks an accepted physical lineage; objective/evaluation design and explicit launch authority remain unresolved. |
 
 ## Corrected outcome-population terminology
 
@@ -157,7 +157,7 @@ Current execution order:
 1. preserve v9/repaired-v2, accepted logical V3, frozen V2.3 structural reference, and protected V2.4 diagnostic candidate as immutable evidence/history;
 2. preserve the R4-D-011 accepted V2.6 root, its Stage A-D reports, 355-case evidence, V4 review, and exact hashes; do not regenerate or mutate them;
 3. keep candidate #2 UNKNOWN/target `None` unless independent agreement completes its dual review; any accepted negative remains evaluation-only;
-4. review the passed full-population control-equivalence evidence together with hardened CPU/CUDA selector evidence before any guarded-selector promotion ADR;
+4. construct and bind a fresh R4-D-012 guarded-token candidate without mutating R4-D-011; require a separate physical acceptance review;
 5. revisit objective/evaluation design, including possible PU learning, only after new evidence supports a versioned decision;
 6. define credible threshold/calibration/untouched-acceptance support rather than inventing populations;
 7. reconsider training authorization only after all remaining evidence/design gates are satisfied and record it explicitly.

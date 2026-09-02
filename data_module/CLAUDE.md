@@ -95,7 +95,7 @@ Full Phase-8 training remains prohibited. Current gates are:
 
 - exact V2.6 physical acceptance is complete under R4-D-011; any different root or digest requires a new decision;
 - zero confirmed-negative evaluation evidence;
-- historical-control equivalence passes 22,540/22,540, but the target-aware selector remains unpromoted pending a separate decision;
+- historical-control equivalence passes 22,540/22,540, and R4-D-012 promotes the target-aware guarded selector only for a fresh candidate; its physical build/acceptance remains pending;
 - threshold/calibration/untouched acceptance unavailable.
 
 **Current DATA status:** repaired-v2/v9 physical evidence is accepted and

@@ -40,7 +40,7 @@ R4-B008 / R4-GAP-008 are closed only for the R4-D-011 root and digest. Preserve 
 
 The negative-evidence, selector-promotion, objective/evaluation, calibration, and training-authorization tracks remain separate later gates. Do not combine them with V10 physical-candidate construction.
 
-The read-only full-population historical-control selector verification in `runs/2026-09-02_PHASE8_selector_control_equivalence_plan.md` passes 22,540/22,540 with zero mismatches. It did not rewrite accepted tokens, promote the guarded selector, or authorize training; the next selector action is a separate source-first promotion review.
+The read-only full-population historical-control selector verification in `runs/2026-09-02_PHASE8_selector_control_equivalence_plan.md` passes 22,540/22,540 with zero mismatches. R4-D-012 now promotes `target_aware_guarded_v1` only for a fresh versioned token candidate; R4-D-011 remains unchanged, and physical guarded-token acceptance plus training authority remain separate.
 
 ## What R4 is solving
 

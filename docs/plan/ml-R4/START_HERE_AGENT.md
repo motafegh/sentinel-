@@ -31,7 +31,7 @@ Current state that must not be lost:
 - R4-D-011 physically accepts only the exact protected-local root and digest `d9f925588913e66476cfbc097bace7daa7e673295fe2a243760313d0bef5ebdd`;
 - confirmed negatives remain zero; candidate #2 still needs genuinely independent verification;
 - threshold/calibration/untouched acceptance remain unsupported/empty;
-- selector promotion remains separate and unauthorized;
+- R4-D-012 promotes guarded selection only for a fresh token candidate; that physical lineage is not yet built or accepted;
 - no 100-epoch run is authorized.
 
 R4-B008 / R4-GAP-008 are closed only for the R4-D-011 root/digest. Preserve the accepted candidate and reports; do not regenerate them, treat a different digest as accepted, or proceed to training without the separate remaining gates and explicit authorization.
@@ -130,6 +130,6 @@ Historical updates included:
 - Do not use population-wide Slither 0.11.5.
 - Do not manually relabel graph/sidecar runtime or extractor identities.
 - Do not convert unknown/source absence/tool silence into target `0`.
-- Do not promote the target-aware selector as part of V10 construction.
+- Do not write promoted guarded tokens into R4-D-011; use a fresh versioned candidate and separate acceptance.
 - Do not treat bounded V2.5 structural success as physical acceptance.
 - Do not launch full training until a later explicit training-authorization decision exists.

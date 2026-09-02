@@ -40,10 +40,10 @@ Current supervision/evaluation limitations:
 - `UNTOUCHED_ACCEPTANCE = UNSUPPORTED_EMPTY_FROZEN`;
 - no current class has discrimination/specificity/FPR/calibration/production-quality authority.
 
-Current selector limitation:
+Current selector state:
 
-- `target_aware_guarded_v1` has promising bounded CPU/CUDA evidence but is not promoted;
-- promotion remains a separate versioned decision requiring full-population bound-token control-equivalence evidence.
+- R4-D-012 promotes `target_aware_guarded_v1` for construction/evaluation of a new versioned candidate after hardened CPU/CUDA evidence and 22,540/22,540 control equivalence;
+- the guarded-token physical lineage is not yet built or accepted, and R4-D-011 remains the current immutable physical authority.
 
 Therefore the 100-epoch/full-horizon training run remains explicitly unauthorized.
 
@@ -81,11 +81,11 @@ R4-GAP-007 remains separate from V10 construction.
 
 The eventual training objective and model-selection interpretation must be explicitly versioned once evidence supports them.
 
-### C. Resolve selector promotion separately
+### C. Build and accept the promoted-selector physical lineage separately
 
-The guarded target-aware selector must not be silently coupled to the V10 physical candidate.
+R4-D-012 promotes the guarded target-aware selector only for a fresh versioned physical candidate. It must not be silently coupled to or written into R4-D-011.
 
-Before promotion, prove full-population historical-control → currently bound-token equivalence for the relevant baseline and record a separate promotion decision if warranted.
+Generate, bind, and compare the new guarded-token candidate, then record a separate physical acceptance or rejection. The completed 22,540/22,540 control-equivalence proof and promotion decision do not accept nonexistent token artifacts.
 
 ### D. Re-authorize training explicitly
 

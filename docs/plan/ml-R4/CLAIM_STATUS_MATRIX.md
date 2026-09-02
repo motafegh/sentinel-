@@ -91,12 +91,12 @@ Durable CUDA result:
 - 4/4 required worst-case probes completed;
 - no Run12 weights;
 - no checkpoint;
-- selector promotion false;
+- historical evidence report selector-promotion flag false; later R4-D-012 promotes only a new versioned candidate;
 - full-training authorization false.
 
-This supports a separate selector-promotion decision, but **the selector is not yet promoted** and does not improve the model-quality claim boundary by itself. The positive-only CUDA result cannot establish false-positive discrimination.
+R4-D-012 promotes the selector only for construction/evaluation of a new versioned token lineage. It does not change the current R4-D-011 physical root or improve the model-quality claim boundary by itself. The positive-only CUDA result cannot establish false-positive discrimination.
 
-The full-population control-equivalence prerequisite now passes: dynamic `historical_linspace_v1` reconstruction matches all 22,540 R4-D-011 `input_ids`, `attention_mask`, and selected-window-index payloads with zero failures. This still does not promote the guarded selector; source-first evidence review and a separate versioned decision remain required.
+The full-population control-equivalence prerequisite passes: dynamic `historical_linspace_v1` reconstruction matches all 22,540 R4-D-011 `input_ids`, `attention_mask`, and selected-window-index payloads with zero failures. R4-D-012 reviewed this with the hardened CPU/CUDA evidence and authorizes a fresh guarded-token candidate. Physical acceptance and training remain separate.
 
 ## Durable current evidence
 

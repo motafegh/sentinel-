@@ -52,13 +52,13 @@ As of the 2026-09-02 V10 V2.6 physical-acceptance decision, with R4-D-010 govern
 - the historical V2.5 Stages A-D passed, but Stage E correctly rejected that complete candidate with `PASS_BASE_MECHANICS_WITH_STRUCTURAL_EVIDENCE_BLOCKER`: it found 311 raw non-parse-only drifts, re-proved the bounded 8+12 classes, and left 298 full-population identities outside those approved evidence classes;
 - fresh protected-local V2.6 Stages A-D pass: Stage A produced all 22,539 ordinary Slither-0.10 identities with zero unexpected failures, Stage B staged only validated triples, Stage C filled only the declared Slither-0.11.5 exception, and Stage D bound all 22,540 identities with exact accepted-V9 token bytes and digest `d9f925588913e66476cfbc097bace7daa7e673295fe2a243760313d0bef5ebdd`;
 - the V2.6 population changed by +52/-8 relative to the historical 311-case set, so three fresh generations and three semantic-evidence passes covered the exact current 355 identities. The final V4 audit passes all 22,540 mechanics and re-proves 349 persistent-storage WRITE corrections plus 6 exact index-equivalent graphs with zero unexplained drift;
-- R4-D-011 physically accepts only the exact protected-local V2.6 root and binding digest `d9f925588913e66476cfbc097bace7daa7e673295fe2a243760313d0bef5ebdd` after refreshed binding and current-commit V4 review; R4-B008 / R4-GAP-008 are closed for that identity, while selector promotion and training remain unauthorized;
-- the selector historical-control equivalence gate passes 22,540/22,540: dynamic `historical_linspace_v1` reconstruction exactly matches every R4-D-011 bound token tensor and selected-window index. This is prerequisite evidence only; `target_aware_guarded_v1` remains unpromoted pending a separate decision;
+- R4-D-011 physically accepts only the exact protected-local V2.6 root and binding digest `d9f925588913e66476cfbc097bace7daa7e673295fe2a243760313d0bef5ebdd` after refreshed binding and current-commit V4 review; R4-B008 / R4-GAP-008 are closed for that identity, and R4-D-011 itself grants neither selector promotion nor training authority;
+- the selector historical-control equivalence gate passes 22,540/22,540: dynamic `historical_linspace_v1` reconstruction exactly matches every R4-D-011 bound token tensor and selected-window index. R4-D-012 promotes `target_aware_guarded_v1` only for a fresh versioned candidate; R4-D-011 remains immutable/current until separate guarded-token physical acceptance;
 - target `0` remains forbidden without complete class-specific confirmed-negative evidence plus independent agreeing verification;
 - accepted confirmed negatives are evaluation-only unless a later versioned policy grants optimizer authority;
 - Positive–Unlabeled (PU) learning is a future objective-design candidate, not current implementation authority;
 - threshold-fit, calibration-fit, and untouched-acceptance roles remain unsupported/empty;
-- the guarded selector remains unpromoted and requires separate full-population bound-token control-equivalence evidence plus a promotion decision;
+- R4-D-012 promotes the guarded selector only for construction/evaluation of a fresh versioned token lineage; that physical candidate is not yet built or accepted;
 - accepted historical/repaired representations remain graph schema `v9`; the future candidate is graph schema `v10` / extractor V2.6. The accepted token tensor contract remains `[4,512]`, and architecture remains `four_eye_v8` / `v8.1` unless a later explicit decision changes it;
 - Run12 is the historical operational ML baseline, not repaired-v2/V3 truth; do not reuse its learned weights, optimizer/scheduler state, thresholds, or calibration as current Phase-8 truth;
 - the 100-epoch Phase-8 run remains unauthorized; no model-quality improvement is claimed;
@@ -72,7 +72,7 @@ For the exact current DATA/ML restart boundary, read in order:
 1. `docs/plan/ml-R4/PLAN_STATUS_MATRIX.md`;
 2. `docs/plan/ml-R4/runs/2026-09-02_PHASE8_v10_v26_physical_acceptance_and_no_launch.md`;
 3. `docs/plan/ml-R4/adrs/ADR-R4-011-v10-v26-physical-representation-acceptance.md`;
-4. `docs/plan/ml-R4/runs/2026-09-02_PHASE8_selector_control_equivalence_plan.md` for the current executable prerequisite;
+4. `docs/plan/ml-R4/runs/2026-09-02_PHASE8_selector_promotion_review.md` and ADR-R4-012 for the current guarded-token construction boundary;
 5. `docs/plan/ml-R4/runs/2026-08-30_PHASE8_v10_v25_full_population_structural_evidence_plan.md`;
 6. `docs/plan/ml-R4/runs/2026-08-27_PHASE8_v10_v25_current_restart_checkpoint.md` for historical staging context;
 7. `docs/plan/ml-R4/reviews/R4-GAP-008/2026-08-26_v10_v25_bounded_structural_closure.md`;

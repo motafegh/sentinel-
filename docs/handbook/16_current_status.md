@@ -18,7 +18,7 @@ A later protected-local audit found five post-acceptance research/reporting defe
 
 There are still **zero confirmed-negative examples**. R4-GAP-007 is **pilot in progress** using the hardened 200-cell / 200-group queue. Candidate #1 (`CallToUnknown`) is `NOT_CONFIRMED`. Candidate #2's source-first primary review supports `CONFIRMED_NEGATIVE`, but it remains `UNKNOWN` / `PENDING_REVIEW` with target `None` until a genuinely independent reviewer agrees.
 
-Candidate #2 also exposed a real v9 representation defect: all 30 of its type-11 `EXTERNAL_CALL` edges describe same-file `SafeMath` library calls, while its actual Ether `transfer` has no type-11 edge. The R4-GAP-008 audit reproduced this semantic mismatch across all 22,540 graphs. R4-D-010 therefore preserves v9 as immutable historical/reproducibility evidence but makes it ineligible for the new full run. The later V2.6 lineage passes all 22,540 mechanics and reconciles its exact 355-identity drift population as 349 persistent-storage WRITE corrections plus 6 exact index-equivalent graphs. R4-D-011 physically accepts only the exact protected-local V2.6 root and digest `d9f925588913e66476cfbc097bace7daa7e673295fe2a243760313d0bef5ebdd`. Threshold fitting, calibration, untouched acceptance, selector promotion, and the 100-epoch run remain unauthorized.
+Candidate #2 also exposed a real v9 representation defect: all 30 of its type-11 `EXTERNAL_CALL` edges describe same-file `SafeMath` library calls, while its actual Ether `transfer` has no type-11 edge. The R4-GAP-008 audit reproduced this semantic mismatch across all 22,540 graphs. R4-D-010 therefore preserves v9 as immutable historical/reproducibility evidence but makes it ineligible for the new full run. The later V2.6 lineage passes all 22,540 mechanics and reconciles its exact 355-identity drift population as 349 persistent-storage WRITE corrections plus 6 exact index-equivalent graphs. R4-D-011 physically accepts only the exact protected-local V2.6 root and digest `d9f925588913e66476cfbc097bace7daa7e673295fe2a243760313d0bef5ebdd`. R4-D-012 promotes guarded selection only for a fresh candidate; that token lineage is not yet built or accepted. Threshold fitting, calibration, untouched acceptance, and the 100-epoch run remain unauthorized.
 
 ## Just-enough mental model
 
@@ -58,7 +58,10 @@ R4-GAP-008 v10 representation remediation
 versioned V2.6 protected-local candidate
   PHYSICALLY ACCEPTED / 22,540 / DIGEST d9f925...
         ↓
-separate selector-promotion decision / objective design
+R4-D-012 guarded-selector policy accepted
+  NEW PHYSICAL TOKEN LINEAGE NOT YET BUILT
+        ↓
+objective/evaluation design
         ↓
 possible later G8 training authorization
 ```
@@ -232,7 +235,7 @@ CUDA rerun:
 
 This is durable mechanical/coverage evidence. It still cannot establish false-positive discrimination because the relevant supervised/model-selection evidence remains positive-only.
 
-Before any promotion ADR, verify across the relevant full population that the historical control selector exactly reproduces the currently bound representation token tensors.
+The later full-population prerequisite passed 22,540/22,540, and R4-D-012 promotes guarded selection only for a fresh versioned candidate. These historical evidence files retain their original false authority flags; governance changed later without editing them.
 
 ### Confirmed-negative state
 
@@ -294,7 +297,7 @@ the current authority.
 | current execution restart | `runs/2026-09-02_PHASE8_v10_v26_physical_acceptance_and_no_launch.md`; candidate #2 review is a separate pending-independent track |
 | confirmed-negative review | R4-GAP-007 / candidate #1 `NOT_CONFIRMED` / candidate #2 primary-support only, independent pending |
 | physical representation for a future authorized run | R4-D-011 exact v10 / extractor `v2.6-r4-call-semantics-deterministic-cfg-mutators` / protected-local `representations-r4-v3-candidate`; digest `d9f925...`; physically accepted, not training-authorized |
-| selector | historical control remains bound; guarded candidate unpromoted |
+| selector | R4-D-012 guarded policy promoted for a new candidate; historical control remains bound in current R4-D-011 physical authority until a new lineage passes acceptance |
 | training authorization | HOLD / none |
 
 ### Stable accepted-v9 shapes
@@ -348,7 +351,7 @@ Any future replacement/recomputed V3 report must still fail closed if acceptance
 - exact V2.6 protected-local physical acceptance is complete under R4-D-011; it grants no selector or training authority;
 - `[4,512]` capacity omits material code on long contracts;
 - guarded target-aware selection remains promising but unpromoted;
-- full-population historical-control → R4-D-011 bound-token equivalence passes 22,540/22,540; guarded promotion still requires a separate source-first decision.
+- full-population historical-control → R4-D-011 bound-token equivalence passes 22,540/22,540; R4-D-012 promotes guarded selection only for a fresh physical candidate, which is not yet built or accepted.
 
 ### Training
 
@@ -362,14 +365,12 @@ Any future replacement/recomputed V3 report must still fail closed if acceptance
 For the current Phase-8 boundary:
 
 1. synchronize local `main`;
-2. read `PLAN_STATUS_MATRIX.md`, the current restart checkpoint, the 2026-08-30 full-population evidence plan, ADR-R4-010, candidate #2 primary review, and the hardened snapshot closeout;
-3. preserve v9/repaired-v2 physical roots, accepted V3 publication/grouping, the committed coherent snapshot, and the passed protected-local V2.5 Stage A-D candidate;
-4. build duplicate-safe repeated semantic evidence for all 311 raw drift identities; never patch v9 or mutate the protected candidate;
+2. read `PLAN_STATUS_MATRIX.md`, the R4-D-011 acceptance/no-launch record, ADR-R4-012, candidate #2 primary review, and the hardened snapshot closeout;
+3. preserve v9/repaired-v2 roots, accepted logical V3, the R4-D-011 V2.6 root, and the committed evidence snapshots;
+4. build a fresh R4-D-012 guarded-token candidate without mutating R4-D-011, then bind and review it separately;
 5. have a genuinely independent reviewer evaluate candidate #2 from the blind bundle; keep target `None` unless dual review agrees;
-6. run a new versioned full transition audit only after the evidence validator accounts for every drift with zero duplicate ambiguity and zero unexplained change;
-7. keep any accepted negative evaluation-only unless later policy explicitly grants optimizer authority;
-8. separately execute control-selector → bound-token equivalence before any guarded-selector promotion ADR;
-9. revisit objective/evaluation/training authorization, including PU learning, only after new evidence supports it.
+6. keep any accepted negative evaluation-only unless later policy explicitly grants optimizer authority;
+7. revisit objective/evaluation/training authorization, including PU learning, only after new evidence supports it.
 
 Never fix generated parquet/JSON evidence by hand.
 
