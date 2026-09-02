@@ -8,26 +8,28 @@
 
 ## 30-second summary
 
-SENTINEL has five main source modules but two distinct current directions: the off-chain analysis runtime and the repaired DATA/ML lifecycle. DATA/ML is being repaired through R4 before retraining; the stable main branch has passed G6 and frozen label semantics plus leakage-safe roles. The live audit MCP is read-only. The registry’s current submission protocol is V3, which combines the retained proxy-computation proof with a separate EIP-712 policy/context attestation. No current claim says the ZK circuit proves teacher/source/AGENTS execution.
+SENTINEL has five main source modules but two distinct current directions: the off-chain analysis runtime and the repaired DATA/ML lifecycle. Historical R4 G0–G7 remain PASSED; Phase 8 is IN_PROGRESS. The DATA/ML path now includes accepted repaired-v2 physical DATA, accepted logical V3 grouping/roles, and the R4-D-011 V10 V2.6 physical representation. R4-D-012 authorizes guarded selection only for a fresh candidate that still requires separate physical acceptance; full training remains unauthorized. The live audit MCP is read-only. The registry's current submission protocol is V3, which combines the retained proxy-computation proof with a separate EIP-712 policy/context attestation. No current claim says the ZK circuit proves teacher/source/AGENTS execution.
 
 ## Just-enough mental model
 
 ```mermaid
 flowchart LR
-  U["Solidity / upstream data"] --> D["DATA + R4 evidence/policy"]
-  D --> A["Historical representations + repaired semantic roles"]
-  A --> M["Teacher training/retraining boundary"]
-  M --> API["ML API :8001"]
+  U["Solidity / upstream data"] --> D["Repaired physical DATA + R4 evidence/policy"]
+  D --> V3L["Accepted logical V3 grouping / roles"]
+  V3L --> V10["Accepted V10 V2.6 physical representation — R4-D-011"]
+  V10 --> GC["Fresh guarded-selector candidate — build/acceptance pending"]
+  GC --> M["Later repaired teacher retraining — only if authorized"]
+
   C["Client"] --> G["Gateway :8000"]
   G --> L["14-node LangGraph"]
-  L --> API
+  L --> API["ML API :8001 / historical Run12 runtime"]
   L --> S["Selected MCP services"]
   L --> REP["Off-chain report"]
 
   API --> F["fusion[128]"]
   F --> Z["retained proxy/EZKL proof"]
-  Z --> V3["V3 request + policy attestation"]
-  V3 --> R["AuditRegistry V3"]
+  Z --> P["V3 request + policy attestation"]
+  P --> R["AuditRegistry V3"]
 
   RO["Audit MCP :8012 read-only"] --> R
 ```
@@ -40,10 +42,10 @@ The gateway does not submit a transaction. The audit MCP observes V1/V2/V3 histo
 
 | Module | Current responsibility | Important current state |
 |---|---|---|
-| [`data_module`](../../data_module) | ingestion, preprocessing, representations, historical exports, DATA vNext implementation | historical label path preserved; R4 vNext semantics/roles are authoritative for new work |
-| [`ml`](../../ml) | four-eye teacher, Run12 inference, future repaired retrain | Run12 remains historical operational baseline; no vNext-retrained teacher promoted yet |
+| [`data_module`](../../data_module) | ingestion, preprocessing, representations, historical exports, DATA vNext/R4 implementation | repaired-v2 physical DATA accepted; logical V3 accepted; V10 V2.6 physical representation accepted; guarded-token successor pending separate acceptance |
+| [`ml`](../../ml) | four-eye teacher, Run12 inference, future repaired retrain | Run12 remains historical operational baseline; no repaired R4 teacher promoted; full training unauthorized |
 | [`agents`](../../agents) | orchestration, evidence, RAG, MCP, gateway, feedback, V3 observation | audit MCP live surface is read-only; V3 feedback policy remains intentionally unavailable |
-| [`zkml`](../../zkml) | retained proxy distillation/ONNX/EZKL proof boundary | proof is proxy-only/unbound by itself; future production regeneration follows promoted DATA/ML |
+| [`zkml`](../../zkml) | retained proxy distillation/ONNX/EZKL proof boundary | proof is proxy-only/unbound by itself; future regeneration follows a selected repaired teacher |
 | [`contracts`](../../contracts) | staking, verifier, V1/V2 historical storage, V3 context-attested protocol, UUPS upgrades | V3 initialization disables new legacy V1/V2 writes while preserving reads/history |
 
 ### Runtime processes and ports
@@ -61,22 +63,32 @@ The gateway does not submit a transaction. The audit MCP observes V1/V2/V3 histo
 
 Gateway/graph reports, RAG indexes, caches, databases, and proof workspaces are separate local/runtime state unless explicitly promoted.
 
-### DATA/ML architecture after R4 G6
+### DATA/ML architecture in current Phase 8
 
-The original 22,493-contract population is no longer interpreted as ten trustworthy binary targets. R4 created a 224,930-row contract×class ledger, accepted `data-vnext-policy-v1`, and froze `r4-vnext-roles-v1`.
-
-The repaired semantic direction is:
+R4 no longer interprets the historical population as ten trustworthy binary targets. The semantic policy preserves unknown state rather than manufacturing negatives, and the current physical/logical lineage has evolved through several versioned decisions:
 
 ```text
-contract × class evidence
-→ canonical outcome state
-→ optional training signal/strength
-→ role eligibility / frozen leakage group role
-→ DATA vNext v2 projection
-→ later masked/strength-aware trainer compatibility
+historical G0–G7 evidence
+→ R4-D-008 repaired-v2 physical DATA
+→ R4-D-009 logical V3 grouping / roles
+→ R4-D-010 withdraw v9 from new-full-training eligibility
+→ R4-D-011 accept exact V10 V2.6 physical representation
+→ R4-D-012 authorize guarded selection for a fresh successor candidate
+→ separate candidate generation/binding/physical acceptance
+→ objective/evaluation/threshold/calibration support
+→ explicit later training authorization, if evidence permits
 ```
 
-No historical zero is promoted to a confirmed negative. GasException and UnusedReturn remain supervision-disabled under policy v1. Threshold-fit, calibration-fit, and untouched-acceptance roles are intentionally unsupported/empty.
+No historical zero is promoted to a confirmed negative. Confirmed negatives remain zero. GasException and UnusedReturn remain supervision-disabled under policy v1. Threshold-fit, calibration-fit, and untouched-acceptance roles are intentionally unsupported/empty. The accepted V10 physical lineage is not itself training authorization.
+
+### Representation boundaries
+
+Two representation statements must be kept separate:
+
+1. **Historical/reproducibility boundary:** graph schema v9 remains immutable accepted evidence for historical reproduction, with token tensors `[4,512]`.
+2. **Current possible future-training physical boundary:** R4-D-011 accepts graph schema v10 under extractor `v2.6-r4-call-semantics-deterministic-cfg-mutators` for the exact 22,540-identity root. R4-D-012 then requires a fresh versioned token lineage using `target_aware_guarded_v1`; that successor has not yet been separately accepted.
+
+The model architecture remains frozen while these data/representation/evaluation gates are resolved.
 
 ### V3 trust boundary
 
@@ -93,13 +105,14 @@ Neither claim says the circuit proved Solidity compilation, teacher execution, L
 
 Principal compatibility boundaries:
 
-1. Historical representations: v9 graph `x[N,12]`, tokens `[4,512]`, locked ten-class order.
-2. R4 semantic layer: contract×class outcome/training state plus frozen dataset role; historical binary v1 is compatibility history, not new truth.
-3. ML → AGENTS: ten probabilities/tiers, eye signals, model hash, hotspots.
-4. ML → ZKML: fusion embedding `[128]`.
-5. ZKML proof: 128 public inputs + 10 public outputs = 138 public signals.
-6. V3 registry context: proof/output identities plus target/model/data/schema/request identities and policy signer.
-7. AGENTS → client: asynchronous off-chain report.
+1. Historical representations: v9 graph `x[N,12]`, tokens `[4,512]`, locked ten-class order; reproducibility only for a new-full-training decision.
+2. Current physical representation authority: accepted V10 V2.6 graph lineage; guarded-selector successor token lineage pending separate acceptance.
+3. R4 semantic layer: contract×class outcome/training state plus leakage-safe dataset role; historical binary v1 is compatibility history, not new truth.
+4. ML → AGENTS: ten probabilities/tiers, eye signals, model hash, hotspots.
+5. ML → ZKML: fusion embedding `[128]`.
+6. ZKML proof: 128 public inputs + 10 public outputs = 138 public signals.
+7. V3 registry context: proof/output identities plus target/model/data/schema/request identities and policy signer.
+8. AGENTS → client: asynchronous off-chain report.
 
 See [cross-module contracts](11_cross_module_contracts.md) for exact meanings and [current status](16_current_status.md) for gate state.
 
@@ -109,8 +122,10 @@ See [cross-module contracts](11_cross_module_contracts.md) for exact meanings an
 - Gateway completion is off-chain only.
 - The audit MCP must not be treated as a transaction signer/broadcaster.
 - Run12 predictions/thresholds remain historical-baseline behavior until repaired retraining occurs.
-- DATA vNext Phase 7 remains candidate work until local physical representation binding and G7 completion.
-- The first repaired baseline has no trustworthy confirmed-negative population, so ordinary binary threshold/calibration/untouched-acceptance claims are unavailable.
+- R4-D-011 physical acceptance does not authorize repaired full training.
+- R4-D-012's guarded selector still needs a fresh physically accepted token lineage.
+- Confirmed negatives remain zero; candidate #2 still requires genuinely independent agreement.
+- Threshold/calibration/untouched-acceptance support remains unavailable.
 - The retained EZKL bundle remains legacy proxy scope and `check_mode="UNSAFE"`; V3 context binding does not expand the circuit statement.
 - Owner/policy-signer/operational key management remains a trust/governance boundary.
 
@@ -151,11 +166,11 @@ Know process boundaries, versioned artifacts, dataset leakage roles, HTTP/MCP, E
 
 ### Source map and reading order
 
-Read gateway `agents/src/api/gateway.py::create_app`, graph `agents/src/orchestration/graph.py::build_graph`, live audit server `agents/src/mcp/servers/audit/_server.py::run_server`, read-only handlers, policy signer `agents/src/security/policy_signer.py`, registry `contracts/src/AuditRegistry.sol::submitAuditV3`, then R4 policy/role manifests. Do not use historical `_submit.py` as the live runtime entry point.
+Read gateway `agents/src/api/gateway.py::create_app`, graph `agents/src/orchestration/graph.py::build_graph`, live audit server `agents/src/mcp/servers/audit/_server.py::run_server`, read-only handlers, policy signer `agents/src/security/policy_signer.py`, registry `contracts/src/AuditRegistry.sol::submitAuditV3`, then current R4 policy/role/representation decisions. Do not use historical `_submit.py` as the live runtime entry point.
 
 ### Execution trace and worked example
 
-A normal client request reaches gateway 8000, runs the LangGraph with ML/tool evidence, and ends as an off-chain report. A separate V3 submission system would need a valid proxy proof plus a fully bound policy-signed request and transaction authority outside the analysis MCP. The audit MCP can then read the resulting V1/V2/V3 history.
+A normal client request reaches gateway 8000, runs the LangGraph with ML/tool evidence, and ends as an off-chain report. Separately, the current DATA/ML repair path has accepted the V10 V2.6 physical representation but still requires a fresh guarded-selector successor and later evidence/design gates before any repaired training authorization. A V3 submission system would need a valid proxy proof plus a fully bound policy-signed request and transaction authority outside the analysis MCP. The audit MCP can then read the resulting V1/V2/V3 history.
 
 ### Implementation practice
 
@@ -163,4 +178,4 @@ Before adding a process or cross-module path, declare its trust domain, signing 
 
 ### Review and ownership check
 
-Can you draw the off-chain analysis path, DATA/ML repair path, and V3 proof/attestation path separately and state which arrows are implemented, historical, candidate, or intentionally outside the analysis service?
+Can you draw the off-chain analysis path, current DATA/ML repair path, and V3 proof/attestation path separately and state which arrows are implemented, historical, accepted-but-not-training-authorized, candidate, or intentionally outside the analysis service?
