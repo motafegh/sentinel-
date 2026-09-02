@@ -40,6 +40,8 @@ R4-B008 / R4-GAP-008 are closed only for the R4-D-011 root and digest. Preserve 
 
 The negative-evidence, selector-promotion, objective/evaluation, calibration, and training-authorization tracks remain separate later gates. Do not combine them with V10 physical-candidate construction.
 
+The current executable prerequisite is the read-only full-population historical-control selector verification in `runs/2026-09-02_PHASE8_selector_control_equivalence_plan.md`. It must not rewrite accepted tokens, promote the guarded selector, or launch training.
+
 ## What R4 is solving
 
 R4 starts from an established working premise:

@@ -146,7 +146,7 @@ Repository CI cannot prove the Git-ignored V3 publication or local GPU evidence.
 
 ## Training stop line
 
-Until v10 is physically accepted and later evaluation/selector/training decisions are made:
+After exact V10 V2.6 physical acceptance and until later evaluation/selector/training decisions are made:
 
 - do not run the 100-epoch job;
 - do not create/promote a repaired teacher checkpoint;
@@ -157,7 +157,6 @@ Until v10 is physically accepted and later evaluation/selector/training decision
 - do not approve PU learning merely to bypass the lack of negative evaluation evidence.
 
 **Current ML status:** repaired-v2/v9 remains accepted historical physical
-evidence; logical V3 is accepted; v10 repository consumers, bounded regressions,
-and full diagnostic mechanics pass, but physical v10 acceptance is blocked by
-26 parse-only contracts. Confirmed-negative evidence and selector promotion
+evidence; logical V3 is accepted; exact V10 V2.6 physical representations are
+accepted under R4-D-011. Confirmed-negative evidence and selector promotion
 remain unresolved; G8 is open and full training is unauthorized.

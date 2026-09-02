@@ -71,13 +71,14 @@ For the exact current DATA/ML restart boundary, read in order:
 1. `docs/plan/ml-R4/PLAN_STATUS_MATRIX.md`;
 2. `docs/plan/ml-R4/runs/2026-09-02_PHASE8_v10_v26_physical_acceptance_and_no_launch.md`;
 3. `docs/plan/ml-R4/adrs/ADR-R4-011-v10-v26-physical-representation-acceptance.md`;
-4. `docs/plan/ml-R4/runs/2026-08-30_PHASE8_v10_v25_full_population_structural_evidence_plan.md`;
-5. `docs/plan/ml-R4/runs/2026-08-27_PHASE8_v10_v25_current_restart_checkpoint.md` for historical staging context;
-6. `docs/plan/ml-R4/reviews/R4-GAP-008/2026-08-26_v10_v25_bounded_structural_closure.md`;
-7. `docs/plan/ml-R4/adrs/ADR-R4-010-versioned-external-call-representation-correction.md` for the accepted semantic decision;
-8. `docs/plan/ml-R4/runs/2026-08-16_PHASE8_v3_hardened_evidence_snapshot_closeout.md` for the accepted pre-pilot evidence boundary;
-9. `docs/plan/ml-R4/runs/2026-08-21_PHASE8_gap007_candidate2_primary_review.md` for the separate negative-evidence track;
-10. `docs/plan/ml-R4/DECISION_REGISTER.md` and `docs/plan/ml-R4/adrs/ADR-R4-009-logical-v3-leakage-grouping-correction.md` as decision context.
+4. `docs/plan/ml-R4/runs/2026-09-02_PHASE8_selector_control_equivalence_plan.md` for the current executable prerequisite;
+5. `docs/plan/ml-R4/runs/2026-08-30_PHASE8_v10_v25_full_population_structural_evidence_plan.md`;
+6. `docs/plan/ml-R4/runs/2026-08-27_PHASE8_v10_v25_current_restart_checkpoint.md` for historical staging context;
+7. `docs/plan/ml-R4/reviews/R4-GAP-008/2026-08-26_v10_v25_bounded_structural_closure.md`;
+8. `docs/plan/ml-R4/adrs/ADR-R4-010-versioned-external-call-representation-correction.md` for the accepted semantic decision;
+9. `docs/plan/ml-R4/runs/2026-08-16_PHASE8_v3_hardened_evidence_snapshot_closeout.md` for the accepted pre-pilot evidence boundary;
+10. `docs/plan/ml-R4/runs/2026-08-21_PHASE8_gap007_candidate2_primary_review.md` for the separate negative-evidence track;
+11. `docs/plan/ml-R4/DECISION_REGISTER.md` and `docs/plan/ml-R4/adrs/ADR-R4-009-logical-v3-leakage-grouping-correction.md` as decision context.
 
 The August 21 V10 implementation records, the August 23 parse-only plan, and the August 23 structural-drift handoff are historical execution records and must not be used as the current restart boundary when they describe blockers already closed. Candidate #1 is durably closed `NOT_CONFIRMED`; do not repeat it. Candidate #2 primary review supports a class-specific negative, but the primary reviewer must not self-verify it. Selector promotion and objective/evaluation design remain separate later tracks. Do not infer negatives, silently promote the selector, fit unsupported threshold/calibration roles, reuse Run12 state, overwrite protected V10 history/reference roots, or launch full training.
 
