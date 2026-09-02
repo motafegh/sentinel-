@@ -147,7 +147,7 @@ Do not fabricate contact channels or response SLAs.
 Current root `.dvc/config` sets:
 
 ```text
-remote = local
+remote = localbackup
 url = /mnt/d/sentinel-dvc-remote
 ```
 
@@ -265,7 +265,7 @@ Required:
 - strengthen current-document validation against machine-readable/current-state facts rather than keyword presence alone;
 - only add README CI badges for checks whose meaning is stable and clear.
 
-Branch-protection/ruleset state was not verifiable through the current GitHub integration and must not be guessed.
+The branches API currently reports `main` as `protected=false`; separate repository-ruleset state was not verifiable through the current integration and must not be guessed.
 
 ---
 
@@ -401,6 +401,17 @@ After the canonical architecture is stable, create a clean GitHub social-preview
 
 This is more credible than either pretending no AI was used or centering the entire README on AI tooling.
 
+## S-008 — Reduce stale branch surface and decide main-protection policy
+
+The repository currently exposes dozens of old remote branches, including many `claude/*`, historical `r4/*`, documentation, and system-alignment branches. Their existence preserves useful history, but the accumulated branch list makes it harder to distinguish active work from abandoned experiments. The branches API also reports `main` as `protected=false`.
+
+For a solo personal project this is not automatically a release blocker, and GitHub ruleset state still requires separate verification. Before final portfolio release:
+
+- identify branches still referenced by open PRs, accepted evidence, or reproducibility records;
+- delete only branches that are clearly obsolete and whose commits remain safely reachable where needed;
+- preserve historical R4/evidence anchors that still have documentary value;
+- decide whether lightweight `main` protection (for example PR/check requirements) improves the public engineering story without adding unnecessary ceremony.
+
 ---
 
 # 6. OPTIONAL items
@@ -479,7 +490,7 @@ Close **B-001** with minimal current-state corrections before aesthetic/public-i
 
 - DVC/tmp/gitignore cleanup;
 - artifact/repository-size policy audit;
-- stale PR cleanup;
+- stale PR and stale-branch containment;
 - GitHub description/topics;
 - explicit repo-name/license decisions;
 - `SECURITY.md`.
