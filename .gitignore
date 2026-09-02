@@ -89,6 +89,18 @@ validation_full_output.txt
 !.env.example
 !**/.env.example
 
+# Private credential/key material. Public verification keys and certificates
+# must use deliberate, reviewable filenames/extensions instead of these paths.
+*.pem
+*.key
+*.p12
+*.pfx
+*.keystore
+id_rsa
+id_rsa.*
+id_ed25519
+id_ed25519.*
+
 # Slither/crytic build-cache artifacts (regenerated on every run)
 crytic-export/
 *.call-graph.dot
