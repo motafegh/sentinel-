@@ -4,33 +4,42 @@ SENTINEL is a smart-contract security research/engineering system under active d
 
 ## Current system state
 
-The current stable `main` baseline includes the R4 **G7-passed DATA vNext v2 implementation**, merged at `81d9c547d`, on top of the V3/runtime and canonical-documentation baseline. R4 repaired the historical DATA/ML label assumptions before any new teacher retraining:
+Historical R4 **G0–G7 remain PASSED and immutable**. **Phase 8 is IN_PROGRESS; G8 is open and full training remains unauthorized.**
 
-- 22,493 historical contracts were reconstructed as a 224,930-row contract×class evidence ledger;
-- historical `0` is no longer treated as a confirmed negative;
-- `data-vnext-policy-v1` separates outcome truth from training signal/strength;
-- leakage-safe roles are frozen in `r4-vnext-roles-v1`;
-- threshold-fit, calibration-fit, and untouched-acceptance roles are intentionally unsupported/empty because the recovered evidence does not justify them;
-- the existing Run12 teacher remains the historical operational baseline and has **not yet been retrained on DATA vNext**.
+The current DATA/ML authority has moved beyond the historical G7 publication:
 
-Phase 7 is complete: DATA vNext v2 is canonical, its semantic overlay is deterministic, and the real local representation population was physically bound and validated for G7. Phase 8 is now the next authorized R4 step; no repaired teacher has been retrained yet.
+- R4-D-008 accepts repaired-v2 physical DATA as immutable reproducibility evidence: **22,540 contracts**, **225,400 contract×class rows**, and **67,620 graph/token/sidecar files**;
+- R4-D-009 accepts corrected logical V3 grouping/roles: **22,394 groups**, maximum group size **7**, **146 normalized-code edges**, and zero address-authority edges;
+- R4-D-010 preserves graph schema v9 for historical reproduction but makes it ineligible for a new full training run;
+- R4-D-011 accepts the exact **V10 V2.6** 22,540-identity physical representation lineage with binding digest `d9f925588913e66476cfbc097bace7daa7e673295fe2a243760313d0bef5ebdd`;
+- R4-D-012 promotes `target_aware_guarded_v1` only for construction/evaluation of a **fresh versioned candidate**. The R4-D-011 root remains immutable/current physical authority until that new token lineage is separately generated, bound, reviewed, and accepted;
+- confirmed negatives remain **zero**. Candidate #2 has primary-review support only and still requires genuinely independent agreement;
+- threshold fitting, calibration fitting, untouched acceptance, model-quality promotion, and the 100-epoch/full training run remain unsupported or unauthorized;
+- the existing Run12 teacher remains the **historical operational baseline** and is not repaired R4 truth.
+
+The current work is therefore evidence and physical-lineage closure before any repaired teacher training—not a claim that a new model has already been trained or improved.
 
 ## Current architecture
 
 ```text
 Historical / upstream Solidity
         ↓
-DATA + R4 evidence/policy/role controls
+repaired physical DATA + evidence/policy controls
         ↓
-current historical representations + future DATA vNext v2 semantic overlay
+accepted logical V3 grouping / roles
         ↓
-Four-eye teacher (Run12 historical baseline today; repaired retrain later)
+accepted V10 V2.6 physical representation (R4-D-011)
         ↓
-ML API :8001 ───────────────→ AGENTS / LangGraph → gateway :8000 → off-chain report
+[next pending] fresh guarded-selector token lineage + separate acceptance
+        ↓
+[later, only if authorized] repaired teacher retraining / evaluation
+
+Historical operational runtime today:
+Four-eye Run12 teacher → ML API :8001 ─→ AGENTS / LangGraph → gateway :8000 → off-chain report
         ↓
  fusion[128]
         ↓
-legacy proxy 128→64→32→10 / EZKL proof boundary
+retained proxy 128→64→32→10 / EZKL proof boundary
         ↓
 AuditRegistry V3 protocol (context-attested submission contract)
 ```
@@ -41,7 +50,8 @@ Important runtime separation:
 - the live **audit MCP on :8012 is read-only** and exposes version-aware V1/V2/V3 registry queries;
 - historical mutable `submit_audit` code remains for compatibility/history but is **not exposed by the live analysis MCP service**;
 - V3 defines the current on-chain submission protocol, but signing/broadcast belongs outside the analysis MCP boundary and no production signer/broadcaster is claimed here;
-- the retained EZKL proof proves the proxy computation only. V3 adds a separate EIP-712 policy/provenance attestation; it does not make the circuit prove teacher/source/AGENTS execution.
+- the retained EZKL proof proves the proxy computation only. V3 adds a separate EIP-712 policy/provenance attestation; it does not make the circuit prove teacher/source/AGENTS execution;
+- retained EZKL settings still use `check_mode="UNSAFE"`, which remains a production-assurance limitation.
 
 ## Start here
 
@@ -59,7 +69,7 @@ Important runtime separation:
 | Path | Purpose |
 |---|---|
 | `data_module/` | ingestion, preprocessing, representations, historical labels/exports, and DATA vNext implementation work |
-| `ml/` | four-eye teacher architecture, historical training/inference, calibration tooling, interpretation, MLOps |
+| `ml/` | four-eye teacher architecture, historical training/inference, repaired-training preparation, evaluation tooling, interpretation, MLOps |
 | `agents/` | LangGraph orchestration, evidence, RAG, five MCP services, gateway, V3 observation/feedback boundaries |
 | `zkml/` | proxy distillation, ONNX, retained EZKL circuit/proof lifecycle |
 | `contracts/` | SentinelToken, verifier, UUPS AuditRegistry V1/V2 historical storage plus V3 context-attested protocol |
@@ -68,7 +78,7 @@ Important runtime separation:
 
 ## Documentation authority
 
-Executable source is authoritative for behavior. The canonical handbook and R4 registers describe current architecture, limitations, and active decisions. Historical plans/reports/learning files may remain in the repository for auditability but must not override current source, R4 decisions, or `docs/handbook/16_current_status.md`.
+Executable source is authoritative for behavior. Current machine-readable R4 governance/evidence is authoritative for DATA/ML semantic and gate state. The canonical handbook is the explanatory/navigation layer. Historical plans/reports/learning files remain in the repository for auditability but must not override current source, R4 decisions, or `docs/handbook/16_current_status.md`.
 
 ## Minimum documentation verification
 
