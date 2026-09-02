@@ -103,7 +103,10 @@ Keep architecture/input shape frozen for this tranche:
 `target_aware_guarded_v1` remains a research candidate, not a promoted extractor. V2 evidence showed strong requested-target coverage improvement, but those statistics were conditioned on superseded V2 roles.
 
 The hardened V3 selector/CUDA evidence is complete but does not promote the
-selector. Initial v10 comparison reuses accepted v9 token bytes exactly.
+selector. The full-population control-equivalence pass proves dynamic
+`historical_linspace_v1` reconstruction matches all 22,540 R4-D-011 token
+tensors and selected-window indices exactly. `target_aware_guarded_v1` remains
+unpromoted pending a separate source-first decision.
 
 Encoding more than four windows is an architecture/input-capacity change and needs a separate architecture decision.
 

@@ -348,7 +348,7 @@ Any future replacement/recomputed V3 report must still fail closed if acceptance
 - exact V2.6 protected-local physical acceptance is complete under R4-D-011; it grants no selector or training authority;
 - `[4,512]` capacity omits material code on long contracts;
 - guarded target-aware selection remains promising but unpromoted;
-- full-population bound-token equivalence remains required before promotion.
+- full-population historical-control → R4-D-011 bound-token equivalence passes 22,540/22,540; guarded promotion still requires a separate source-first decision.
 
 ### Training
 

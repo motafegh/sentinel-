@@ -1,7 +1,7 @@
 # Phase-8 full-population selector control-equivalence plan
 
 Date: 2026-09-02
-Status: IN PROGRESS
+Status: PASS; selector-promotion decision still required
 Scope: R4-B006 prerequisite evidence only; no selector promotion or training
 
 ## Objective
@@ -56,3 +56,22 @@ evidence review and recorded decision.
 - Do not download or substitute a tokenizer.
 - Do not use Run12 weights or run model training.
 - Fail closed on population, lineage, tokenizer, tensor, or metadata drift.
+
+## Result
+
+The full eight-worker run completed against published source commit
+`735eda59dd02ab38ee5f14135f64b75a9a3a1111`:
+
+- 22,540 expected, enumerated, and checked identities;
+- 22,540 exact `input_ids`, `attention_mask`, and selected-index matches;
+- zero missing inputs, failures, or mismatches;
+- deterministic population-result digest
+  `4cddfe353afb5ea6cbfc2f5f18e9f4b1e774242132bda5e87823c6a8cdaf57ec`;
+- local report SHA-256
+  `636838f376d8991e9ac07d26105aa2f907e535bbf90e4504e11d663f0c656021`.
+
+The compact tracked snapshot is
+`evidence/2026-09-02_selector_control_equivalence/report.json`. This closes the
+control-equivalence prerequisite, not R4-B006 itself. Guarded-selector promotion
+still requires source-first review and a separate decision; training remains
+unauthorized.

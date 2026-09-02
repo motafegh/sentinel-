@@ -69,7 +69,7 @@ The committed hardened pilot queue contains:
 
 Queue membership or one primary opinion is not confirmed-negative support. A class remains `NONE` in the matrix until explicit class-specific adjudication and genuinely independent verification accept negative evidence. Any accepted negative is initially `EVALUATION_ONLY_NOT_TRAINING_AUTHORITY`.
 
-Candidate #2 also exposed the representation-quality defect that led to R4-GAP-008 and R4-D-010. The population audit found at least 11,702 provable same-file declared-library calls among 217,490 v9 type-11 edges, while type 11 was attached to only 7,057 / 13,413 raw-low-level nodes, 40 / 4,215 send nodes, and 6,557 / 80,927 transfer nodes. These are historical representation diagnostics, not label truth. The remediation semantics are now bounded and proven; physical V2.5 acceptance remains pending.
+Candidate #2 also exposed the representation-quality defect that led to R4-GAP-008 and R4-D-010. The population audit found at least 11,702 provable same-file declared-library calls among 217,490 v9 type-11 edges, while type 11 was attached to only 7,057 / 13,413 raw-low-level nodes, 40 / 4,215 send nodes, and 6,557 / 80,927 transfer nodes. These are historical representation diagnostics, not label truth. The remediation semantics are proven and the exact V2.6 root is physically accepted under R4-D-011; historical V2.5 remains diagnostic only.
 
 ## Selector/model-execution evidence boundary
 
@@ -96,7 +96,7 @@ Durable CUDA result:
 
 This supports a separate selector-promotion decision, but **the selector is not yet promoted** and does not improve the model-quality claim boundary by itself. The positive-only CUDA result cannot establish false-positive discrimination.
 
-Before selector promotion, the project still requires full-population verification that the historical control selector reproduces the currently bound representation token tensors exactly for the relevant population.
+The full-population control-equivalence prerequisite now passes: dynamic `historical_linspace_v1` reconstruction matches all 22,540 R4-D-011 `input_ids`, `attention_mask`, and selected-window-index payloads with zero failures. This still does not promote the guarded selector; source-first evidence review and a separate versioned decision remain required.
 
 ## Durable current evidence
 
