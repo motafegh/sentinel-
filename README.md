@@ -62,6 +62,7 @@ Important runtime separation:
 - [DATA pipeline](docs/handbook/03_data_pipeline.md)
 - [DATA artifacts / ML seam](docs/handbook/04_data_artifacts.md)
 - [Security and trust](docs/handbook/12_security_and_trust.md)
+- [Security reporting policy](SECURITY.md)
 - [R4 control plane](docs/plan/ml-R4/00_MASTER_PLAN.md)
 
 ## Repository map
@@ -89,4 +90,4 @@ python3 docs/handbook/tools/verify_handbook.py inventory
 python3 -m unittest discover -s docs/handbook/tools/tests -p 'test_*.py'
 ```
 
-Large historical DATA/teacher/proving artifacts are not guaranteed in a fresh clone. Do not commit `.env` files, RPC credentials, private keys, mnemonics, or private endpoint values.
+Large historical DATA/teacher/proving artifacts are not guaranteed in a fresh clone. Do not commit `.env` files, RPC credentials, private keys, mnemonics, or private endpoint values. For suspected vulnerabilities or accidental credential exposure, follow [`SECURITY.md`](SECURITY.md) rather than publishing sensitive details in an issue.
