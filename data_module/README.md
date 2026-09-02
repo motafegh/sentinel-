@@ -61,7 +61,7 @@ Keep these lineages separate:
 
 The model-facing token tensor contract remains `[4,512]`; model architecture remains frozen while these evidence and evaluation gates are resolved.
 
-## Historical lifecycle code
+## Historical lifecycle code and DVC boundary
 
 The package still contains the acquisition/representation lifecycle:
 
@@ -70,7 +70,13 @@ ingest → preprocess → represent → label → verify → split → register 
 freshness is a separate lifecycle check
 ```
 
-`sentinel_data.cli::_run_label` remains an incomplete historical CLI seam. Do not describe `sentinel-data run` as a complete current-R4 builder.
+`data_module/dvc.yaml` belongs to this module-local historical lifecycle, and `data_module/.dvc/` is the DVC root for those operations. Run DVC from `data_module/` when intentionally using that pipeline.
+
+This DVC lifecycle must not be confused with current R4 physical authority. A fresh clone does **not** automatically contain or reconstruct the accepted R4-D-011 physical V10 V2.6 root, the historical Run12 checkpoint, or every proving/runtime artifact. Current R4 artifact identity and acceptance come from the tracked R4 evidence/decision chain, not from the existence of `dvc.yaml`.
+
+The repository root also has a separate local/repository-level DVC context. Its public config intentionally contains no machine-specific remote; private/local remote paths belong in ignored `config.local` files rather than tracked configuration.
+
+`sentinel_data.cli::_run_label` remains an incomplete historical CLI seam. Do not describe `sentinel-data run` or `dvc repro` as a complete current-R4 builder.
 
 ## Important current areas
 
@@ -84,6 +90,8 @@ data_module/sentinel_data/
   splitting/                 historical split utilities
   export/                    historical v1 export compatibility
   vnext/                     DATA vNext/R4 semantic implementation
+
+data_module/dvc.yaml        historical module-local lifecycle orchestration
 
 docs/plan/ml-R4/
   ledger/                    evidence ledger
@@ -101,7 +109,7 @@ python3 docs/handbook/tools/verify_handbook.py static
 python3 docs/plan/ml-R4/scripts/p6_validate_frozen_partitions.py
 ```
 
-Those checks validate only their declared scope. Current physical/training authority must be read from the R4 status matrix and accepted decision/evidence chain; do not infer authorization from the existence of a representation or a passing historical gate.
+Those checks validate only their declared scope. Current physical/training authority must be read from the R4 status matrix and accepted decision/evidence chain; do not infer authorization from the existence of a representation, DVC stage, or passing historical gate.
 
 ## Do not silently weaken these invariants
 
@@ -114,6 +122,7 @@ Those checks validate only their declared scope. Current physical/training autho
 - Do not patch the R4-D-011 root in place.
 - R4-D-012 requires a fresh versioned candidate and separate physical acceptance.
 - DATA/R4 readers must never silently fall back to historical binary semantics.
+- DVC availability does not equal current R4 artifact authority.
 - Physical validity does not equal training authorization or model quality.
 
-For the full current explanation, see [DATA pipeline](../docs/handbook/03_data_pipeline.md), [DATA artifacts / ML seam](../docs/handbook/04_data_artifacts.md), and [current status](../docs/handbook/16_current_status.md).
+For the full current explanation, see [DATA pipeline](../docs/handbook/03_data_pipeline.md), [DATA artifacts / ML seam](../docs/handbook/04_data_artifacts.md), [operations](../docs/handbook/14_operations.md), and [current status](../docs/handbook/16_current_status.md).
