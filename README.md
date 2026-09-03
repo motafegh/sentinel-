@@ -55,6 +55,7 @@ Important runtime separation:
 
 ## Start here
 
+- [Developer setup and environment contract](DEVELOPMENT.md)
 - [Progressive developer handbook](docs/handbook/00_README.md)
 - [Current status and gaps](docs/handbook/16_current_status.md)
 - [Architecture](docs/handbook/01_architecture.md)
@@ -76,6 +77,10 @@ Important runtime separation:
 | `contracts/` | SentinelToken, verifier, UUPS AuditRegistry V1/V2 historical storage plus V3 context-attested protocol |
 | `docs/plan/ml-R4/` | active DATA/ML repair plan, evidence ledger, policies, role manifests, gates, decisions, risks |
 | `docs/handbook/` | canonical current system documentation; older learning/planning material is subordinate |
+
+## Development model
+
+SENTINEL is a **multi-environment monorepo**. ML, DATA, AGENTS, Contracts, and ZKML have distinct dependency/tooling boundaries; the root Poetry metadata is not a universal environment. Start with [`DEVELOPMENT.md`](DEVELOPMENT.md) before installing dependencies or attempting a full runtime.
 
 ## Documentation authority
 
