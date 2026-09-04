@@ -1,92 +1,162 @@
 # SENTINEL
 
-SENTINEL is a smart-contract security research/engineering system under active development. It combines a Solidity DATA pipeline, a four-eye graph/code ML teacher, multi-tool LangGraph auditing, a distilled EZKL proxy proof, and an upgradeable on-chain audit registry.
+**Evidence-aware smart-contract security research and engineering.**
 
-## Current system state
+SENTINEL explores how an automated smart-contract audit system can combine machine learning, multi-tool agentic analysis, verifiable inference, and on-chain provenance **without collapsing uncertainty or overstating what the evidence proves**.
 
-Historical R4 **G0–G7 remain PASSED and immutable**. **Phase 8 is IN_PROGRESS; G8 is open and full training remains unauthorized.**
+The repository is a long-running engineering project spanning Solidity DATA pipelines, graph/code ML, LangGraph orchestration, MCP services, ZKML, and upgradeable smart contracts. It is under active development and is **not presented as a production-ready security product**.
 
-The current DATA/ML authority has moved beyond the historical G7 publication:
+## Why this project exists
 
-- R4-D-008 accepts repaired-v2 physical DATA as immutable reproducibility evidence: **22,540 contracts**, **225,400 contract×class rows**, and **67,620 graph/token/sidecar files**;
-- R4-D-009 accepts corrected logical V3 grouping/roles: **22,394 groups**, maximum group size **7**, **146 normalized-code edges**, and zero address-authority edges;
-- R4-D-010 preserves graph schema v9 for historical reproduction but makes it ineligible for a new full training run;
-- R4-D-011 accepts the exact **V10 V2.6** 22,540-identity physical representation lineage with binding digest `d9f925588913e66476cfbc097bace7daa7e673295fe2a243760313d0bef5ebdd`;
-- R4-D-012 promotes `target_aware_guarded_v1` only for construction/evaluation of a **fresh versioned candidate**. The R4-D-011 root remains immutable/current physical authority until that new token lineage is separately generated, bound, reviewed, and accepted;
-- confirmed negatives remain **zero**. Candidate #2 has primary-review support only and still requires genuinely independent agreement;
-- threshold fitting, calibration fitting, untouched acceptance, model-quality promotion, and the 100-epoch/full training run remain unsupported or unauthorized;
-- the existing Run12 teacher remains the **historical operational baseline** and is not repaired R4 truth.
+A vulnerability classifier is only one part of a trustworthy audit system. Real systems also have to answer harder questions:
 
-The current work is therefore evidence and physical-lineage closure before any repaired teacher training—not a claim that a new model has already been trained or improved.
+- Where did the training/evaluation evidence come from?
+- Is an unknown label really a negative example?
+- Did equivalent or related contracts leak across dataset roles?
+- What happens when an analyzer or external tool did not run?
+- Which part of an AI result can a cryptographic proof actually establish?
+- Which component is allowed to sign or broadcast an on-chain action?
+- Can later reviewers reproduce the exact artifact and decision that a claim came from?
 
-## Current architecture
+SENTINEL is built around those boundaries rather than hiding them behind a single confidence score.
 
-```text
-Historical / upstream Solidity
-        ↓
-repaired physical DATA + evidence/policy controls
-        ↓
-accepted logical V3 grouping / roles
-        ↓
-accepted V10 V2.6 physical representation (R4-D-011)
-        ↓
-[next pending] fresh guarded-selector token lineage + separate acceptance
-        ↓
-[later, only if authorized] repaired teacher retraining / evaluation
+## What SENTINEL contains
 
-Historical operational runtime today:
-Four-eye Run12 teacher → ML API :8001 ─→ AGENTS / LangGraph → gateway :8000 → off-chain report
-        ↓
- fusion[128]
-        ↓
-retained proxy 128→64→32→10 / EZKL proof boundary
-        ↓
-AuditRegistry V3 protocol (context-attested submission contract)
+| Area | What is implemented |
+|---|---|
+| **DATA / evidence** | Solidity ingestion, preprocessing, graph/token representations, versioned evidence semantics, leakage-safe grouping/roles, DVC-backed historical lifecycle, and the current R4 repair path |
+| **Machine learning** | A four-eye graph/code teacher architecture, historical Run12 inference, interpretation/evaluation utilities, and Phase-8-compatible repaired-training mechanics |
+| **Agentic analysis** | A 14-node LangGraph pipeline combining ML, RAG, static/graph/formal evidence, explicit degraded states, and five MCP services |
+| **ZKML** | Distillation of the 128-value teacher fusion representation into a compact 128→64→32→10 proxy plus retained EZKL proof artifacts |
+| **Smart contracts** | `SentinelToken`, an EZKL verifier boundary, and an upgradeable `AuditRegistry` with historical V1/V2 compatibility and the current V3 context-attested protocol |
+| **Engineering governance** | Versioned ADRs, evidence manifests, physical-lineage binding, fail-closed gates, reproducibility records, and explicit claim/authorization boundaries |
+
+## Architecture at a glance
+
+```mermaid
+flowchart LR
+    S["Solidity / upstream evidence"] --> D["DATA pipeline\nsemantics + grouping + representations"]
+
+    C["Client"] --> G["Gateway :8000"]
+    G --> A["14-node LangGraph"]
+    A --> M["ML API :8001\nRun12 historical runtime today"]
+    A --> T["RAG / static / graph / formal tools"]
+    A --> R["Off-chain audit report"]
+
+    D --> M
+    M --> F["fusion[128]"]
+    F --> Z["128→64→32→10 proxy\nEZKL proof boundary"]
+    Z --> P["V3 request +\nEIP-712 policy attestation"]
+    P --> AR["AuditRegistry V3"]
+
+    RO["Audit MCP :8012\nread-only"] --> AR
 ```
 
-Important runtime separation:
+Three boundaries are intentionally separate:
 
-- the **gateway** runs the off-chain 14-node audit and stores a report;
-- the live **audit MCP on :8012 is read-only** and exposes version-aware V1/V2/V3 registry queries;
-- historical mutable `submit_audit` code remains for compatibility/history but is **not exposed by the live analysis MCP service**;
-- V3 defines the current on-chain submission protocol, but signing/broadcast belongs outside the analysis MCP boundary and no production signer/broadcaster is claimed here;
-- the retained EZKL proof proves the proxy computation only. V3 adds a separate EIP-712 policy/provenance attestation; it does not make the circuit prove teacher/source/AGENTS execution;
-- retained EZKL settings still use `check_mode="UNSAFE"`, which remains a production-assurance limitation.
+1. **Analysis runtime:** gateway + LangGraph produce an off-chain report. The gateway does not automatically submit a blockchain transaction.
+2. **Proof boundary:** the retained EZKL proof establishes the compact proxy computation only; it does not prove Solidity analysis, teacher execution, LangGraph routing, or the final audit verdict.
+3. **Submission authority:** V3 binds audit context/provenance with a separate EIP-712 policy attestation. A production signer/broadcaster is not part of the current analysis service.
 
-## Start here
+For the detailed topology and trust model, see [Current architecture](docs/handbook/01_architecture.md), [Runtime flows](docs/handbook/02_runtime_flows.md), and [Security and trust](docs/handbook/12_security_and_trust.md).
 
-- [Developer setup and environment contract](DEVELOPMENT.md)
-- [Progressive developer handbook](docs/handbook/00_README.md)
-- [Current status and gaps](docs/handbook/16_current_status.md)
-- [Architecture](docs/handbook/01_architecture.md)
-- [Runtime flows](docs/handbook/02_runtime_flows.md)
-- [DATA pipeline](docs/handbook/03_data_pipeline.md)
-- [DATA artifacts / ML seam](docs/handbook/04_data_artifacts.md)
-- [Security and trust](docs/handbook/12_security_and_trust.md)
-- [Security reporting policy](SECURITY.md)
-- [R4 control plane](docs/plan/ml-R4/00_MASTER_PLAN.md)
+## Selected engineering highlights
+
+### 1. Unknown is not negative
+
+A major DATA/ML correction was recognizing that many historical binary `0` cells represented **unknown, unsupported, absent, or dropped evidence**, not trustworthy negatives. The repaired semantic layer therefore carries nullable targets, evidence strength, loss/metric eligibility, and explicit dataset roles instead of manufacturing negative labels.
+
+### 2. Leakage grouping was treated as an evidence problem
+
+A previous grouping approach allowed common Ethereum address literals to connect unrelated contracts into a 10,327-contract component. R4 replaced that authority with defensible artifact/code/family identity rules. The accepted logical V3 population contains **22,394 groups**, maximum group size **7**, and zero address-authority edges.
+
+### 3. Representation defects were fixed before retraining
+
+Full-population investigation showed that historical graph schema v9 did not reliably represent important call semantics. Rather than train on a known-bad representation or weaken the checks, SENTINEL moved to a versioned V10 lineage and independently reconciled every observed structural drift before physical acceptance.
+
+### 4. Tool silence is not a clean result
+
+The AGENTS layer distinguishes `tool did not run`, `tool failed/degraded`, and `tool ran with zero findings`. This prevents unavailable evidence from silently becoming a benign security conclusion.
+
+### 5. ZK proof scope is deliberately narrow
+
+The retained proof verifies only the compact proxy computation. V3 provenance/context authentication is a separate mechanism. The project explicitly refuses the stronger—but unsupported—claim that the circuit proves the source audit or final agent verdict.
+
+The full evidence trail for these decisions lives in the [R4 control plane](docs/plan/ml-R4/00_MASTER_PLAN.md) and [current status ledger](docs/handbook/16_current_status.md).
+
+## Current project status
+
+SENTINEL is active research/engineering work. The concise current boundary is:
+
+| Surface | Current state |
+|---|---|
+| Historical R4 gates | **G0–G7 PASSED and immutable** |
+| Phase 8 / G8 | **IN PROGRESS / open** |
+| Current accepted physical representation | exact **V10 V2.6** lineage under R4-D-011 |
+| Guarded token selector | R4-D-012 authorizes it only for a **fresh successor candidate** that still requires separate physical acceptance |
+| ML runtime | **Run12** remains the historical operational baseline; no repaired R4 teacher has been trained/promoted |
+| Confirmed negatives | **0**; candidate review work remains evidence-gated |
+| Threshold/calibration/untouched acceptance | currently unsupported/empty for the repaired path |
+| Full repaired training | **not authorized** |
+| AGENTS chain behavior | default gateway path is off-chain; live audit MCP is **read-only** |
+| ZKML assurance | retained proxy-only proof; current bundle still records `check_mode="UNSAFE"` as a production-assurance limitation |
+| V3 transaction authority | protocol exists; no production signer/broadcaster is claimed |
+| License | no repository license has been selected yet |
+
+For exact counts, digests, candidate-review state, and current execution authority, use [Current status and gap ledger](docs/handbook/16_current_status.md). That file—not this summary—is the canonical explanatory status surface.
+
+## Explore the project
+
+| If you have… | Start here |
+|---|---|
+| **2 minutes** | this README → [Current status](docs/handbook/16_current_status.md) |
+| **10 minutes** | [Architecture](docs/handbook/01_architecture.md) → [Runtime flows](docs/handbook/02_runtime_flows.md) → [Security/trust](docs/handbook/12_security_and_trust.md) |
+| **A development task** | [DEVELOPMENT.md](DEVELOPMENT.md) → target module README |
+| **A DATA/ML review** | [DATA pipeline](docs/handbook/03_data_pipeline.md) → [DATA artifacts / ML seam](docs/handbook/04_data_artifacts.md) → [R4 control plane](docs/plan/ml-R4/00_MASTER_PLAN.md) |
+| **A deep technical audit** | source/tests → current R4 machine-readable evidence/ADRs → handbook → historical records |
 
 ## Repository map
 
-| Path | Purpose |
+| Path | Responsibility |
 |---|---|
-| `data_module/` | ingestion, preprocessing, representations, historical labels/exports, and DATA vNext implementation work |
-| `ml/` | four-eye teacher architecture, historical training/inference, repaired-training preparation, evaluation tooling, interpretation, MLOps |
-| `agents/` | LangGraph orchestration, evidence, RAG, five MCP services, gateway, V3 observation/feedback boundaries |
-| `zkml/` | proxy distillation, ONNX, retained EZKL circuit/proof lifecycle |
-| `contracts/` | SentinelToken, verifier, UUPS AuditRegistry V1/V2 historical storage plus V3 context-attested protocol |
-| `docs/plan/ml-R4/` | active DATA/ML repair plan, evidence ledger, policies, role manifests, gates, decisions, risks |
-| `docs/handbook/` | canonical current system documentation; older learning/planning material is subordinate |
+| [`data_module/`](data_module/) | ingestion, preprocessing, representations, historical lifecycle, DATA vNext/R4 |
+| [`ml/`](ml/) | four-eye teacher, historical Run12 runtime, repaired-training mechanics, evaluation/interpretation |
+| [`agents/`](agents/) | LangGraph orchestration, RAG/evidence, gateway, five MCP services, security and feedback boundaries |
+| [`zkml/`](zkml/) | proxy distillation, ONNX/EZKL proof lifecycle, retained proof artifacts |
+| [`contracts/`](contracts/) | staking token, verifier, UUPS AuditRegistry V1/V2/V3 protocol |
+| [`docs/handbook/`](docs/handbook/) | canonical current explanatory documentation |
+| [`docs/plan/ml-R4/`](docs/plan/ml-R4/) | active DATA/ML evidence, policies, manifests, gates, ADRs and decision history |
 
-## Development model
+## Technology stack
 
-SENTINEL is a **multi-environment monorepo**. ML, DATA, AGENTS, Contracts, and ZKML have distinct dependency/tooling boundaries; the root Poetry metadata is not a universal environment. Start with [`DEVELOPMENT.md`](DEVELOPMENT.md) before installing dependencies or attempting a full runtime.
+**AI / ML:** Python, PyTorch, PyTorch Geometric, Transformers / GraphCodeBERT, NumPy, scikit-learn
 
-## Documentation authority
+**Agentic / services:** LangGraph, MCP, FastAPI, Pydantic, SQLite, RAG tooling
 
-Executable source is authoritative for behavior. Current machine-readable R4 governance/evidence is authoritative for DATA/ML semantic and gate state. The canonical handbook is the explanatory/navigation layer. Historical plans/reports/learning files remain in the repository for auditability but must not override current source, R4 decisions, or `docs/handbook/16_current_status.md`.
+**Smart-contract analysis:** Solidity, Slither and graph/representation tooling
 
-## Minimum documentation verification
+**ZK / blockchain:** EZKL, ONNX, Solidity, Foundry, OpenZeppelin/UUPS, EIP-712
+
+**Data / engineering:** DVC, Poetry, pytest, GitHub Actions, structured JSON/YAML/CSV evidence artifacts
+
+## Development and validation
+
+SENTINEL is a **multi-environment monorepo**. There is intentionally no fake universal `poetry install` path across ML, DATA, AGENTS, ZKML, and Contracts.
+
+For a lighter history-preserving clone:
+
+```bash
+git clone --filter=blob:none https://github.com/motafegh/sentinel-.git
+cd sentinel-
+```
+
+Then start with the environment contract:
+
+```text
+DEVELOPMENT.md
+```
+
+A dependency-light documentation/invariant check is:
 
 ```bash
 export TMPDIR=/tmp TMP=/tmp TEMP=/tmp
@@ -95,4 +165,28 @@ python3 docs/handbook/tools/verify_handbook.py inventory
 python3 -m unittest discover -s docs/handbook/tools/tests -p 'test_*.py'
 ```
 
-Large historical DATA/teacher/proving artifacts are not guaranteed in a fresh clone. Do not commit `.env` files, RPC credentials, private keys, mnemonics, or private endpoint values. For suspected vulnerabilities or accidental credential exposure, follow the [security reporting policy](SECURITY.md) rather than publishing sensitive details in an issue.
+Module-specific setup/test commands, local artifact requirements, GPU/analyzer prerequisites, DVC boundaries, and full-runtime instructions are documented in [DEVELOPMENT.md](DEVELOPMENT.md) and [Operations](docs/handbook/14_operations.md).
+
+Large historical DATA, teacher, RAG, runtime, or proving artifacts are **not** claimed to be available from every fresh clone.
+
+## Engineering approach
+
+SENTINEL is developed with extensive **AI-assisted engineering**. AI assistants are used as implementation, investigation, review, and documentation collaborators; project ownership remains centered on architecture, evidence interpretation, scope/claim decisions, validation, and maintaining the technical provenance of what is accepted or rejected.
+
+That approach is visible in the repository history rather than hidden. The quality bar is therefore not “who typed each line,” but whether a change has a defensible design, inspectable implementation, tests/evidence, and an honest statement of its limitations.
+
+## Documentation authority
+
+For current behavior and claims, use this order:
+
+1. executable source/config/tests;
+2. committed machine-readable R4 governance/evidence under `docs/plan/ml-R4/`;
+3. canonical handbook under `docs/handbook/`;
+4. ADRs/decision/register records;
+5. supplementary or historical documents.
+
+Historical plans, reports, and learning artifacts are intentionally retained for auditability but do not override current authority.
+
+## Security
+
+Do not commit `.env` values, private keys, mnemonics, RPC/API credentials, or private artifact endpoints. For a suspected vulnerability or accidental credential exposure, follow [SECURITY.md](SECURITY.md) rather than posting sensitive details in a public issue.
