@@ -52,8 +52,10 @@ Current declared Python ranges:
 
 ## 3. Clone and verify repository/documentation state
 
+The repository contains substantial historical engineering/evidence history. For a normal development clone, Git partial clone is the preferred lightweight entry point because it preserves commit identities while deferring unneeded historical blob transfer:
+
 ```bash
-git clone https://github.com/motafegh/sentinel-.git
+git clone --filter=blob:none https://github.com/motafegh/sentinel-.git
 cd sentinel-
 
 export REPO_ROOT="$(git rev-parse --show-toplevel)"
@@ -62,6 +64,8 @@ export TMPDIR=/tmp TMP=/tmp TEMP=/tmp
 python3 docs/handbook/tools/verify_handbook.py static
 python3 docs/handbook/tools/verify_handbook.py inventory
 ```
+
+A conventional full clone remains valid when all historical blobs are required locally. Do not rewrite/shallow-republish project history merely to reduce portfolio clone size; historical commit identities are used by the R4 evidence/provenance chain. See [`docs/plan/portfolio-professionalization/2026-09-04_REPOSITORY_WEIGHT_AND_HISTORY_AUDIT.md`](docs/plan/portfolio-professionalization/2026-09-04_REPOSITORY_WEIGHT_AND_HISTORY_AUDIT.md).
 
 These checks validate tracked documentation/source relationships. They do not prove that heavy local artifacts or external services are present.
 
@@ -260,6 +264,7 @@ The repository intentionally documents rather than hides the remaining gaps:
 - DATA currently lacks a committed Poetry lockfile;
 - heavy R4 physical DATA is not publicly reconstructed by a one-command fresh-clone path;
 - Run12/proving/runtime artifacts may be local or historical;
+- repository history is relatively large; partial clone is the preferred non-destructive mitigation;
 - there is no supported universal monorepo environment;
 - full repaired training remains unauthorized;
 - no production signer/broadcaster is claimed.
