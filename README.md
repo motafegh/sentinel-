@@ -33,32 +33,42 @@ SENTINEL is built around those boundaries rather than hiding them behind a singl
 
 ## Architecture at a glance
 
+SENTINEL has separate runtime, DATA/ML-repair, and proof/protocol tracks. They are related, but they are **not one currently connected end-to-end production pipeline**.
+
 ```mermaid
 flowchart LR
-    S["Solidity / upstream evidence"] --> D["DATA pipeline\nsemantics + grouping + representations"]
+    subgraph RUNTIME["Current off-chain runtime"]
+        C["Client"] --> G["Gateway :8000"]
+        G --> A["14-node LangGraph"]
+        A --> M["ML API :8001\nRun12 historical runtime"]
+        A --> T["RAG / static / graph / formal tools"]
+        A --> R["Off-chain audit report"]
+    end
 
-    C["Client"] --> G["Gateway :8000"]
-    G --> A["14-node LangGraph"]
-    A --> M["ML API :8001\nRun12 historical runtime today"]
-    A --> T["RAG / static / graph / formal tools"]
-    A --> R["Off-chain audit report"]
+    subgraph REPAIR["Current R4 DATA/ML repair"]
+        S["Solidity / source evidence"] --> D["accepted repaired DATA + logical V3 +\nD-011 V10 V2.6 physical representation"]
+        D --> N["D-012 guarded-selector successor\npending separate physical acceptance"]
+        N --> RM["later repaired teacher\nonly if explicitly authorized"]
+    end
 
-    D --> M
-    M --> F["fusion[128]"]
-    F --> Z["128→64→32→10 proxy\nEZKL proof boundary"]
-    Z --> P["V3 request +\nEIP-712 policy attestation"]
-    P --> AR["AuditRegistry V3"]
+    subgraph TRUST["Proof / protocol trust path"]
+        M --> F["fusion[128]"]
+        F --> Z["128→64→32→10 proxy\nEZKL proof boundary"]
+        Z --> P["V3 request +\nEIP-712 policy attestation"]
+        P --> AR["AuditRegistry V3"]
+        RO["Audit MCP :8012\nread-only"] --> AR
+    end
 
-    RO["Audit MCP :8012\nread-only"] --> AR
+    RM -. "future selected-teacher replacement; not current runtime" .-> F
 ```
 
 Three boundaries are intentionally separate:
 
-1. **Analysis runtime:** gateway + LangGraph produce an off-chain report. The gateway does not automatically submit a blockchain transaction.
+1. **Analysis runtime:** gateway + LangGraph currently use the historical Run12 ML service and produce an off-chain report. The accepted R4 V10 physical lineage has not replaced Run12 in live inference.
 2. **Proof boundary:** the retained EZKL proof establishes the compact proxy computation only; it does not prove Solidity analysis, teacher execution, LangGraph routing, or the final audit verdict.
 3. **Submission authority:** V3 binds audit context/provenance with a separate EIP-712 policy attestation. A production signer/broadcaster is not part of the current analysis service.
 
-For the detailed topology and trust model, see [Current architecture](docs/handbook/01_architecture.md), [Runtime flows](docs/handbook/02_runtime_flows.md), and [Security and trust](docs/handbook/12_security_and_trust.md).
+The handbook’s [Current architecture](docs/handbook/01_architecture.md) owns the four canonical technical views: whole-system ownership, normal audit request flow, DATA/ML lifecycle, and proof/attestation/on-chain trust path. See also [Runtime flows](docs/handbook/02_runtime_flows.md) and [Security and trust](docs/handbook/12_security_and_trust.md).
 
 ## Selected engineering highlights
 
