@@ -68,16 +68,17 @@ Internal evidence remains available, but external visitors should not traverse d
 
 ## 5. Current program position
 
-As of 2026-09-05:
+As of the 2026-09-05 reconciliation:
 
 - **P0 audit:** complete;
 - **B-001 truth alignment:** closed;
 - **P1 hygiene foundation:** substantially complete;
 - **P2 root landing-page work:** substantially complete;
+- **state/tracking reconciliation:** complete;
 - **P3 canonical architecture/trust presentation:** next;
 - **P4–P8:** pending in sequence.
 
-Completed work includes current-facing truth alignment, DVC/runtime cleanup, `.gitignore` hardening, stale PR/branch cleanup, `SECURITY.md`, bounded secret/exposure review, `DEVELOPMENT.md`, multi-environment setup clarification, regional package-index cleanup, repository-weight/history policy, and the public root README redesign.
+Completed work includes current-facing truth alignment, DVC/runtime cleanup, `.gitignore` hardening, stale PR/branch cleanup, `SECURITY.md`, bounded secret/exposure review, `DEVELOPMENT.md`, multi-environment setup clarification, regional package-index cleanup, repository-weight/history policy, the public root README redesign, and reconciliation of the portfolio tracking/governance layer.
 
 The remaining detailed disposition is intentionally centralized in [`CURRENT_STATUS.md`](CURRENT_STATUS.md) so this master plan does not become stale again.
 
@@ -266,7 +267,7 @@ If `main` advances materially during this program, synchronize/re-evaluate befor
 
 ## 10. Default execution order
 
-`P0 audit → P1 hygiene/identity → P2 README → P3 architecture → P4 showcase/DX → P5 CI/security/reproducibility → P6 case study → P7 release/identity → P8 final audit`
+`P0 audit → P1 hygiene/identity → P2 README → state reconciliation → P3 architecture → P4 showcase/DX → P5 CI/security/reproducibility → P6 case study → P7 release/identity → P8 final audit`
 
 Current restart point is **P3 after the 2026-09-05 state-reconciliation pass**.
 
