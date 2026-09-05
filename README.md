@@ -70,6 +70,18 @@ Three boundaries are intentionally separate:
 
 The handbook’s [Current architecture](docs/handbook/01_architecture.md) owns the four canonical technical views: whole-system ownership, normal audit request flow, DATA/ML lifecycle, and proof/attestation/on-chain trust path. See also [Runtime flows](docs/handbook/02_runtime_flows.md) and [Security and trust](docs/handbook/12_security_and_trust.md).
 
+## Try the fresh-clone showcase
+
+The fastest reproducible project demonstration needs only Python and the committed repository:
+
+```bash
+python3 tools/showcase_sentinel.py
+```
+
+It checks the real graph topology, live audit-MCP read-only surface, retained ZKML proxy/settings, and current R4 authority directly from source/config. Capabilities that are not actually exercised—such as live ML inference, external analyzers, proof generation, or V3 signing/broadcast—are reported as `NOT_RUN` instead of being treated as clean.
+
+See [SHOWCASE.md](SHOWCASE.md) for expected output, the exact claim boundary, JSON mode, and the optional deeper LangGraph smoke.
+
 ## Selected engineering highlights
 
 ### 1. Unknown is not negative
@@ -120,6 +132,7 @@ For exact counts, digests, candidate-review state, and current execution authori
 | If you have… | Start here |
 |---|---|
 | **2 minutes** | this README → [Current status](docs/handbook/16_current_status.md) |
+| **5 minutes + Python** | [Fresh-clone showcase](SHOWCASE.md) → `python3 tools/showcase_sentinel.py` |
 | **10 minutes** | [Architecture](docs/handbook/01_architecture.md) → [Runtime flows](docs/handbook/02_runtime_flows.md) → [Security/trust](docs/handbook/12_security_and_trust.md) |
 | **A development task** | [DEVELOPMENT.md](DEVELOPMENT.md) → target module README |
 | **A DATA/ML review** | [DATA pipeline](docs/handbook/03_data_pipeline.md) → [DATA artifacts / ML seam](docs/handbook/04_data_artifacts.md) → [R4 control plane](docs/plan/ml-R4/00_MASTER_PLAN.md) |
