@@ -1,90 +1,142 @@
 # SENTINEL P1.1 Repository Hygiene and Identity Plan
 
-**Date:** 2026-09-02  
-**Status:** IN_PROGRESS  
-**Parent:** P0 Portfolio Readiness Audit / P1.1  
-**Scope:** repository hygiene, artifact/public identity foundation; no R4 semantic/product implementation changes
+**Created:** 2026-09-02  
+**Last reconciled:** 2026-09-05  
+**Status:** **SUBSTANTIALLY COMPLETE — identity decisions remain open**  
+**Parent:** P0 Portfolio Readiness Audit / P1  
+**Live status:** [`CURRENT_STATUS.md`](CURRENT_STATUS.md)  
+**Scope:** repository hygiene, artifact/public-identity foundation; no R4 semantic/product implementation changes
 
 ## Goal
 
-Make the repository structurally intentional and externally defensible before the final README/demo/release work, while preserving all accepted R4/history/reproducibility evidence.
+Make the repository structurally intentional and externally defensible while preserving accepted R4/history/reproducibility evidence.
 
-## Workstreams
+This file is the phase record. `CURRENT_STATUS.md` is the live program dashboard.
 
-### H1 — Safe runtime/ignore hygiene — execute now
+## Workstream disposition
 
-- add `.dvc/tmp/` to Git ignore;
-- remove tracked `.dvc/tmp` runtime lock/timestamp files only;
-- repair malformed `.gitignore` compressed/docs pattern residue;
-- preserve the explicit R4 independent-review ZIP exception and all protected evidence.
+### H1 — safe runtime/ignore hygiene — **COMPLETE**
 
-### H2 — DVC/artifact contract — investigate before changing
+Completed:
 
-Current evidence shows:
+- root `.dvc/tmp` runtime files removed from Git;
+- `.dvc/tmp/` and machine-local DVC config ignored;
+- malformed/redundant root ignore rules cleaned;
+- environment/key/cache/runtime ignore controls hardened;
+- ML checkpoint/model binary classes protected from future accidental Git inclusion;
+- required R4 independent-review ZIP exception preserved.
 
-- root `.dvc/config` has `no_scm = True`, remote `localbackup`, URL `/mnt/d/sentinel-dvc-remote`;
-- root `.dvc/tmp/*` is tracked runtime state;
-- `data_module/.dvc/config` exists as an empty nested DVC root;
-- repository code search did not surface consumers of `localbackup`/the machine-local remote.
+No protected R4 evidence was deleted.
 
-Do **not** remove/consolidate either DVC root or change the remote until current artifact pointers/workflows/local reproducibility assumptions are mapped. The public contract must ultimately distinguish committed evidence, locally reproducible artifacts, and externally retrievable artifacts.
+### H2 — DVC/artifact contract — **COMPLETE at current public-contract scope**
 
-### H3 — Repository size/history policy — local-clone audit required
+Findings established that two real DVC contexts exist:
 
-GitHub reports roughly 406 MB. The connector cannot reliably attribute packed Git history size. Before any history rewrite or large-blob migration, run a local audit (`git count-objects`, large-blob inventory/equivalent) and classify source/evidence/generated/binary history. No history rewrite is authorized by this plan.
+1. root `.dvc/` for repository/local artifact operations;
+2. `data_module/.dvc/` plus `data_module/dvc.yaml` for the historical module-local DATA lifecycle.
 
-### H4 — PR/branch hygiene
+Completed:
 
-- inspect stale open PRs individually and close only clearly superseded ones;
-- inventory old branches and preserve branches/commits still referenced by evidence or useful history;
-- do not merge stale branches for cosmetic cleanup;
-- decide lightweight `main` protection later after checking actual ruleset state.
+- removed the public machine-local default remote `/mnt/d/sentinel-dvc-remote`;
+- retained root `no_scm=True` rather than making an unrelated semantic DVC change;
+- documented safe local remote configuration through ignored/local config;
+- documented that `dvc repro` in `data_module/` does not automatically reconstruct the accepted R4-D-011 protected-local physical lineage;
+- documented fresh-clone availability boundaries for Run12, R4 physical representations, RAG/runtime state, and proving artifacts.
 
-### H5 — Public project health/identity
+No public heavy-artifact host was invented. If one is added later, it must be versioned/hash-bound explicitly.
 
-Safe later actions:
+### H3 — repository size/history policy — **COMPLETE**
 
-- add `SECURITY.md` with honest reporting/scope wording;
-- set concise GitHub description and useful topics;
-- normalize only misleading public metadata.
+Canonical audit:
 
-Explicit decision gates:
+`2026-09-04_REPOSITORY_WEIGHT_AND_ARTIFACT_AUDIT.md`
 
-- repository rename (`sentinel-` vs intentional new name);
-- license choice.
+Disposition:
 
-Do not apply rename/license automatically because they have public-link/legal/career implications.
+- GitHub repository size remains roughly 396 MB;
+- current active evidence/model/data files inspected are comparatively small and justified;
+- the dominant remaining weight is historical Git storage rather than obvious current-tree bloat;
+- future raw datasets, generated representations, checkpoints, and heavy proving material remain outside normal Git;
+- history rewrite is rejected for ordinary portfolio cleanup because R4 provenance binds exact commits;
+- partial clone (`git clone --filter=blob:none ...`) is documented as the non-destructive clone mitigation.
+
+A future object-level history migration is optional and requires a separately justified evidence-preserving plan.
+
+### H4 — PR/branch hygiene — **COMPLETE**
+
+Completed:
+
+- obsolete May/June PRs reviewed and closed rather than merged cosmetically;
+- obsolete remote branches removed after confirming their useful work/history was already represented by current `main`/Git history;
+- during professionalization the intended remote branch surface is `main` plus `portfolio/professionalization-2026-09-02`;
+- PR #72 remains the current draft professionalization PR.
+
+After the professionalization program is fully validated and merged, the temporary professionalization branch can be removed.
+
+Main-branch protection/rules remain a separate later repository-policy decision, not part of branch cleanup.
+
+### H5 — public project health/identity — **PARTIAL**
+
+Completed:
+
+- root `SECURITY.md` added;
+- bounded secret/credential exposure review performed with no obvious committed credential material found;
+- key/credential ignore protections hardened;
+- root `DEVELOPMENT.md` added and public setup/artifact boundaries clarified;
+- root README rebuilt as an external landing page.
+
+Still open:
+
+- set concise GitHub repository description;
+- set accurate topics;
+- explicitly decide whether to keep or rename `sentinel-`;
+- explicitly decide license;
+- homepage/social preview only after a meaningful destination/visual is stable.
+
+Description/topics have not been silently claimed as complete because the current connector has not exposed repository-settings write capability.
+
+## Additional developer-experience repairs completed during P1
+
+Although originally tracked separately under M-006, the hygiene foundation also corrected setup metadata that affected public repository credibility:
+
+- root pytest scope no longer falsely includes AGENTS and nonexistent `api/tests`;
+- AGENTS/DATA keep their module-owned environments/test configuration;
+- DATA no longer forces a regional primary package index;
+- `DEVELOPMENT.md` explains the real multi-environment monorepo rather than inventing a universal environment.
+
+DATA still has no committed Poetry lockfile; that remains a P5 reproducibility responsibility.
 
 ## Protected exclusions
 
 Do not delete, rewrite, rename, or compact for aesthetics:
 
 - `docs/plan/ml-R4/` decisions/evidence/review bundles/hashes/manifests;
-- accepted G7, R4-D-008, R4-D-009, R4-D-010/011/012 identities/evidence;
+- accepted G0–G7 and R4-D-008/009/010/011/012 identities/evidence;
 - Run12 historical lineage references;
 - retained ZKML/circuit/verifier reproducibility lineage;
 - V1/V2/V3 compatibility source/tests;
-- historical artifacts still required to substantiate current claims.
+- historical artifacts still needed to substantiate current claims.
 
-## Validation per slice
+## Validation discipline used
 
-For every cleanup slice:
+Each cleanup slice followed the same rule:
 
-1. inspect exact branch diff;
-2. prove deleted files are generated/runtime or otherwise safely superseded;
-3. verify protected paths are unchanged;
-4. run the relevant existing CI/checks when triggered;
-5. record deferred items instead of guessing where local-only evidence is required.
+1. inspect the exact target and authority;
+2. delete/change only runtime, generated, misleading, or safely superseded material;
+3. preserve protected paths;
+4. run/observe relevant repository checks;
+5. record unavailable/local-only boundaries rather than guessing.
 
-## Exit gate
+Current-facing README work on the branch has passed both `Handbook` and `SENTINEL system alignment` CI at head `b6a4ad7480c41d86935443921193a7d304be3c40`. Later reconciliation commits must pass the same checks before final merge.
 
-P1.1 completes when:
+## Exit assessment
 
-- no known runtime temp/lock cruft is tracked;
-- ignore rules are coherent;
-- public DVC/artifact semantics are explicit and no longer machine-specific by default, or the remaining machine-local contract is clearly isolated/documented pending a safe migration;
-- stale PR/branch surface is intentionally contained;
-- repository-size policy is evidence-backed;
-- security/public metadata foundation is present;
-- rename/license decisions are either applied after explicit user choice or recorded as deliberate pending choices;
-- no protected evidence/history was damaged.
+P1.1 is **substantially complete**, not fully closed, because public GitHub identity still has intentional unresolved decisions/settings:
+
+- description/topics;
+- repository-name choice;
+- license choice.
+
+Those remaining identity responsibilities do not block progression to P3 architecture work. They are retained in `CURRENT_STATUS.md` and will be resolved before the P7 stable portfolio release/final P8 audit.
+
+No R4 semantic/product truth was changed by this phase.
