@@ -38,6 +38,7 @@ The portfolio program remains subordinate to `CLAUDE.md`, executable source/conf
 | **M-012 module README truth alignment** | **CLOSED for identified stale current surfaces** | DATA/ML/contracts/ZKML current-state sections aligned; AGENTS already aligned. |
 | **M-014 credential/security hygiene** | **PARTIAL / adequate for current phase** | Bounded tracked-repository scan found no obvious committed secret material; credential/key ignore controls hardened. A dedicated historical/CI secret scan remains a P5 item. |
 | **P2 root README / public landing page** | **SUBSTANTIALLY COMPLETE** | Root README rebuilt for recruiter + senior-engineer progressive disclosure, architecture overview, engineering highlights, limitations, setup links, and AI-assisted ownership disclosure. A runnable showcase/example still belongs to P4. |
+| **State reconciliation** | **COMPLETE** | Master/P0/P1 records reconciled, one canonical status file established, duplicate M-011 audit removed, and `CLAUDE.md` restart/memory routing corrected. |
 | **P3 canonical architecture/trust presentation** | **NEXT** | Consolidate authoritative whole-system, request-flow, DATA/ML lifecycle, and ZK/V3 trust-boundary views without duplicating authority. |
 | **P4 runnable showcase / demo** | **PENDING** | Need one bounded reproducible or inspectable example with expected output and explicit unavailable/degraded evidence semantics. |
 | **P5 CI/testing/security/reproducibility presentation** | **PENDING** | Current-vs-historical workflow presentation, semantic doc-currentness checks, DATA locking decision, historical/CI secret scan, validation matrix. |
@@ -73,19 +74,20 @@ These are not technical-cleanup defaults:
 3. set repository description/topics when repository-setting write access is available;
 4. decide whether a homepage/social-preview is useful after the public architecture/showcase stabilizes.
 
-## Current validation state
+## Reconciliation boundary
 
-The latest root README professionalization head `b6a4ad7480c41d86935443921193a7d304be3c40` passed both current pull-request checks:
+The 2026-09-05 reconciliation is complete at branch head:
 
-- `Handbook` — success;
-- `SENTINEL system alignment` — success.
+`19883bcd62b41f9e691e3cc54f85de0c0fb14740`
 
-These checks are useful repository signals but are not treated as proof of DATA/ML model quality, heavy-artifact availability, production readiness, or every semantic statement in historical documentation.
+Its scope is tracking/governance documentation only: no product source, R4 evidence, DATA/ML artifacts, contract semantics, or runtime behavior were changed. The branch diff from the prior README head contains only `CLAUDE.md` and portfolio-professionalization planning/status records, including removal of the duplicate repository-weight history audit.
+
+CI for this reconciliation head is expected to run the current `Handbook` and `SENTINEL system alignment` checks. Final merge must use the actual completed results rather than assuming success from earlier heads.
 
 ## Next execution order
 
 Current default sequence:
 
-`state reconciliation (this pass) → P3 canonical architecture/trust views → P4 bounded showcase → P5 CI/reproducibility/security presentation → P6 technical case study → P7 GitHub identity/release → P8 final portfolio audit → merge PR #72 to main`
+`P3 canonical architecture/trust views → P4 bounded showcase → P5 CI/reproducibility/security presentation → P6 technical case study → P7 GitHub identity/release → P8 final portfolio audit → merge PR #72 to main`
 
 Do not merge PR #72 merely because an intermediate phase passes. Merge only after the professionalization program reaches a coherent final validation boundary.
