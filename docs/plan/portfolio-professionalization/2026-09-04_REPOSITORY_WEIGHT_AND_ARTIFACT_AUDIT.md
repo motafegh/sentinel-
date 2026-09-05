@@ -1,116 +1,140 @@
-# SENTINEL Repository Weight and Artifact Audit
+# SENTINEL Repository Weight, Artifact, and History Audit
 
 **Date:** 2026-09-04  
-**Status:** COMPLETE — current-tree audit and history-risk classification  
+**Last reconciled:** 2026-09-05  
+**Status:** **COMPLETE — canonical M-011 record**  
 **Branch:** `portfolio/professionalization-2026-09-02`  
-**Scope:** portfolio-professionalization item M-011  
+**Scope:** portfolio-professionalization item M-011
 
 ## 1. Conclusion
 
-SENTINEL's remaining GitHub repository weight is primarily a **Git-history/storage concern**, not evidence that the current portfolio branch still contains hundreds of megabytes of active model/data binaries.
+SENTINEL remains materially large at the GitHub repository-storage level, but the current professionalization branch does **not** contain a corresponding set of very large active artifacts.
 
-GitHub currently reports repository size at approximately **405,887 KB**. By contrast, inspection of the current professionalization branch found no active raw-dataset top-level tree and no large ML checkpoint/model directory. The largest intentionally tracked current artifacts inspected are low-single-digit MiB rather than hundreds of MiB.
+GitHub reports repository size at approximately **405,887 KB** (about **396 MB** using 1024-based conversion). Inspection of the current branch shows that the retained active DATA, ZKML, review, lock, and training-snapshot artifacts are comparatively compact and have clear reproducibility/evidence value.
 
-This means the correct response is **not** to delete current R4 evidence or rewrite history casually. The current tree should stay evidence-preserving, while any later history compaction must be treated as a separate migration with backup, artifact-retention proof, and reference-impact analysis.
+**Decision:** keep the current evidence-preserving tree and do **not** rewrite Git history as ordinary portfolio cleanup.
 
-## 2. Current-tree observations
+The dominant remaining size concern is historical Git-object accumulation. Rewriting it would change commit identities across a project whose R4 plans, evidence records, reviews, and decisions intentionally bind exact commits. Reducing repository bytes does not justify breaking that provenance chain merely for appearance.
 
-### DATA/R4 tracked export
+## 2. Current-tree classification
 
-`data_module/data/exports/sentinel-r4-vnext-v1/` intentionally contains compact machine-readable authority/compatibility artifacts. Examples:
+### DATA / R4 tracked exports — KEEP
 
-- `label_states.parquet` — 1,900,672 bytes;
-- `ml_targets.parquet` — 1,310,473 bytes;
-- associated manifest, validation, binding, source, and evidence records are small metadata files.
+`data_module/data/exports/sentinel-r4-vnext-v1/` contains compact machine-readable semantic/compatibility authority, including files such as:
 
-These are compact, directly useful, and tied to reproducibility/evidence. **KEEP.**
+- `label_states.parquet` — about 1.9 MB;
+- `ml_targets.parquet` — about 1.3 MB;
+- associated manifest, validation, binding, source, and evidence records.
 
-### ZKML retained bundle
+These are useful reproducibility/evidence artifacts and are not the cause of a ~396 MB repository.
 
-The retained ZKML material is also compact:
+### Retained ZKML artifacts — KEEP
 
-- `zkml/ezkl/model.compiled` — 348,587 bytes;
-- `zkml/ezkl/calibration.json` — 332,227 bytes;
-- `zkml/ezkl/verification_key.vk` — 66,823 bytes;
-- `zkml/models/proxy.onnx` — 43,644 bytes;
-- `zkml/models/proxy_best.pt` — 45,414 bytes.
+Representative retained files are small:
 
-These files support the retained proxy/proof reproducibility boundary and are not material repository-bloat drivers. **KEEP.**
+- `zkml/ezkl/model.compiled` — about 349 KB;
+- `zkml/ezkl/calibration.json` — about 332 KB;
+- `zkml/ezkl/verification_key.vk` — about 67 KB;
+- `zkml/models/proxy.onnx` — about 44 KB;
+- `zkml/models/proxy_best.pt` — about 45 KB.
 
-### R4 review bundles
+These support the retained proxy/proof reproducibility boundary and are not meaningful repository-bloat drivers.
 
-The protected review bundles are small:
+### R4 review bundles — KEEP
 
-- GAP-002 blind-review ZIP — 382,393 bytes;
-- GAP-007 candidate-2 independent-review ZIP — 3,567 bytes;
-- corresponding SHA-256 records are tiny.
+Representative protected bundles are also small:
 
-They are evidence artifacts and must not be removed for cosmetic repository-size reduction. **KEEP.**
+- GAP-002 blind-review ZIP — about 382 KB;
+- GAP-007 candidate-2 independent-review ZIP — about 4 KB.
 
-### Dependency locks
+They are evidence artifacts and must not be removed for cosmetic size reduction.
 
-Root, ML, and AGENTS lockfiles are sub-megabyte package-resolution artifacts. Their reproducibility value outweighs their negligible size contribution. **KEEP.**
+### Dependency locks / structured snapshots — KEEP
 
-### ML training snapshots
+Root, ML, and AGENTS lockfiles are sub-megabyte package-resolution artifacts. ML training snapshots inspected are structured metrics/metadata rather than large checkpoint binaries. Their reproducibility value outweighs their size contribution.
 
-The current `ml/training_snapshots/` content inspected is structured metrics/metadata rather than checkpoint binaries. For example, the Run12 snapshot contains JSONL metrics and metadata, with the largest inspected file (`epoch_summary.jsonl`) about 278 KB. **KEEP** as lightweight historical/evaluation evidence.
+### Current generated/runtime material — KEEP OUT OF GIT
 
-## 3. Current-tree versus historical storage
+The forward policy is to keep normal Git history free of:
 
-The repository's GitHub size (~405,887 KB) is far larger than the individual active artifacts above. GitHub repository size includes Git object/history storage; removing a file from the latest tree does not remove its historical blob from earlier commits.
-
-The current branch has already removed or excluded many machine-local, generated, raw-data, cache, and runtime paths through earlier professionalization/hygiene work. Therefore a large residual GitHub-size number should not be interpreted as proof that those files are still present in the current checkout.
-
-A complete object-by-object historical size ranking normally requires a local mirror/clone and commands such as `git rev-list --objects --all` plus `git cat-file`. That analysis could not be performed from the current remote-only execution environment because direct Git clone/network access is unavailable here. The GitHub API evidence is sufficient for the current-tree classification, but not for a safe historical rewrite plan.
-
-## 4. Decisions
-
-### KEEP in Git
-
-Keep:
-
-- protected `docs/plan/ml-R4/` evidence, ADRs, manifests, and review bundles;
-- compact DATA semantic/export artifacts required for reproducibility and traceability;
-- retained lightweight ZKML proxy/proof/verifier artifacts;
-- source, tests, configs, handbook, plans, and dependency lockfiles;
-- lightweight structured training/evaluation snapshots.
-
-### KEEP OUT of future Git commits
-
-Do not add:
-
-- teacher/model checkpoints under `ml/` (`*.pt`, `*.pth`, `*.ckpt`, `*.safetensors`);
-- checkpoint/model-output directories;
-- raw/full datasets or generated graph/token corpora;
+- teacher/model checkpoints under ML (`*.pt`, `*.pth`, `*.ckpt`, `*.safetensors`);
+- generated checkpoint/model-output directories;
+- raw/full datasets and generated graph/token corpora;
 - DVC cache/runtime state;
-- proving keys/SRS or other large regeneratable/local proving material;
-- runtime databases/logs/reports unless explicitly promoted as bounded evidence.
+- machine-local runtime databases/logs;
+- large proving keys/SRS or regeneratable proving material;
+- unbounded generated reports unless explicitly promoted as compact evidence.
 
-Heavy model/data artifacts should use an explicit artifact store, DVC/LFS/release asset, or another versioned external mechanism with recorded hashes and acquisition instructions before the public portfolio claims them as reproducible.
+`ml/.gitignore` and root ignore policy have been hardened accordingly.
 
-## 5. History rewrite decision
+## 3. Historical-storage evidence
 
-**Do not rewrite Git history during this professionalization chunk.**
+Repository history shows earlier development phases creating and later cleaning processed DATA/ML artifacts. Historical inspection confirmed that some processed artifacts (for example a deduplicated multilabel CSV) did exist in Git at earlier commits, while other very large local training artifacts (for example a later multi-GB cached dataset) were not Git-tracked at the checked historical commit.
 
-A history rewrite would change commit SHAs across a repository whose R4 evidence, plans, decisions, and review records frequently bind to exact commits. It therefore has a much larger integrity cost than ordinary cosmetic cleanup.
+Therefore not every large local ML/DATA artifact contributed to Git history, but historical tracked data/config/report artifacts accumulated before the current hygiene rules matured.
 
-History compaction may be considered later only if all of the following are satisfied:
+The important distinction is:
 
-1. a local mirror/object inventory identifies the exact large historical blobs and their contribution;
-2. every still-required heavy artifact has a verified retained copy and checksum;
-3. protected R4 evidence/reference implications are mapped;
-4. a full backup/tag/archive of pre-rewrite history exists;
-5. the size reduction is materially worth the migration cost;
-6. all public/current references are repaired and validated afterward.
+**large GitHub repository size ≠ large current checkout artifact set.**
 
-Until then, the professional repository should optimize the **current tree and future commit discipline**, not erase historical evidence.
+## 4. Why history rewrite is rejected
 
-## 6. Preventive control added with this audit
+Tools such as `git filter-repo`, BFG, or equivalent force-pushed history could potentially remove old blobs, but they also rewrite commit identities.
 
-`ml/.gitignore` is strengthened so future ML checkpoint/model binaries and checkpoint output directories remain local/artifact-managed by default. This is prevention, not deletion of accepted evidence.
+For SENTINEL, exact commit identities are used as provenance anchors across:
+
+- R4 plans and status records;
+- accepted ADRs and physical-lineage decisions;
+- reproducibility checkpoints;
+- audit/review handoffs;
+- evidence manifests and historical analysis.
+
+A safe rewrite would therefore require a dedicated migration that maps and repairs every affected reference, revalidates the evidence chain, and preserves a pre-rewrite archive. That is not ordinary portfolio hygiene.
+
+**Prohibited for normal professionalization:**
+
+- `git filter-repo` merely to make GitHub's size number smaller;
+- BFG/history-surgery equivalents;
+- force-pushing rewritten `main` without a separately approved evidence-preserving migration.
+
+## 5. Non-destructive clone mitigation
+
+For reviewers/developers who do not need every historical blob immediately, prefer Git partial clone:
+
+```bash
+git clone --filter=blob:none https://github.com/motafegh/sentinel-.git
+```
+
+This preserves real commit/history identity while deferring historical blob transfer until needed. A normal clone remains valid when full local history is desired.
+
+The same option is documented in `DEVELOPMENT.md` and the public README.
+
+## 6. If history compaction is reconsidered later
+
+It is authorized only as a separate migration after all of the following:
+
+1. a local mirror/object inventory identifies exact historical blobs and their contribution;
+2. every still-required heavy artifact has a retained verified copy/checksum;
+3. every affected R4/ADR/evidence commit reference is mapped;
+4. a complete backup/tag/archive of pre-rewrite history exists;
+5. the operational benefit materially outweighs migration risk;
+6. all public/current references are repaired and revalidated afterward.
+
+Unless repository size becomes a real operational blocker, this work is optional.
 
 ## 7. M-011 disposition
 
-**M-011 current-tree/artifact audit: CLOSED.**
+| Area | Result | Action |
+|---|---|---|
+| current tracked ML checkpoints/models | controlled | keep ignore policy |
+| current physical DATA / generated corpora | not normal Git content | keep DVC/local/artifact boundary |
+| compact DATA authority artifacts | justified | keep tracked |
+| retained ZKML artifacts | small + evidential | keep tracked |
+| R4 review bundles | small + evidential | keep tracked |
+| runtime/generated cruft | cleaned/ignored | no further deletion now |
+| repository-level ~396 MB | primarily historical concern | accept; use partial clone where useful |
+| Git-history rewrite | high provenance risk | reject for normal cleanup |
 
-Remaining optional follow-up: a local full-history object inventory and, only if justified by its results, a separately authorized history-compaction migration. That follow-up is not required to continue the portfolio professionalization work because the current branch itself is already free of the major classes of generated/raw/checkpoint bloat identified by this audit.
+**M-011: CLOSED.**
+
+This file is the single canonical portfolio-professionalization record for repository weight/artifact/history policy. A second overlapping audit file was removed during the 2026-09-05 reconciliation to avoid competing near-authorities.
