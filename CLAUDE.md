@@ -110,7 +110,11 @@ In Ali's primary Claude Code setup, project memory may exist under:
 
 When available and relevant, read `MEMORY.md` plus only the referenced working memories needed for the task. Do not let private/local memory override current committed source or machine-readable governance.
 
-For the current Phase-8 boundary, point private/local memory first to `docs/plan/ml-R4/runs/2026-08-27_PHASE8_v10_v25_current_restart_checkpoint.md`, then the 2026-08-30 full-population structural-evidence plan. The accepted pre-pilot V3 boundary remains `docs/plan/ml-R4/runs/2026-08-16_PHASE8_v3_hardened_evidence_snapshot_closeout.md`, governed by R4-D-009 / ADR-R4-009. R4-D-008 remains the physical-data reproducibility root. Protected-local Stage A-E counts are evidence only when tied to the report hashes recorded in the checkpoint and artifact index.
+For the **current Phase-8 DATA/ML boundary**, private/local memory must follow the same current restart order recorded above: begin with `docs/plan/ml-R4/PLAN_STATUS_MATRIX.md`, then `docs/plan/ml-R4/runs/2026-09-02_PHASE8_v10_v26_physical_acceptance_and_no_launch.md`, R4-D-011, and the 2026-09-02 selector-promotion review / R4-D-012 boundary. The August 27 V2.5 checkpoint and August 30 structural-evidence plan are historical execution context only and must not be used as the first current restart authority after their blockers were closed.
+
+For **portfolio-professionalization work**, use `docs/plan/portfolio-professionalization/CURRENT_STATUS.md` as the live program status. The dated P0/P1 records are historical phase evidence and must not override that current status file.
+
+The accepted pre-pilot V3 boundary remains `docs/plan/ml-R4/runs/2026-08-16_PHASE8_v3_hardened_evidence_snapshot_closeout.md`, governed by R4-D-009 / ADR-R4-009. R4-D-008 remains the physical-data reproducibility root. Protected-local stage counts are evidence only when tied to the report hashes recorded in the current evidence chain/artifact index.
 
 For long analysis/implementation sessions, preserve incremental findings in a working file rather than relying on conversation context alone. Promote durable conclusions into the repository only when they belong there.
 
