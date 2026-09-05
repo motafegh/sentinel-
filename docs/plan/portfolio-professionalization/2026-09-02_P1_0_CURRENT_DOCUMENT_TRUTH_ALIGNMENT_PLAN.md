@@ -1,15 +1,19 @@
-# SENTINEL P1.0 Current-Document Truth-Alignment Plan
+# SENTINEL P1.0 Current-Document Truth-Alignment Record
 
 **Date:** 2026-09-02  
-**Status:** COMPLETE — B-001 CLOSED  
+**Last reconciled:** 2026-09-05  
+**Status:** **COMPLETE — B-001 CLOSED**  
 **Parent:** `2026-09-02_P0_PORTFOLIO_READINESS_AUDIT.md` / B-001  
+**Live program status:** [`CURRENT_STATUS.md`](CURRENT_STATUS.md)  
 **Scope:** current-facing documentation only; no product, DATA/ML semantic, artifact, or architecture implementation change
 
 ## Goal
 
-Close portfolio blocker B-001 by making every prominent document that presents itself as current agree with the September 2 R4 authority.
+Close portfolio blocker B-001 by making prominent documents that present themselves as current agree with the September 2 R4 authority.
 
-## Authority used for this pass
+This file is now a completed phase record. It must not be used as the live “what should we do next?” surface; use `CURRENT_STATUS.md` for that.
+
+## Authority used
 
 1. `CLAUDE.md` current stable baseline and restart order;
 2. `docs/plan/ml-R4/PLAN_STATUS_MATRIX.md`;
@@ -35,50 +39,41 @@ Close portfolio blocker B-001 by making every prominent document that presents i
 
 ## Files aligned
 
-1. `README.md`
-2. `docs/handbook/00_README.md`
-3. `docs/handbook/01_architecture.md`
-4. `data_module/README.md`
-5. `ml/README.md`
-6. `contracts/README.md`
-7. `zkml/README.md`
+1. `README.md`;
+2. `docs/handbook/00_README.md`;
+3. `docs/handbook/01_architecture.md`;
+4. `data_module/README.md`;
+5. `ml/README.md`;
+6. `contracts/README.md`;
+7. `zkml/README.md`.
 
-`agents/README.md` was reviewed and left unchanged because its current off-chain/read-only/failure-boundary language was already aligned.
+`agents/README.md` was reviewed and left unchanged because its off-chain/read-only/failure-boundary language was already aligned.
 
 ## Change rule used
 
-This remained a **truth-alignment pass, not the final portfolio README redesign**.
+This was a truth-alignment pass, not the final public README redesign:
 
-- Corrected stale milestone/state assertions.
-- Corrected stale physical representation descriptions (`v9` vs accepted V10 V2.6/current-next guarded lineage boundary).
-- Preserved useful architecture/trust explanations.
-- Preserved historical facts only when clearly labeled historical.
-- Did not add marketing copy, screenshots, badges, licensing text, demo scaffolding, or broad folder reorganization.
-- Did not edit historical R4 plans/evidence/ADRs.
+- corrected stale milestone/state assertions;
+- corrected stale physical-representation descriptions;
+- preserved useful architecture/trust explanations;
+- preserved historical facts only when clearly labeled historical;
+- did not edit protected historical R4 plans/evidence/ADRs;
+- did not invent model-quality, negative-truth, threshold/calibration, production-signer, or broader ZK claims.
 
 ## Validation result
 
-- Root README, handbook entry/architecture, and DATA/ML/contracts/ZKML README current-state sections now agree on the R4-D-011/R4-D-012 boundary.
-- Stale assertions such as `through G6`, `Phase 7 must pass`, and `Phase 8 is now the next authorized step` were removed from the patched current-facing surfaces.
-- Historical v9 is explicitly distinguished from the accepted V10 V2.6 physical lineage and the still-pending guarded-selector successor.
-- No new model-quality, confirmed-negative, threshold/calibration, production-signer, or expanded-ZK-proof claim was introduced.
-- PR scope remained contained to seven current-facing docs plus portfolio planning/audit records; no product source, R4 evidence, artifact, workflow, or runtime configuration changed.
-- GitHub Actions `Handbook` run `33664914261` on the final documentation head passed all steps: canonical handbook static validation, active entry-point boundary assertions, validator unit tests, and inventory.
-- The P0 finding that parts of the handbook CI remain phrase-based is intentionally still open for later P5 hardening; a green check is not being treated as proof of every semantic statement.
+The aligned current-facing surfaces agreed on the R4-D-011/R4-D-012 boundary, removed stale G6/G7-era “current” assertions, and preserved historical v9 only as historical/reproducibility context.
+
+The final P1.0 documentation head passed the existing `Handbook` workflow. The broader portfolio program later rebuilt the root README as a recruiter/senior-engineer landing page while preserving these same technical boundaries; that later README head also passed `Handbook` and `SENTINEL system alignment`.
+
+A green handbook check is still not treated as proof of every semantic statement because parts of currentness validation remain phrase-based; that is a P5 responsibility.
 
 ## Exit gate
 
-**PASSED.** A reviewer can now move from root README → handbook → DATA/ML/contracts/ZKML module READMEs without encountering the previously identified contradictory current R4 milestone/representation state.
+**PASSED. B-001 is CLOSED.**
 
-**B-001 status: CLOSED.**
+A reviewer can move from root README → handbook → DATA/ML/contracts/ZKML module READMEs without encountering the original contradictory current R4 milestone/representation state.
 
-## Next portfolio responsibility
+## Current routing
 
-Proceed to P1.1 repository hygiene and identity foundation, prioritizing non-destructive technical hygiene first:
-
-1. DVC/tmp and `.gitignore` cleanup;
-2. DVC/artifact-retrieval contract cleanup;
-3. stale PR/branch containment and repository-size policy audit;
-4. public security policy;
-5. GitHub description/topics;
-6. explicit user decision for repository rename and license before those irreversible/public-identity choices are applied.
+Do **not** restart P1.0 or route automatically to the old P1.1 checklist. The live program restart is recorded in [`CURRENT_STATUS.md`](CURRENT_STATUS.md); as of the 2026-09-05 reconciliation, P3 canonical architecture/trust presentation is the next major phase after this state-reconciliation pass.
