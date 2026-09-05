@@ -93,7 +93,7 @@ Still open:
 - explicitly decide license;
 - homepage/social preview only after a meaningful destination/visual is stable.
 
-Description/topics have not been silently claimed as complete because the current connector has not exposed repository-settings write capability.
+Description/topics have not been silently claimed as complete because the current repository integration has not exposed repository-settings write capability.
 
 ## Additional developer-experience repairs completed during P1
 
