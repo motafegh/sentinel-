@@ -76,13 +76,13 @@ These are not technical-cleanup defaults:
 
 ## Reconciliation boundary
 
-The 2026-09-05 reconciliation is complete at branch head:
+The core governance-routing correction is commit:
 
 `19883bcd62b41f9e691e3cc54f85de0c0fb14740`
 
-Its scope is tracking/governance documentation only: no product source, R4 evidence, DATA/ML artifacts, contract semantics, or runtime behavior were changed. The branch diff from the prior README head contains only `CLAUDE.md` and portfolio-professionalization planning/status records, including removal of the duplicate repository-weight history audit.
+The complete 2026-09-05 reconciliation consists only of tracking/governance documentation changes around that commit: no product source, R4 evidence, DATA/ML artifacts, contract semantics, or runtime behavior were changed. The reconciliation diff from the prior README head contains only `CLAUDE.md` and portfolio-professionalization planning/status records, including removal of the duplicate repository-weight history audit.
 
-CI for this reconciliation head is expected to run the current `Handbook` and `SENTINEL system alignment` checks. Final merge must use the actual completed results rather than assuming success from earlier heads.
+The reconciliation branch head must pass the current `Handbook` and `SENTINEL system alignment` checks before final merge. Use the actual completed CI results rather than assuming success from earlier heads.
 
 ## Next execution order
 
