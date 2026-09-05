@@ -68,19 +68,21 @@ Internal evidence remains available, but external visitors should not traverse d
 
 ## 5. Current program position
 
-As of the 2026-09-05 reconciliation:
+As of the 2026-09-05 P4 closure:
 
 - **P0 audit:** complete;
 - **B-001 truth alignment:** closed;
 - **P1 hygiene foundation:** substantially complete;
-- **P2 root landing-page work:** substantially complete;
+- **P2 root landing-page work:** complete at current scope;
 - **state/tracking reconciliation:** complete;
-- **P3 canonical architecture/trust presentation:** next;
-- **P4–P8:** pending in sequence.
+- **P3 canonical architecture/trust presentation:** complete and validated;
+- **P4 bounded showcase:** complete and validated;
+- **P5 CI/testing/security/reproducibility presentation:** next;
+- **P6–P8:** pending in sequence.
 
-Completed work includes current-facing truth alignment, DVC/runtime cleanup, `.gitignore` hardening, stale PR/branch cleanup, `SECURITY.md`, bounded secret/exposure review, `DEVELOPMENT.md`, multi-environment setup clarification, regional package-index cleanup, repository-weight/history policy, the public root README redesign, and reconciliation of the portfolio tracking/governance layer.
+Completed work includes current-facing truth alignment, DVC/runtime cleanup, `.gitignore` hardening, stale PR/branch cleanup, `SECURITY.md`, bounded secret/exposure review, `DEVELOPMENT.md`, multi-environment setup clarification, regional package-index cleanup, repository-weight/history policy, the public root README redesign, state/governance reconciliation, canonical architecture/trust views, and the fresh-clone boundary showcase with dedicated CI validation.
 
-The remaining detailed disposition is intentionally centralized in [`CURRENT_STATUS.md`](CURRENT_STATUS.md) so this master plan does not become stale again.
+The remaining detailed disposition is intentionally centralized in [`CURRENT_STATUS.md`](CURRENT_STATUS.md) so this master plan does not become a second live dashboard.
 
 ## 6. Execution program
 
@@ -105,7 +107,7 @@ Responsibilities:
 
 Remaining P1/P7 identity work: repository description/topics when settings write access is available, and explicit owner decisions on repository name and license.
 
-### P2 — Root README and public documentation architecture — **SUBSTANTIALLY COMPLETE**
+### P2 — Root README and public documentation architecture — **COMPLETE AT CURRENT SCOPE**
 
 Required qualities:
 
@@ -120,49 +122,48 @@ Required qualities:
 - deeper evidence links;
 - explicit AI-assisted engineering ownership without centering the project on tooling.
 
-The root README now follows progressive disclosure and preserves current R4 claim boundaries. The runnable showcase/example remains P4 rather than being fabricated inside P2.
+The root README now follows progressive disclosure, preserves current R4 claim boundaries, and links directly to the bounded P4 showcase.
 
-### P3 — Canonical architecture and trust-boundary presentation — **NEXT**
+### P3 — Canonical architecture and trust-boundary presentation — **COMPLETE / VALIDATED**
 
-Produce/update one authoritative view per question:
+Canonical ownership now answers four questions without duplicating authority:
 
 1. **Whole-system architecture** — DATA, ML, AGENTS, ZKML, Contracts.
 2. **Normal analysis request flow** — client/gateway → LangGraph → ML/MCP/static/RAG/formal evidence → synthesis/report.
 3. **Verifiability/on-chain trust path** — fusion → proxy → EZKL proof scope → V3 attestation → registry, including what is *not* proved.
 4. **DATA/ML lifecycle** — source/evidence semantics → grouping/roles → representations → evaluation/training gates.
 
-Rules:
+The current documentation also makes the historical Run12 runtime and current R4 repair lineage visibly separate. Handbook and system-alignment CI passed on the P3 head.
 
-- avoid duplicate diagrams that can drift;
-- label off-chain/on-chain and proof/attestation boundaries accurately;
-- make historical/current/candidate/external status visually clear;
-- do not alter architecture merely to make the diagram prettier.
+### P4 — Runnable showcase and developer experience — **COMPLETE / VALIDATED**
 
-P3 gate: a senior engineer can understand module ownership and major trust boundaries without reading source first.
+The bounded public showcase is intentionally not a fake one-command production audit.
 
-### P4 — Runnable showcase and developer experience — **PENDING**
+Fresh-clone entry point:
 
-Provide at least one bounded example that does not require full DATA regeneration, multi-day GPU training, production RPC credentials, or a new proving ceremony.
+```bash
+python3 tools/showcase_sentinel.py
+```
 
-Preferred shape:
+It uses the Python standard library to inspect committed source/config and establish four current boundaries: LangGraph topology, audit-MCP read-only surface, retained ZKML proxy/settings, and current R4 Phase-8 authority. Live capabilities that are not exercised are emitted as `NOT_RUN` rather than clean/pass.
 
-`small Solidity fixture → bounded available Sentinel analysis/replay → structured expected output → explicit evidence-channel status`
+[`SHOWCASE.md`](../../../SHOWCASE.md) records expected output, claim boundaries, JSON mode, and the optional deeper AGENTS orchestration smoke. `.github/workflows/showcase.yml` validates the fresh-clone demo on PRs/main.
 
-If live execution depends on unavailable artifacts/services, ship a committed inspectable/replay output instead of faking execution.
+P4 gate is therefore satisfied without requiring full DATA regeneration, multi-day GPU training, production RPC credentials, or a new proving ceremony.
 
-Also evaluate a small common command surface (`make`, `just`, or scripts) only if it adds clarity without hiding incompatible environments.
-
-### P5 — CI, testing, security and reproducibility presentation — **PENDING**
+### P5 — CI, testing, security and reproducibility presentation — **NEXT**
 
 Responsibilities:
 
 - distinguish current normal CI from historical R4 evidence workflows;
 - improve semantic documentation-currentness validation beyond phrase presence;
+- extend handbook machine checks to current D-009/D-011/D-012 authority without destroying historical compatibility checks;
 - present module-specific tests and heavy/manual gates clearly;
 - close the DATA lock/reproducibility decision;
 - add a current validation matrix;
 - perform a dedicated history/CI secret scan;
-- evaluate dependency/security automation only when it adds real signal.
+- evaluate dependency/security automation only when it adds real signal;
+- integrate the new Portfolio showcase workflow coherently into the public validation story.
 
 ### P6 — Technical case study and evidence package — **PENDING**
 
@@ -269,7 +270,7 @@ If `main` advances materially during this program, synchronize/re-evaluate befor
 
 `P0 audit → P1 hygiene/identity → P2 README → state reconciliation → P3 architecture → P4 showcase/DX → P5 CI/security/reproducibility → P6 case study → P7 release/identity → P8 final audit`
 
-Current restart point is **P3 after the 2026-09-05 state-reconciliation pass**.
+Current restart point is **P5 after validated P3 architecture and P4 fresh-clone showcase closure**.
 
 ## 11. Definition of success
 
