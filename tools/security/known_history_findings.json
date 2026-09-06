@@ -1,0 +1,27 @@
+{
+  "schema": "sentinel-known-history-findings-v1",
+  "reviewed_at": "2026-09-06",
+  "policy": "These exact reachable historical blobs contain the same provider-RPC credential-shaped endpoint. The current tracked tree no longer contains the endpoint. Baseline membership prevents immutable historical evidence from making every scan permanently red; any new blob/path occurrence remains blocking. Provider credential revocation/rotation is an external release prerequisite unless already completed and independently verified.",
+  "findings": [
+    {
+      "kind": "credentialed_provider_rpc",
+      "path": "zkml/src/ezkl/extract_calldata.py",
+      "object_id": "a24495f40926de2f8b9dcdaf30c84a8608997a41"
+    },
+    {
+      "kind": "credentialed_provider_rpc",
+      "path": "zkml/src/ezkl/extract_calldata.py",
+      "object_id": "ba9418078acad288e3e22844ea37a9ea56cab07c"
+    },
+    {
+      "kind": "credentialed_provider_rpc",
+      "path": "check_verify.sh",
+      "object_id": "397ebf8969524ba1c4988f9207b77cd1ac5edb79"
+    },
+    {
+      "kind": "credentialed_provider_rpc",
+      "path": "submit_audit.sh",
+      "object_id": "8916123a9db5d1381d3099386306aa089fbd8b8c"
+    }
+  ]
+}
