@@ -135,6 +135,7 @@ For exact counts, digests, candidate-review state, and current execution authori
 | **5 minutes + Python** | [Fresh-clone showcase](SHOWCASE.md) → `python3 tools/showcase_sentinel.py` |
 | **10 minutes** | [Architecture](docs/handbook/01_architecture.md) → [Runtime flows](docs/handbook/02_runtime_flows.md) → [Security/trust](docs/handbook/12_security_and_trust.md) |
 | **A development task** | [DEVELOPMENT.md](DEVELOPMENT.md) → target module README |
+| **A CI / evidence-gate review** | [VALIDATION.md](VALIDATION.md) |
 | **A DATA/ML review** | [DATA pipeline](docs/handbook/03_data_pipeline.md) → [DATA artifacts / ML seam](docs/handbook/04_data_artifacts.md) → [R4 control plane](docs/plan/ml-R4/00_MASTER_PLAN.md) |
 | **A deep technical audit** | source/tests → current R4 machine-readable evidence/ADRs → handbook → historical records |
 
@@ -184,11 +185,12 @@ A dependency-light documentation/invariant check is:
 ```bash
 export TMPDIR=/tmp TMP=/tmp TEMP=/tmp
 python3 docs/handbook/tools/verify_handbook.py static
+python3 docs/handbook/tools/verify_current_r4.py
 python3 docs/handbook/tools/verify_handbook.py inventory
 python3 -m unittest discover -s docs/handbook/tools/tests -p 'test_*.py'
 ```
 
-Module-specific setup/test commands, local artifact requirements, GPU/analyzer prerequisites, DVC boundaries, and full-runtime instructions are documented in [DEVELOPMENT.md](DEVELOPMENT.md) and [Operations](docs/handbook/14_operations.md).
+Module-specific setup/test commands, local artifact requirements, GPU/analyzer prerequisites, DVC boundaries, and full-runtime instructions are documented in [DEVELOPMENT.md](DEVELOPMENT.md). The meaning and limits of current CI/checks are summarized in [VALIDATION.md](VALIDATION.md), and full operational ordering lives in [Operations](docs/handbook/14_operations.md).
 
 Large historical DATA, teacher, RAG, runtime, or proving artifacts are **not** claimed to be available from every fresh clone.
 
@@ -213,3 +215,5 @@ Historical plans, reports, and learning artifacts are intentionally retained for
 ## Security
 
 Do not commit `.env` values, private keys, mnemonics, RPC/API credentials, or private artifact endpoints. For a suspected vulnerability or accidental credential exposure, follow [SECURITY.md](SECURITY.md) rather than posting sensitive details in a public issue.
+
+P5 also established a reachable-history secret-scan baseline. The current tracked tree is clean under that bounded scanner; a reviewed historical provider-RPC credential-shaped finding remains documented without reproducing the credential value. See [VALIDATION.md](VALIDATION.md) for its exact scope and release prerequisite.
