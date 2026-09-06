@@ -11,7 +11,7 @@ SENTINEL is a multi-environment research/engineering repository. There is intent
 | **Portfolio showcase** | fresh-clone source/config boundary | public architecture/trust claims still match committed source/config; unexecuted live capabilities remain `NOT_RUN` | vulnerability quality, live ML/analyzers, proof generation, signing/broadcast |
 | **Handbook** | canonical docs + source/R4 authority | links/structure/source anchors are intact; historical G6/G7 compatibility facts still match; current D-009/D-011/D-012 authority matches committed acceptance evidence/ADRs | full module runtime behavior or heavy/local artifact availability |
 | **SENTINEL system alignment** | contracts, ZKML, V3 policy, live audit-MCP trust boundary | retained proof bundle structure, fail-closed proof mutation rejection, V3 digest parity, contract tests, and read-only audit-MCP containment | complete AGENTS runtime, ML model quality, Phase-8 training completion |
-| **Security hygiene** | tracked PR state; scheduled/main history baseline | newly introduced configured high-signal credential/private-key shapes are absent from the checked scope; reviewed historical findings have not expanded | a formal guarantee that no secret can exist or that a historical external credential has been revoked; provider-side controls remain complementary |
+| **Security hygiene** | current tracked PR state | newly introduced configured high-signal credential/private-key shapes are absent from the checked scope | a formal guarantee that no secret can exist or that a historical external credential has been revoked; full-history scanning is a separate main/scheduled/manual control |
 | **DATA reproducibility** | `data_module/pyproject.toml` + committed `data_module/poetry.lock` | Poetry 2.1.3 can regenerate the committed DATA dependency resolution with zero lock drift | availability of heavy DATA artifacts, Solidity compiler matrix, GPU runtime, or accepted R4 physical roots |
 
 The exact workflow definitions live under [`.github/workflows/`](.github/workflows/).
@@ -93,6 +93,8 @@ The repository-level scanner targets high-signal forms such as private-key assig
 The first P5 full-history scan inspected **92,243 reachable blobs / about 3.36 GB of blob content**. The current tracked tree passed, but the history scan found four historical blob identities containing the same credential-shaped provider RPC endpoint in obsolete ZKML helper/generated shell material.
 
 Those exact `(kind, path, object-id)` identities are recorded in `tools/security/known_history_findings.json`. The current scanner treats only those reviewed identities as `KNOWN_HISTORICAL`; any new occurrence remains blocking. The credential value is intentionally not reproduced in current documentation.
+
+The baseline-aware full-history scan subsequently passed: the four reviewed identities were classified as known historical findings and no additional configured high-signal occurrence appeared. Current-tree scanning also passed.
 
 This baseline is **not evidence that the external provider credential was revoked or rotated**. Before the portfolio release, revocation/rotation must be confirmed externally if it has not already been completed. A known historical finding can remain reachable because this project intentionally avoids rewriting the evidence/provenance history merely for cleanup.
 
