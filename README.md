@@ -84,7 +84,7 @@ See [SHOWCASE.md](SHOWCASE.md) for expected output, the exact claim boundary, JS
 
 ## Selected engineering highlights
 
-### 1. Unknown is not negative
+### 1. [Unknown is not negative](docs/case-studies/01_unknown_is_not_negative.md)
 
 A major DATA/ML correction was recognizing that many historical binary `0` cells represented **unknown, unsupported, absent, or dropped evidence**, not trustworthy negatives. The repaired semantic layer therefore carries nullable targets, evidence strength, loss/metric eligibility, and explicit dataset roles instead of manufacturing negative labels.
 
@@ -104,7 +104,7 @@ The AGENTS layer distinguishes `tool did not run`, `tool failed/degraded`, and `
 
 The retained proof verifies only the compact proxy computation. V3 provenance/context authentication is a separate mechanism. The project explicitly refuses the stronger—but unsupported—claim that the circuit proves the source audit or final agent verdict.
 
-The full evidence trail for these decisions lives in the [R4 control plane](docs/plan/ml-R4/00_MASTER_PLAN.md) and [current status ledger](docs/handbook/16_current_status.md).
+The curated [engineering case studies](docs/case-studies/README.md) explain selected decisions using a consistent evidence-first format. The complete evidence trail remains in the [R4 control plane](docs/plan/ml-R4/00_MASTER_PLAN.md) and [current status ledger](docs/handbook/16_current_status.md).
 
 ## Current project status
 
@@ -134,6 +134,7 @@ For exact counts, digests, candidate-review state, and current execution authori
 | **2 minutes** | this README → [Current status](docs/handbook/16_current_status.md) |
 | **5 minutes + Python** | [Fresh-clone showcase](SHOWCASE.md) → `python3 tools/showcase_sentinel.py` |
 | **10 minutes** | [Architecture](docs/handbook/01_architecture.md) → [Runtime flows](docs/handbook/02_runtime_flows.md) → [Security/trust](docs/handbook/12_security_and_trust.md) |
+| **An engineering-decision review** | [Engineering case studies](docs/case-studies/README.md) |
 | **A development task** | [DEVELOPMENT.md](DEVELOPMENT.md) → target module README |
 | **A CI / evidence-gate review** | [VALIDATION.md](VALIDATION.md) |
 | **A DATA/ML review** | [DATA pipeline](docs/handbook/03_data_pipeline.md) → [DATA artifacts / ML seam](docs/handbook/04_data_artifacts.md) → [R4 control plane](docs/plan/ml-R4/00_MASTER_PLAN.md) |
@@ -149,6 +150,7 @@ For exact counts, digests, candidate-review state, and current execution authori
 | [`zkml/`](zkml/) | proxy distillation, ONNX/EZKL proof lifecycle, retained proof artifacts |
 | [`contracts/`](contracts/) | staking token, verifier, UUPS AuditRegistry V1/V2/V3 protocol |
 | [`docs/handbook/`](docs/handbook/) | canonical current explanatory documentation |
+| [`docs/case-studies/`](docs/case-studies/) | curated evidence-backed engineering decisions for external technical review |
 | [`docs/plan/ml-R4/`](docs/plan/ml-R4/) | active DATA/ML evidence, policies, manifests, gates, ADRs and decision history |
 
 ## Technology stack
@@ -210,7 +212,7 @@ For current behavior and claims, use this order:
 4. ADRs/decision/register records;
 5. supplementary or historical documents.
 
-Historical plans, reports, and learning artifacts are intentionally retained for auditability but do not override current authority.
+Historical plans, reports, learning artifacts, and case studies are intentionally retained for auditability/explanation but do not override current authority.
 
 ## Security
 
