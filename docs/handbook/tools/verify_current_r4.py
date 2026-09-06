@@ -51,10 +51,16 @@ def _document_check(
 
     Pages are allowed to say ``D-011`` instead of ``R4-D-011`` or use a plain
     English description instead of repeating an internal identifier everywhere.
-    What matters here is that the later authority boundary is actually present.
+    Matching is case-insensitive because capitalization is presentation, not
+    semantic authority. What matters here is that the later authority boundary
+    is actually present.
     """
-    body = _text(_relative(raw_path))
-    missing = [group for group in required_groups if not any(phrase in body for phrase in group)]
+    body = _text(_relative(raw_path)).casefold()
+    missing = [
+        group
+        for group in required_groups
+        if not any(phrase.casefold() in body for phrase in group)
+    ]
     detail = f"{raw_path}: ok" if not missing else f"{raw_path}: missing semantic groups={missing}"
     checks.append(Check("current-R4 documentation", not missing, detail))
 
