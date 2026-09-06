@@ -17,6 +17,7 @@ from pathlib import Path
 from typing import BinaryIO, Iterable
 
 ROOT = Path(__file__).resolve().parents[2]
+BASELINE_PATH = ROOT / "tools" / "security" / "known_history_findings.json"
 OVERLAP = 512
 
 PATTERNS: tuple[tuple[str, re.Pattern[bytes]], ...] = (
@@ -59,6 +60,10 @@ class Finding:
     kind: str
     path: str
     object_id: str
+
+    @property
+    def identity(self) -> tuple[str, str, str]:
+        return self.kind, self.path, self.object_id
 
 
 def _scan_bytes(chunks: Iterable[bytes], *, path: str, object_id: str) -> list[Finding]:
@@ -174,6 +179,38 @@ def scan_history() -> tuple[list[Finding], dict[str, int]]:
     return findings, {"blobs": scanned_blobs, "bytes": scanned_bytes}
 
 
+def _load_history_baseline() -> set[tuple[str, str, str]]:
+    if not BASELINE_PATH.is_file():
+        raise RuntimeError(f"history baseline is missing: {BASELINE_PATH.relative_to(ROOT)}")
+    payload = json.loads(BASELINE_PATH.read_text(encoding="utf-8"))
+    if payload.get("schema") != "sentinel-known-history-findings-v1":
+        raise RuntimeError("unsupported history finding baseline schema")
+    findings = payload.get("findings")
+    if not isinstance(findings, list):
+        raise RuntimeError("history baseline findings must be a list")
+    identities: set[tuple[str, str, str]] = set()
+    for item in findings:
+        if not isinstance(item, dict):
+            raise RuntimeError("history baseline finding must be an object")
+        try:
+            identity = (str(item["kind"]), str(item["path"]), str(item["object_id"]))
+        except KeyError as exc:
+            raise RuntimeError(f"history baseline finding missing field: {exc}") from exc
+        if identity in identities:
+            raise RuntimeError(f"duplicate history baseline identity: {identity}")
+        identities.add(identity)
+    return identities
+
+
+def _classify_history(findings: list[Finding]) -> tuple[list[Finding], list[Finding], list[tuple[str, str, str]]]:
+    baseline = _load_history_baseline()
+    found = {item.identity for item in findings}
+    known = [item for item in findings if item.identity in baseline]
+    new = [item for item in findings if item.identity not in baseline]
+    stale = sorted(baseline - found)
+    return known, new, stale
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--scope", choices=("current", "history"), default="current")
@@ -181,24 +218,45 @@ def main() -> int:
     args = parser.parse_args()
 
     findings, stats = scan_current() if args.scope == "current" else scan_history()
+    known: list[Finding] = []
+    blocking = findings
+    stale_baseline: list[tuple[str, str, str]] = []
+    if args.scope == "history":
+        known, blocking, stale_baseline = _classify_history(findings)
+
+    status = "PASS" if not blocking and not stale_baseline else "FAIL"
     report = {
         "scope": args.scope,
-        "status": "PASS" if not findings else "FAIL",
+        "status": status,
         "stats": stats,
-        "findings": [asdict(item) for item in findings],
-        "note": "Bounded high-signal scan; absence of findings is not a proof that no secret exists.",
+        "blocking_findings": [asdict(item) for item in blocking],
+        "known_historical_findings": [asdict(item) for item in known],
+        "stale_baseline_identities": [
+            {"kind": kind, "path": path, "object_id": object_id}
+            for kind, path, object_id in stale_baseline
+        ],
+        "note": (
+            "Bounded high-signal scan. Known historical findings are exact reviewed blob identities, "
+            "not an assertion that their external credentials are revoked. Any new occurrence blocks."
+        ),
     }
 
     if args.json:
         print(json.dumps(report, indent=2, sort_keys=True))
     else:
-        print(f"SENTINEL secret scan | scope={args.scope} | status={report['status']} | stats={stats}")
-        for item in findings:
+        print(f"SENTINEL secret scan | scope={args.scope} | status={status} | stats={stats}")
+        for item in known:
+            print(f"[KNOWN_HISTORICAL] {item.kind}: {item.path} ({item.object_id})")
+        for item in blocking:
             print(f"[FAIL] {item.kind}: {item.path} ({item.object_id})")
+        for kind, path, object_id in stale_baseline:
+            print(f"[FAIL] stale baseline identity: {kind}: {path} ({object_id})")
         if not findings:
             print("[PASS] no configured high-signal secret shapes found")
+        elif known and not blocking and not stale_baseline:
+            print(f"[PASS] {len(known)} reviewed historical finding(s); no new high-signal finding")
         print(report["note"])
-    return 1 if findings else 0
+    return 1 if status == "FAIL" else 0
 
 
 if __name__ == "__main__":
