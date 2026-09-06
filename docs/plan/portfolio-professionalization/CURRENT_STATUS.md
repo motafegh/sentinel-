@@ -36,12 +36,12 @@ The portfolio program remains subordinate to `CLAUDE.md`, executable source/conf
 | **M-010 stale PR/branch hygiene** | **CLOSED** | Obsolete PRs closed; obsolete remote branches removed. |
 | **M-011 repository size/history policy** | **CLOSED** | Current-tree audit complete; historical Git storage distinguished from current artifacts; no history rewrite authorized. |
 | **M-012 module README truth alignment** | **CLOSED for audited surfaces** | DATA/ML/contracts/ZKML current-state sections aligned; AGENTS already aligned. |
-| **M-014 credential/security hygiene** | **CLOSED at repository-control scope / EXTERNAL RELEASE ACTION OPEN** | Current tracked tree passes the bounded scanner; full-history baseline reviewed 92,243 reachable blobs / ~3.36 GB and baselines four historical blobs containing one provider-RPC credential-shaped endpoint. New occurrences remain blocking. External revocation/rotation status cannot be proven from Git and must be confirmed before release if not already handled. |
+| **M-014 credential/security hygiene** | **CLOSED at repository-control scope / EXTERNAL RELEASE ACTION OPEN** | Current tree and baseline-aware full-history scan both pass. Four reviewed historical blobs contain one provider-RPC credential-shaped endpoint; new occurrences remain blocking. External revocation/rotation status cannot be proven from Git and must be confirmed before release if not already handled. |
 | **P2 root README / public landing page** | **COMPLETE at current scope** | Recruiter/senior-engineer landing page, architecture summary, limitations, setup/validation navigation, AI-assisted ownership disclosure, and showcase entry point are present. |
 | **State reconciliation** | **COMPLETE** | Master/P0/P1 records reconciled, one canonical status file established, duplicate M-011 audit removed, and `CLAUDE.md` restart/memory routing corrected. |
 | **P3 canonical architecture/trust presentation** | **COMPLETE / VALIDATED** | Four canonical architecture views established and current-facing DATA/ML seams reconciled. Handbook + system-alignment passed on P3 head `a78ae31f44d63a28cd527cc7735edd305fd371b3`. |
 | **P4 bounded showcase / demo** | **COMPLETE / VALIDATED** | `SHOWCASE.md` + `tools/showcase_sentinel.py` provide a fresh-clone standard-library boundary demo; human and JSON modes passed dedicated Portfolio showcase CI. |
-| **P5 CI/testing/security/reproducibility presentation** | **COMPLETE AT REPOSITORY-CONTROL SCOPE** | Two-layer handbook/R4 semantic validation, `VALIDATION.md`, committed DATA lock + strict CI, and current/history secret scanning are implemented. Full-history baseline and current-tree scanner both passed after exact known-history classification. Final branch-wide CI remains a merge/release gate. |
+| **P5 CI/testing/security/reproducibility presentation** | **COMPLETE AT REPOSITORY-CONTROL SCOPE** | Two-layer handbook/R4 semantic validation, `VALIDATION.md`, committed DATA lock + strict CI, and current/history secret scanning are implemented. Baseline-aware full-history and current-tree security scans both passed; exact-head branch CI remains the normal merge/release gate. |
 | **P6 technical case study/evidence package** | **NEXT** | Curate the strongest engineering decisions into a small external-review evidence package without changing their technical truth. |
 | **P7 GitHub identity/release surface** | **PENDING** | Description/topics, explicit rename/license decisions, external provider-credential revocation/rotation confirmation, first stable portfolio release/tag, optional social preview. |
 | **P8 final CV/interviewer audit** | **PENDING** | Recruiter skim, engineer audit, adversarial credibility pass, then derive CV wording. |
@@ -121,7 +121,9 @@ The first full baseline established:
 - finding class: one provider-RPC credential-shaped endpoint repeated in obsolete ZKML helper/generated shell material;
 - other configured high-signal categories: no findings in that baseline.
 
-The four exact identities are recorded in `tools/security/known_history_findings.json`; no credential value is reproduced in current documentation. New occurrences remain blocking. Current-tree scanning remains normal PR CI; the expensive full-history baseline is retained for `main`, scheduled, and manual runs.
+The four exact identities are recorded in `tools/security/known_history_findings.json`; no credential value is reproduced in current documentation. The baseline-aware rerun then passed with all four classified as `KNOWN_HISTORICAL` and no new configured high-signal finding. Current-tree scanning also passed.
+
+New occurrences remain blocking. Current-tree scanning stays normal PR CI; the expensive full-history scan runs on `main`, scheduled, or manual execution.
 
 **Important:** this is not evidence that the historical external provider credential is revoked. Before P7 release, confirm external revocation/rotation or perform it if still needed. No Git history rewrite is authorized merely to remove the old blob identities.
 
