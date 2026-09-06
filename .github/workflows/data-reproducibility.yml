@@ -15,14 +15,16 @@ on:
       - ".github/workflows/data-reproducibility.yml"
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   poetry-lock:
     runs-on: ubuntu-latest
     steps:
-      - name: Check out repository
+      - name: Check out repository branch
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -47,6 +49,19 @@ jobs:
           path: data_module/poetry.lock
           if-no-files-found: error
           retention-days: 7
+
+      - name: Bootstrap exact generated lock on same-repository PR
+        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+        run: |
+          if git ls-files --error-unmatch data_module/poetry.lock >/dev/null 2>&1; then
+            echo "Committed lockfile already exists; bootstrap not needed."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data_module/poetry.lock
+          git commit -m "chore(data): commit Poetry lockfile"
+          git push origin HEAD:${{ github.head_ref }}
 
       - name: Require committed lockfile and zero resolution drift
         run: |
