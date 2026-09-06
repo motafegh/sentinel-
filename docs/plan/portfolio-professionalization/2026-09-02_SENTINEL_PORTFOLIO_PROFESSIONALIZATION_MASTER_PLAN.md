@@ -1,7 +1,7 @@
 # SENTINEL Portfolio Professionalization Master Plan
 
 **Created:** 2026-09-02  
-**Last reconciled:** 2026-09-05  
+**Last reconciled:** 2026-09-06  
 **Status:** **IN PROGRESS**  
 **Branch:** `portfolio/professionalization-2026-09-02`  
 **Live status:** [`CURRENT_STATUS.md`](CURRENT_STATUS.md)  
@@ -68,7 +68,7 @@ Internal evidence remains available, but external visitors should not traverse d
 
 ## 5. Current program position
 
-As of the 2026-09-05 P4 closure:
+As of the 2026-09-06 P5 closure:
 
 - **P0 audit:** complete;
 - **B-001 truth alignment:** closed;
@@ -77,10 +77,13 @@ As of the 2026-09-05 P4 closure:
 - **state/tracking reconciliation:** complete;
 - **P3 canonical architecture/trust presentation:** complete and validated;
 - **P4 bounded showcase:** complete and validated;
-- **P5 CI/testing/security/reproducibility presentation:** next;
-- **P6–P8:** pending in sequence.
+- **P5 CI/testing/security/reproducibility presentation:** complete at repository-control scope;
+- **P6 technical case study/evidence package:** next;
+- **P7–P8:** pending in sequence.
 
-Completed work includes current-facing truth alignment, DVC/runtime cleanup, `.gitignore` hardening, stale PR/branch cleanup, `SECURITY.md`, bounded secret/exposure review, `DEVELOPMENT.md`, multi-environment setup clarification, regional package-index cleanup, repository-weight/history policy, the public root README redesign, state/governance reconciliation, canonical architecture/trust views, and the fresh-clone boundary showcase with dedicated CI validation.
+Completed work now includes current-facing truth alignment, DVC/runtime cleanup, `.gitignore` hardening, stale PR/branch cleanup, `SECURITY.md`, `DEVELOPMENT.md`, multi-environment setup clarification, repository-weight/history policy, the public README redesign, state/governance reconciliation, canonical architecture/trust views, the fresh-clone boundary showcase, two-layer current-vs-historical handbook authority validation, a public validation matrix, committed DATA dependency locking with strict CI regeneration, and current/history secret-scanning controls.
+
+One external release prerequisite remains from P5 security evidence: the repository baseline records a reviewed historical provider-RPC credential-shaped endpoint in four immutable Git blobs. The current tracked tree is clean under the bounded scanner, but repository evidence cannot establish whether the old provider credential has been revoked/rotated. That external state must be confirmed before P7 release if it has not already been handled.
 
 The remaining detailed disposition is intentionally centralized in [`CURRENT_STATUS.md`](CURRENT_STATUS.md) so this master plan does not become a second live dashboard.
 
@@ -109,35 +112,20 @@ Remaining P1/P7 identity work: repository description/topics when settings write
 
 ### P2 — Root README and public documentation architecture — **COMPLETE AT CURRENT SCOPE**
 
-Required qualities:
-
-- one-sentence value proposition and problem framing;
-- major implemented capabilities;
-- high-level architecture;
-- technology stack by responsibility;
-- repository/module map;
-- development/validation path;
-- current status/limitations;
-- engineering highlights;
-- deeper evidence links;
-- explicit AI-assisted engineering ownership without centering the project on tooling.
-
-The root README now follows progressive disclosure, preserves current R4 claim boundaries, and links directly to the bounded P4 showcase.
+The root README now follows progressive disclosure, preserves current R4 claim boundaries, and links directly to the bounded P4 showcase, developer setup, validation/CI contract, architecture, and deep evidence.
 
 ### P3 — Canonical architecture and trust-boundary presentation — **COMPLETE / VALIDATED**
 
 Canonical ownership now answers four questions without duplicating authority:
 
-1. **Whole-system architecture** — DATA, ML, AGENTS, ZKML, Contracts.
-2. **Normal analysis request flow** — client/gateway → LangGraph → ML/MCP/static/RAG/formal evidence → synthesis/report.
-3. **Verifiability/on-chain trust path** — fusion → proxy → EZKL proof scope → V3 attestation → registry, including what is *not* proved.
-4. **DATA/ML lifecycle** — source/evidence semantics → grouping/roles → representations → evaluation/training gates.
+1. whole-system architecture;
+2. normal analysis request flow;
+3. verifiability/on-chain trust path;
+4. DATA/ML lifecycle.
 
 The current documentation also makes the historical Run12 runtime and current R4 repair lineage visibly separate. Handbook and system-alignment CI passed on the P3 head.
 
 ### P4 — Runnable showcase and developer experience — **COMPLETE / VALIDATED**
-
-The bounded public showcase is intentionally not a fake one-command production audit.
 
 Fresh-clone entry point:
 
@@ -145,27 +133,26 @@ Fresh-clone entry point:
 python3 tools/showcase_sentinel.py
 ```
 
-It uses the Python standard library to inspect committed source/config and establish four current boundaries: LangGraph topology, audit-MCP read-only surface, retained ZKML proxy/settings, and current R4 Phase-8 authority. Live capabilities that are not exercised are emitted as `NOT_RUN` rather than clean/pass.
+It uses the Python standard library to inspect committed source/config and establish bounded architecture/trust claims. Live capabilities that are not exercised are emitted as `NOT_RUN` rather than clean/pass.
 
-[`SHOWCASE.md`](../../../SHOWCASE.md) records expected output, claim boundaries, JSON mode, and the optional deeper AGENTS orchestration smoke. `.github/workflows/showcase.yml` validates the fresh-clone demo on PRs/main.
+[`SHOWCASE.md`](../../../SHOWCASE.md) records expected output, claim boundaries, JSON mode, and the optional deeper AGENTS orchestration smoke. `.github/workflows/showcase.yml` validates the fresh-clone demo.
 
-P4 gate is therefore satisfied without requiring full DATA regeneration, multi-day GPU training, production RPC credentials, or a new proving ceremony.
+### P5 — CI, testing, security and reproducibility presentation — **COMPLETE AT REPOSITORY-CONTROL SCOPE**
 
-### P5 — CI, testing, security and reproducibility presentation — **NEXT**
+P5 establishes a public, bounded validation contract rather than pretending every historical research workflow is normal product CI.
 
-Responsibilities:
+Implemented responsibilities:
 
-- distinguish current normal CI from historical R4 evidence workflows;
-- improve semantic documentation-currentness validation beyond phrase presence;
-- extend handbook machine checks to current D-009/D-011/D-012 authority without destroying historical compatibility checks;
-- present module-specific tests and heavy/manual gates clearly;
-- close the DATA lock/reproducibility decision;
-- add a current validation matrix;
-- perform a dedicated history/CI secret scan;
-- evaluate dependency/security automation only when it adds real signal;
-- integrate the new Portfolio showcase workflow coherently into the public validation story.
+1. [`VALIDATION.md`](../../../VALIDATION.md) distinguishes current PR checks, module/heavy validation, and retained `r4-phase*` evidence workflows.
+2. Historical/runtime compatibility validation remains in `verify_handbook.py`; current logical-V3 / D-011 / D-012 authority is separately encoded in `_meta/current_r4.json` and enforced by `verify_current_r4.py` against committed evidence/ADRs/current docs.
+3. `data_module/poetry.lock` is now generated/committed under Poetry 2.1.3; the final DATA reproducibility workflow is read-only and fails on lock-resolution drift.
+4. `tools/security/scan_repository_secrets.py` checks high-signal current-tree and reachable-history secret shapes without echoing credential values.
+5. Current-tree scanning remains normal PR CI; full reachable-history scanning is reserved for `main`, scheduled, and manual runs after a full P5 baseline pass.
+6. The full P5 history baseline scanned 92,243 reachable blobs / about 3.36 GB and found only four reviewed historical blob identities containing the same provider-RPC credential-shaped endpoint. Those exact identities are recorded in `known_history_findings.json`; any new occurrence remains blocking.
 
-### P6 — Technical case study and evidence package — **PENDING**
+P5 does **not** authorize a history rewrite and does not claim external credential revocation. Confirm revocation/rotation before portfolio release if not already verified.
+
+### P6 — Technical case study and evidence package — **NEXT**
 
 Curate a small number of evidence-backed engineering decisions, such as:
 
@@ -187,6 +174,7 @@ After earlier gates:
 - set accurate repository description/topics;
 - decide repository name intentionally;
 - decide license intentionally;
+- confirm/revoke/rotate the historical provider credential identified in P5 if that external state is not already verified;
 - create a stable tag/release describing included scope and open limitations;
 - optionally add a social preview after architecture/showcase stabilizes.
 
@@ -270,7 +258,7 @@ If `main` advances materially during this program, synchronize/re-evaluate befor
 
 `P0 audit → P1 hygiene/identity → P2 README → state reconciliation → P3 architecture → P4 showcase/DX → P5 CI/security/reproducibility → P6 case study → P7 release/identity → P8 final audit`
 
-Current restart point is **P5 after validated P3 architecture and P4 fresh-clone showcase closure**.
+Current restart point is **P6 after P5 CI/security/reproducibility closure**.
 
 ## 11. Definition of success
 
