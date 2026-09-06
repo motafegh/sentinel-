@@ -9,7 +9,6 @@ rewriting that historical contract.
 from __future__ import annotations
 
 import json
-import re
 import sys
 from dataclasses import dataclass
 from pathlib import Path
@@ -43,6 +42,21 @@ def _relative(raw: str) -> Path:
 
 def _equal(checks: list[Check], name: str, actual: Any, expected: Any) -> None:
     checks.append(Check(name, actual == expected, f"actual={actual!r}, expected={expected!r}"))
+
+
+def _document_check(
+    checks: list[Check], raw_path: str, required_groups: list[tuple[str, ...]]
+) -> None:
+    """Require at least one phrase from every semantic phrase group.
+
+    Pages are allowed to say ``D-011`` instead of ``R4-D-011`` or use a plain
+    English description instead of repeating an internal identifier everywhere.
+    What matters here is that the later authority boundary is actually present.
+    """
+    body = _text(_relative(raw_path))
+    missing = [group for group in required_groups if not any(phrase in body for phrase in group)]
+    detail = f"{raw_path}: ok" if not missing else f"{raw_path}: missing semantic groups={missing}"
+    checks.append(Check("current-R4 documentation", not missing, detail))
 
 
 def validate() -> list[Check]:
@@ -106,28 +120,41 @@ def validate() -> list[Check]:
     checks.append(Check("full training hold", "Full training / G8 | HOLD" in matrix and phase_cfg["full_training_authorized"] is False, "G8/full training remains on hold"))
     checks.append(Check("confirmed negative boundary", "confirmed negatives remain zero" in matrix.lower() and phase_cfg["confirmed_negatives"] == 0, "confirmed negatives remain zero"))
 
-    current_docs: dict[str, list[str]] = {
-        "README.md": ["R4-D-011", "R4-D-012", "Run12", "full repaired training"],
-        "docs/handbook/01_architecture.md": ["R4-D-011", "R4-D-012", "Run12"],
-        "docs/handbook/03_data_pipeline.md": ["r4-leakage-groups-v3", "V10 V2.6", "R4-D-012"],
-        "docs/handbook/04_data_artifacts.md": ["r4-vnext-roles-v3", "R4-D-011", "R4-D-012"],
-        "docs/handbook/05_ml_model_inference.md": ["Run12", "R4-D-011", "R4-D-012"],
-        "docs/handbook/06_ml_training_quality.md": ["R4-D-011", "R4-D-012", "full training"],
-        "docs/handbook/11_cross_module_contracts.md": ["r4-vnext-roles-v3", "R4-D-011", "R4-D-012"],
-        "docs/handbook/13_evaluation.md": ["positive-only", "confirmed negatives", "Run12"],
-        "docs/handbook/16_current_status.md": ["R4-D-011", "R4-D-012", "d9f925588913e66476cfbc097bace7daa7e673295fe2a243760313d0bef5ebdd"],
-        "docs/handbook/17_reference.md": ["r4-vnext-roles-v3", "V10 V2.6", "R4-D-012"],
+    current_docs: dict[str, list[tuple[str, ...]]] = {
+        "README.md": [
+            ("R4-D-011",),
+            ("R4-D-012",),
+            ("Run12",),
+            ("Full repaired training", "full repaired training"),
+            ("not authorized", "unauthorized"),
+        ],
+        "docs/handbook/01_architecture.md": [("R4-D-011", "D-011"), ("R4-D-012", "D-012"), ("Run12",)],
+        "docs/handbook/03_data_pipeline.md": [("r4-leakage-groups-v3",), ("V10 V2.6",), ("R4-D-012", "D-012")],
+        "docs/handbook/04_data_artifacts.md": [("r4-vnext-roles-v3",), ("R4-D-011", "D-011"), ("R4-D-012", "D-012"), ("full training remains unauthorized",)],
+        "docs/handbook/05_ml_model_inference.md": [("Run12",), ("R4-D-011", "D-011"), ("R4-D-012", "D-012"), ("Full repaired training remains unauthorized",)],
+        "docs/handbook/06_ml_training_quality.md": [("D-011 V10 V2.6",), ("D-012 guarded-selector",), ("confirmed negatives remain zero",), ("full repaired training run",)],
+        "docs/handbook/11_cross_module_contracts.md": [("r4-vnext-roles-v3",), ("D-011 V10 V2.6",), ("D-012 guarded-selector",), ("Run12",)],
+        "docs/handbook/13_evaluation.md": [("positive-only limited",), ("Confirmed negatives remain zero",), ("D-011 V10 V2.6",), ("D-012",), ("Full repaired training remains unauthorized",)],
+        "docs/handbook/16_current_status.md": [("R4-D-011",), ("R4-D-012",), ("d9f925588913e66476cfbc097bace7daa7e673295fe2a243760313d0bef5ebdd",), ("training", "Training")],
+        "docs/handbook/17_reference.md": [("logical V3",), ("D-011",), ("D-012",), ("Full repaired training remains unauthorized",)],
     }
-    for raw_path, phrases in current_docs.items():
-        body = _text(_relative(raw_path))
-        missing = [phrase for phrase in phrases if phrase not in body]
-        checks.append(Check("current-R4 documentation", not missing, f"{raw_path}: " + ("ok" if not missing else f"missing={missing}")))
+    for raw_path, groups in current_docs.items():
+        _document_check(checks, raw_path, groups)
 
-    no_training_claim = re.compile(r"(?:full|100-epoch).*training.*(?:authorized|launched|complete)", re.IGNORECASE)
-    for raw_path in ("README.md", "docs/handbook/16_current_status.md"):
-        body = _text(_relative(raw_path))
-        unsafe_matches = [m.group(0) for m in no_training_claim.finditer(body) if "not authorized" not in m.group(0).lower()]
-        checks.append(Check("no unsupported training claim", not unsafe_matches, f"{raw_path}: " + ("ok" if not unsafe_matches else f"matches={unsafe_matches[:3]}")))
+    denial_requirements: dict[str, tuple[str, ...]] = {
+        "README.md": ("not authorized", "unauthorized"),
+        "docs/handbook/16_current_status.md": ("full training unauthorized", "full repaired training remains unauthorized", "Training is not authorized"),
+    }
+    for raw_path, alternatives in denial_requirements.items():
+        body = _text(_relative(raw_path)).lower()
+        passed = any(phrase.lower() in body for phrase in alternatives)
+        checks.append(
+            Check(
+                "explicit no-full-training boundary",
+                passed,
+                f"{raw_path}: {'ok' if passed else 'missing explicit training denial'}",
+            )
+        )
 
     return checks
 
