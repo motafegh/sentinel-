@@ -4,6 +4,8 @@ SENTINEL is a multi-environment research/engineering monorepo. A fresh clone is 
 
 Use the environment owned by the module you are working on. This keeps incompatible ML, AGENTS, DATA, Solidity, and proving dependencies from being collapsed into a misleading single setup.
 
+For what the current CI/checks establish—and what they deliberately do not establish—see [`VALIDATION.md`](VALIDATION.md).
+
 ## 1. Fresh-clone expectations
 
 A fresh clone contains the source code, tests, current handbook, R4 governance/evidence records, committed dependency manifests/locks, contract sources, and retained lightweight ZKML artifacts that are tracked in Git.
@@ -42,13 +44,13 @@ Current declared Python ranges:
 | Scope | Declared Python range | Environment owner |
 |---|---|---|
 | `ml/` | `>=3.12.1,<3.13` | `ml/pyproject.toml` + `ml/poetry.lock` |
-| `data_module/` | `>=3.12,<3.13` | `data_module/pyproject.toml` |
+| `data_module/` | `>=3.12,<3.13` | `data_module/pyproject.toml` + `data_module/poetry.lock` |
 | `agents/` | `>=3.11,<3.15` | `agents/pyproject.toml` + `agents/poetry.lock` |
 | repository root | compatibility/shared workspace metadata; not the universal runtime | root `pyproject.toml` + `poetry.lock` |
 | `contracts/` | Foundry/Solidity, not Poetry | `contracts/foundry.toml` + `foundry.lock` |
 | `zkml/` | currently exercised through the ML Python environment plus Foundry where required | ML + `contracts/` tooling |
 
-`data_module/` currently has no committed `poetry.lock`; deterministic DATA dependency locking remains a reproducibility item to close rather than something this guide pretends is already solved.
+The DATA lockfile is generated under the pinned Poetry 2.1.3 reproducibility toolchain and committed. CI regenerates it from `data_module/pyproject.toml` and requires zero lock drift. That establishes dependency resolution only; it does not make protected/local DATA artifacts available.
 
 ## 3. Clone and verify repository/documentation state
 
@@ -62,12 +64,15 @@ export REPO_ROOT="$(git rev-parse --show-toplevel)"
 export TMPDIR=/tmp TMP=/tmp TEMP=/tmp
 
 python3 docs/handbook/tools/verify_handbook.py static
+python3 docs/handbook/tools/verify_current_r4.py
 python3 docs/handbook/tools/verify_handbook.py inventory
 ```
 
+The first validator preserves historical G6/G7/runtime compatibility checks; `verify_current_r4.py` separately checks the later logical-V3 / D-011 / D-012 authority chain against committed evidence and current-facing documentation.
+
 A conventional full clone remains valid when all historical blobs are required locally. Do not rewrite/shallow-republish project history merely to reduce portfolio clone size; historical commit identities are used by the R4 evidence/provenance chain. See [`docs/plan/portfolio-professionalization/2026-09-04_REPOSITORY_WEIGHT_AND_HISTORY_AUDIT.md`](docs/plan/portfolio-professionalization/2026-09-04_REPOSITORY_WEIGHT_AND_HISTORY_AUDIT.md).
 
-These checks validate tracked documentation/source relationships. They do not prove that heavy local artifacts or external services are present.
+These checks validate tracked documentation/source/evidence relationships. They do not prove that heavy local artifacts or external services are present.
 
 ## 4. ML environment
 
@@ -98,6 +103,8 @@ cd "$REPO_ROOT/data_module"
 poetry env use python3.12
 poetry install
 ```
+
+`poetry install` resolves against the committed `data_module/poetry.lock`. If dependency constraints in `data_module/pyproject.toml` change, regenerate the lock with the pinned Poetry version used by `.github/workflows/data-reproducibility.yml` and commit both changes together.
 
 Add heavy pipeline dependencies only when needed:
 
@@ -184,7 +191,7 @@ In particular:
 
 - AGENTS owns its own Poetry environment and lockfile;
 - ML owns its own Poetry environment and lockfile;
-- DATA owns a separate Python/package contract;
+- DATA owns a separate Poetry environment and lockfile;
 - Contracts use Foundry;
 - ZKML crosses the ML/Foundry boundary.
 
@@ -218,7 +225,9 @@ Do not commit:
 
 Safe `.env.example` templates may be committed when they contain names/placeholders only.
 
-For vulnerability or accidental-secret reporting, follow [`SECURITY.md`](SECURITY.md).
+P5 adds `tools/security/scan_repository_secrets.py` and Security-hygiene CI. Current-tree scanning is intended to block newly introduced high-signal credential shapes. A reviewed historical provider-RPC finding is tracked by exact Git blob identity in `tools/security/known_history_findings.json`; that baseline does not prove the external credential is revoked. Confirm revocation/rotation before the portfolio release if it has not already been completed.
+
+For vulnerability or accidental-secret reporting, follow [`SECURITY.md`](SECURITY.md). See [`VALIDATION.md`](VALIDATION.md) for scanner scope and limitations.
 
 ## 12. What to run before a change is considered reviewable
 
@@ -229,6 +238,7 @@ Always for current-facing documentation/governance changes:
 ```bash
 cd "$REPO_ROOT"
 python3 docs/handbook/tools/verify_handbook.py static
+python3 docs/handbook/tools/verify_current_r4.py
 python3 docs/handbook/tools/verify_handbook.py inventory
 python3 -m unittest discover -s docs/handbook/tools/tests -p 'test_*.py'
 ```
@@ -251,22 +261,33 @@ cd "$REPO_ROOT/contracts" && forge test
 
 Do not convert missing GPU, model, analyzer, RPC, proving, or physical-DATA prerequisites into fake passing results. Record them as not run/unavailable and state the prerequisite explicitly.
 
+Use [`VALIDATION.md`](VALIDATION.md) to determine which CI surface establishes which bounded claim.
+
 ## 13. Running the complete system
 
 A complete live audit is not the first fresh-clone smoke test. It depends on historical/local model artifacts and external analyzer/RAG/RPC services.
 
 When those prerequisites are intentionally provisioned, follow [`docs/handbook/14_operations.md`](docs/handbook/14_operations.md) for the current service order, ports, artifact rules, and V3/off-chain boundaries.
 
+For a dependency-light public boundary check instead, run:
+
+```bash
+cd "$REPO_ROOT"
+python3 tools/showcase_sentinel.py
+```
+
+That showcase reports capabilities it does not execute as `NOT_RUN`; it is not a substitute for a live audit.
+
 ## 14. Current reproducibility limitations
 
 The repository intentionally documents rather than hides the remaining gaps:
 
-- DATA currently lacks a committed Poetry lockfile;
 - heavy R4 physical DATA is not publicly reconstructed by a one-command fresh-clone path;
 - Run12/proving/runtime artifacts may be local or historical;
 - repository history is relatively large; partial clone is the preferred non-destructive mitigation;
 - there is no supported universal monorepo environment;
 - full repaired training remains unauthorized;
-- no production signer/broadcaster is claimed.
+- no production signer/broadcaster is claimed;
+- a reviewed historical provider-RPC credential-shaped endpoint remains reachable in immutable Git history; current tracked source is clean, but external revocation/rotation status must be confirmed separately before portfolio release.
 
-These are project-state constraints, not reasons to weaken evidence boundaries. Future professionalization work may close them with explicit artifact distribution, lock/CI improvements, and a bounded runnable showcase.
+The previous DATA dependency-lock gap is closed: `data_module/poetry.lock` is committed and enforced by read-only pinned-Poetry CI. These remaining constraints are not reasons to weaken evidence boundaries.
