@@ -1,0 +1,48 @@
+{
+  "schema": "sentinel-handbook-current-r4-v1",
+  "phase8": {
+    "status": "IN_PROGRESS",
+    "g8_passed": false,
+    "full_training_authorized": false,
+    "confirmed_negatives": 0
+  },
+  "logical_v3": {
+    "evidence_path": "docs/plan/ml-R4/evidence/2026-08-15_phase8_logical_v3/logical_v3_acceptance.json",
+    "status": "PASS",
+    "dataset_version": "sentinel-r4-vnext-v3",
+    "grouping_version": "r4-leakage-groups-v3",
+    "partition_version": "r4-vnext-roles-v3",
+    "groups": 22394,
+    "max_group_size": 7,
+    "address_authority_edges": 0,
+    "training_authorized": false
+  },
+  "physical_v10_v26": {
+    "evidence_path": "docs/plan/ml-R4/evidence/2026-09-02_v10_v26_physical_acceptance/acceptance.json",
+    "decision_id": "R4-D-011",
+    "status": "PASS",
+    "decision": "ACCEPTED_IMMUTABLE_LOCAL_PHYSICAL_REPRESENTATION",
+    "graph_schema_version": "v10",
+    "extractor_version": "v2.6-r4-call-semantics-deterministic-cfg-mutators",
+    "contracts": 22540,
+    "files": 67620,
+    "binding_digest_sha256": "d9f925588913e66476cfbc097bace7daa7e673295fe2a243760313d0bef5ebdd",
+    "unexplained_structural_drift": 0,
+    "training_authorized": false
+  },
+  "selector_successor": {
+    "adr_path": "docs/plan/ml-R4/adrs/ADR-R4-012-target-aware-guarded-selector-promotion.md",
+    "evidence_path": "docs/plan/ml-R4/evidence/2026-08-15_phase8_logical_v3/bounded_window_selector_v1.summary.json",
+    "decision_id": "R4-D-012",
+    "strategy": "target_aware_guarded_v1",
+    "scope": "new versioned token/representation candidate",
+    "records_analyzed": 1018,
+    "over_four_window_records": 737,
+    "improved_records": 476,
+    "control_fallback_records": 261,
+    "regressed_records": 0,
+    "r4_d011_remains_immutable": true,
+    "fresh_physical_acceptance_required": true,
+    "training_authorized": false
+  }
+}
