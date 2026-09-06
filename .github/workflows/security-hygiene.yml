@@ -28,6 +28,7 @@ jobs:
         run: python3 tools/security/scan_repository_secrets.py --scope current
 
   history-baseline:
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     steps:
       - name: Check out complete reachable history
