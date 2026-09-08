@@ -1,19 +1,43 @@
 # SENTINEL
 
-SENTINEL is a smart-contract security research/engineering system under active development. It combines a Solidity DATA pipeline, a four-eye graph/code ML teacher, multi-tool LangGraph auditing, a distilled EZKL proxy proof, and an upgradeable on-chain audit registry.
+SENTINEL is a smart-contract security and ML/data research system built around a difficult question: **how can a security model or audit pipeline make trustworthy claims when the underlying labels, representations, splits, and evaluation evidence may themselves be wrong or incomplete?**
 
-## Current system state
+The project combines Solidity data/evidence work, graph/code ML research, multi-tool auditing, proof experiments, and an on-chain audit-record protocol. The important current result is not a new model-quality claim. It is an evidence-driven repair process that found serious data/grouping/representation problems and continues to block stronger training/promotion claims until the required evaluation evidence exists.
 
-The current stable `main` baseline includes the R4 **G7-passed DATA vNext v2 implementation**, merged at `81d9c547d`, on top of the V3/runtime and canonical-documentation baseline. R4 repaired the historical DATA/ML label assumptions before any new teacher retraining:
+## Project eras and contribution boundary
 
-- 22,493 historical contracts were reconstructed as a 224,930-row contract×class evidence ledger;
-- historical `0` is no longer treated as a confirmed negative;
-- `data-vnext-policy-v1` separates outcome truth from training signal/strength;
-- leakage-safe roles are frozen in `r4-vnext-roles-v1`;
-- threshold-fit, calibration-fit, and untouched-acceptance roles are intentionally unsupported/empty because the recovered evidence does not justify them;
-- the existing Run12 teacher remains the historical operational baseline and has **not yet been retrained on DATA vNext**.
+Sentinel has two important development eras.
 
-Phase 7 is complete: DATA vNext v2 is canonical, its semantic overlay is deterministic, and the real local representation population was physically bound and validated for G7. Phase 8 is now the next authorized R4 step; no repaired teacher has been retrained yet.
+The **original project** was Ali's long-running AI-assisted learning/building work across Python, data preparation, repeated ML training, Linux, graph/agent experiments, and dataset/model-quality diagnosis.
+
+The later **R4 continuation** is substantially AI-led research under Ali's direction. It should not be interpreted as independent ownership of the current ML/data pipeline, LangGraph, zkML, blockchain, or full-system implementation. Repository capability, Ali's original hands-on experience, and later AI-led research are intentionally kept separate.
+
+## Current research state
+
+Historical R4 **G0–G7 remain passed and immutable**. **Phase 8 is in progress; G8 is still open.** Run12 remains the historical operational ML baseline rather than current repaired training truth.
+
+The current R4 line has established, among other things:
+
+- repaired-v2 physical DATA accepted across **22,540 contracts** and **225,400 contract×class rows**;
+- corrected logical V3 grouping after the earlier address-literal grouping produced an invalid 10,327-contract connected component;
+- a hardened evidence snapshot with cross-report coherence checks;
+- **zero accepted confirmed-negative examples** so far;
+- a real graph-representation defect in historical v9 external-call semantics;
+- an accepted V2.6 physical representation lineage for the future candidate path;
+- guarded selector policy for a future candidate, while the corresponding new physical token lineage is still not built/accepted;
+- threshold fitting, calibration, untouched acceptance, and the 100-epoch Phase-8 run remain unauthorized.
+
+The core research discipline is:
+
+```text
+valid physical DATA
+≠ valid leakage split
+≠ coherent research evidence
+≠ sufficient supervision
+≠ trustworthy model quality
+```
+
+For the exact current state and restart boundary, use [`docs/handbook/16_current_status.md`](docs/handbook/16_current_status.md).
 
 ## Current architecture
 
