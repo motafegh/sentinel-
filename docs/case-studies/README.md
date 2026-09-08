@@ -35,9 +35,10 @@ This structure is intentionally evidence-first. A technically attractive outcome
 ## Published cases
 
 1. [Unknown Is Not Negative](01_unknown_is_not_negative.md) — repairing supervision semantics before repaired retraining, rather than converting unsupported historical zeros into negative truth.
+2. [Leakage Grouping Was an Evidence Problem](02_leakage_grouping_was_an_evidence_problem.md) — replacing convenient relationship-based grouping authority with versioned evidence-backed identity rules before relying on ML claims.
 
 ## Planned curation
 
-Later P6 work may add only the strongest distinct decisions, such as leakage-group repair, V10 representation remediation, deterministic structural-drift reconciliation, guarded-selector promotion discipline, explicit refusal to manufacture unsupported evaluation metrics, AGENTS tool-execution semantics, and the ZK-proof versus V3-provenance boundary.
+Later P6 work may add only the strongest distinct decisions, such as V10 representation remediation, deterministic structural-drift reconciliation, guarded-selector promotion discipline, explicit refusal to manufacture unsupported evaluation metrics, AGENTS tool-execution semantics, and the ZK-proof versus V3-provenance boundary.
 
 The goal is a small reviewable evidence package, not a chronological rewrite of the entire project history.
