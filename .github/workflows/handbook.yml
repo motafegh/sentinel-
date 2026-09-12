@@ -90,15 +90,17 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - name: Validate canonical handbook against current source/R4 state
+      - name: Validate canonical handbook against historical/runtime compatibility state
         run: python3 docs/handbook/tools/verify_handbook.py static
+      - name: Validate current R4 D-009/D-011/D-012 authority
+        run: python3 docs/handbook/tools/verify_current_r4.py
       - name: Assert active entry-point documentation boundaries
         run: |
           python3 - <<'PY'
           from pathlib import Path
 
           required = {
-              'README.md': ['R4', 'V3', 'read-only', 'Run12'],
+              'README.md': ['R4', 'V3', 'read-only', 'Run12', 'R4-D-011', 'R4-D-012'],
               'CLAUDE.md': ['routine technical and governance approvals', 'data-vnext-policy-v1', 'audit MCP is read-only'],
               'data_module/README.md': ['Historical zero is not negative truth', 'data-vnext-policy-v1', 'r4-vnext-roles-v1'],
               'ml/README.md': ['historical operational baseline', 'UNSUPPORTED_EMPTY', 'UNSUPPORTED_EMPTY_FROZEN'],
@@ -116,7 +118,7 @@ jobs:
               missing = [p for p in phrases if p not in text]
               if missing:
                   raise SystemExit(f'{path}: missing current-authority phrases: {missing}')
-          print(f'PASS: {len(required)} active entry-point documents match current R4/V3 authority')
+          print(f'PASS: {len(required)} active entry-point documents match current authority')
           PY
       - name: Run handbook validator unit tests
         run: python3 -m unittest discover -s docs/handbook/tools/tests -p 'test_*.py'

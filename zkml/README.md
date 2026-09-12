@@ -47,14 +47,25 @@ The policy signature authenticates context/provenance. It does not expand the ZK
 
 ## R4 / future regeneration
 
-Run12 remains the historical operational teacher. R4 is repairing DATA semantics before retraining. Therefore **do not regenerate/promote a new proxy/circuit yet** merely because DATA policy changed.
+Run12 remains the historical operational teacher. Historical R4 G0–G7 remain PASSED and **Phase 8 is IN_PROGRESS**. The DATA/representation path has already advanced beyond historical G7:
+
+- R4-D-011 accepts the exact V10 V2.6 physical representation lineage;
+- R4-D-012 promotes `target_aware_guarded_v1` only for a fresh versioned successor candidate that still requires separate physical acceptance;
+- full training remains unauthorized;
+- no repaired teacher has been trained or selected;
+- confirmed negatives remain zero and threshold/calibration/untouched-acceptance support remains unavailable.
+
+Therefore **do not regenerate/promote a new proxy/circuit yet** merely because the DATA/representation lineage changed.
 
 The correct future order is:
 
 ```text
-G7 DATA vNext
-→ Phase 8 repaired teacher retrain
-→ select teacher candidate
+R4-D-011 accepted V10 V2.6 physical representation
+→ R4-D-012 guarded-selector successor candidate
+→ binding + transition evidence + separate physical acceptance
+→ objective/evaluation support + explicit training authorization
+→ repaired teacher retrain
+→ evaluate/select teacher candidate
 → redistill proxy
 → remeasure teacher/proxy agreement
 → regenerate ONNX/settings/circuit/keys/verifier as required
@@ -96,6 +107,7 @@ Live proof regeneration additionally requires local cryptographic/data prerequis
 - proof statement remains proxy-only;
 - V3 attestation remains a separate context/authentication claim;
 - `UNSAFE` check mode remains an explicit production-assurance limitation;
-- new proxy/circuit artifacts require a selected repaired teacher and fresh lineage/proof/verifier validation.
+- new proxy/circuit artifacts require a selected repaired teacher and fresh lineage/proof/verifier validation;
+- R4 physical representation or selector acceptance does not by itself authorize proxy regeneration.
 
 For current detail, see [ZKML handbook](../docs/handbook/07_zkml.md), [contracts](../docs/handbook/08_contracts.md), [security/trust](../docs/handbook/12_security_and_trust.md), and [current status](../docs/handbook/16_current_status.md).

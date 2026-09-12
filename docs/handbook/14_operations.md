@@ -8,15 +8,15 @@
 
 ## 30-second summary
 
-Operate SENTINEL in layers and keep historical compatibility separate from current authority. Today the live runtime is ML + selected MCP services + gateway off-chain audits; audit MCP :8012 is read-only. Run12 remains the historical operational teacher. R4 G6 is the stable repaired DATA/ML control state, while Phase 7 DATA vNext still needs local physical representation binding before G7. V3 contract/protocol behavior can be tested locally, but no production signer/broadcast service is claimed.
+Operate SENTINEL in layers and keep historical compatibility separate from current authority. The live runtime remains ML + selected MCP services + gateway off-chain audits; audit MCP :8012 is read-only. Run12 remains the historical operational teacher. Historical R4 G0–G7 are passed and immutable; Phase 8 is in progress. R4-D-011 accepts the exact V10 V2.6 physical representation lineage, while R4-D-012 requires a fresh guarded-selector successor before that selector has accepted physical authority. Full training remains unauthorized. V3 contract/protocol behavior can be tested locally, but no production signer/broadcast service is claimed.
 
 ## Just-enough mental model
 
 ```text
-repo/artifacts
-   ↓
-static + R4 gates
-   ↓
+repo / tracked evidence / local artifacts
+                 ↓
+           static + R4 gates
+                 ↓
 ML :8001 → selected MCP :8010–8014 → gateway :8000
                                       ↓
                                 off-chain report
@@ -45,13 +45,32 @@ python3 docs/plan/ml-R4/scripts/p6_validate_frozen_partitions.py
 
 Use the repository’s existing module environments. Do not upgrade dependencies during an operational verification unless that upgrade is the task.
 
-### 2. Artifact availability
+### 2. Artifact availability and DVC scope
 
-- **Run12 teacher:** historical checkpoint/companions may exist only on the working machine; obtain the approved historical artifact set when reproducing current inference.
-- **R4 evidence/policy/roles:** tracked in Git and are the current DATA/ML semantic authority through G6.
-- **DATA vNext Phase 7:** candidate semantic overlay exists on the Phase-7 branch; final G7 requires physical binding to the local graph/token/sidecar representation population.
-- **ZKML retained artifacts:** tracked proxy/ONNX/settings/compiled/VK exist for historical proxy reproducibility; proving prerequisites may be local/private/regenerated.
-- **RAG/runtime databases:** generated/local unless promoted separately.
+Artifact availability is intentionally not collapsed into one “fresh clone contains everything” claim.
+
+- **Git-tracked R4 authority:** current plans, ADRs, manifests, machine-readable policy/evidence records, and durable bounded evidence under `docs/plan/ml-R4/` are the controlling semantic/governance layer.
+- **R4-D-011 physical lineage:** the exact accepted 22,540-identity V10 V2.6 representation root is a protected local physical artifact with recorded digest/evidence. Its acceptance record is tracked; the heavy physical root is not implied to be downloadable from a fresh clone.
+- **R4-D-012 successor:** the guarded-selector lineage must be created as a new versioned candidate and separately bound/accepted. Do not mutate the D-011 root.
+- **Run12 teacher:** historical checkpoint/companions may exist only on an approved working machine or historical artifact store. Run12 is compatibility/operational history, not repaired-model quality.
+- **ZKML retained artifacts:** tracked proxy/ONNX/settings/compiled/VK material supports historical proxy reproducibility; proving prerequisites may still be local/private/regenerated.
+- **RAG/runtime databases:** generated/local unless explicitly promoted.
+
+The repository currently has two distinct DVC contexts and they must not be confused:
+
+1. **Root `.dvc/` context** — repository-level/local artifact operations. The public config intentionally contains no committed remote. Machine-specific remotes belong in `.dvc/config.local`, which is ignored by Git.
+2. **`data_module/.dvc/` context** — owns the DATA module’s historical `data_module/dvc.yaml` lifecycle (`ingest → preprocess → represent → ... → export`). It is a module-local pipeline boundary and is not evidence that the current R4 physical/evaluation lineage can be reconstructed by running `dvc repro` from a fresh clone.
+
+For a private/local root remote, configure it without changing tracked config, for example:
+
+```bash
+cd "$REPO_ROOT"
+dvc remote add --local -d localbackup /path/to/local/dvc/remote
+```
+
+For DATA-module DVC operations, run DVC from `data_module/` so the module-local `.dvc` root and `dvc.yaml` are selected intentionally.
+
+Do not commit absolute laptop/WSL paths, credentials, private endpoint URLs, DVC cache/runtime locks, or `config.local` files.
 
 ### 3. Start current ML inference
 
@@ -61,7 +80,7 @@ SENTINEL_CHECKPOINT="<approved-local-Run12-checkpoint>" \
   ml/.venv/bin/uvicorn ml.src.inference.api:app --host 127.0.0.1 --port 8001
 ```
 
-Confirm `/health` reports the intended checkpoint/model identity. Run12 is historical operational inference, not repaired-vNext model quality.
+Confirm `/health` reports the intended checkpoint/model identity. Run12 is historical operational inference, not repaired-R4 model quality.
 
 ### 4. Start selected MCP services
 
@@ -104,11 +123,24 @@ The tracked suite includes V3 behavior, digest parity, upgrade/storage, and real
 
 A real V3 submitter would need an isolated policy signer plus transaction authority outside the analysis MCP. Do not improvise by wiring historical `_submit.py` into the live MCP.
 
-### 8. Phase-7 local G7 binding
+### 8. Current R4 physical/training boundary
 
-When working specifically on active R4 Phase 7, use the exact branch-bound command from the R4 Phase-7 handoff/current status. The gate scans the existing representation root read-only, binds the required physical graph/token/sidecar artifacts, and promotes the v2 manifest only transactionally after final validation.
+For current Phase-8 DATA/ML work, read the exact restart authority before any physical-artifact operation:
 
-Do not run this against `main` until Phase 7 is merged; use the dedicated Phase-7 worktree/branch.
+- `docs/plan/ml-R4/PLAN_STATUS_MATRIX.md`;
+- R4-D-011 physical V10 V2.6 acceptance;
+- R4-D-012 guarded-selector promotion;
+- the latest Phase-8 run/restart record referenced by the status matrix.
+
+Operational rules:
+
+- preserve the accepted R4-D-011 root and digest unchanged;
+- do not regenerate/patch it in place;
+- build any R4-D-012 guarded-token successor as a fresh lineage;
+- require separate binding and physical acceptance;
+- keep candidate #2 negative evidence unresolved until genuinely independent agreement exists;
+- do not invent threshold/calibration/untouched-acceptance populations;
+- do not launch the 100-epoch/full training run without explicit authorization.
 
 ## Interfaces, data shapes, and configuration
 
@@ -129,10 +161,12 @@ Secrets remain external. Document variable names/prerequisites, never key/RPC cr
 
 | Symptom | Correct first interpretation |
 |---|---|
-| Run12 checkpoint absent | historical local artifact unavailable; not DATA-vNext failure |
-| Phase-7 G7 says representations pending | expected until local physical binding succeeds |
+| Run12 checkpoint absent | historical local artifact unavailable; not R4 semantic failure |
+| R4-D-011 physical root absent locally | accepted physical artifact unavailable on this machine; do not reinterpret acceptance or regenerate casually |
+| guarded-selector candidate absent | expected until a new R4-D-012 lineage is constructed and accepted |
 | vNext unknown target appears as `0` | semantic corruption; stop |
-| threshold/calibration role requested | unsupported under current G6 evidence |
+| threshold/calibration role requested | unsupported under current evidence |
+| `dvc pull` has no public default remote | expected current public-repo behavior; configure an authorized local/private remote explicitly |
 | audit MCP rejects submit name | expected current read-only policy |
 | gateway report unsubmitted | expected off-chain behavior |
 | V3 policy signature missing | no authorized V3 submit; do not fall back to historical write path |
@@ -144,13 +178,14 @@ Secrets remain external. Document variable names/prerequisites, never key/RPC cr
 
 For operational changes:
 
-1. identify the security domain: analysis, DATA build, model training, proving, signing, broadcasting, or observation;
-2. change one layer and capture exact artifact/commit identities;
-3. keep secrets external;
-4. run static/smoke → subsystem → relevant live checks;
-5. preserve raw failure output;
-6. update current status/metadata if availability or authority changed;
-7. never use a historical compatibility path to bypass a current fail-closed boundary.
+1. identify the security/artifact domain: analysis, DATA build, model training, proving, signing, broadcasting, observation, or historical reproduction;
+2. identify whether the required artifact is Git-tracked, local/private, reproducible, or historical-only;
+3. change one layer and capture exact artifact/commit identities;
+4. keep secrets and machine-specific remotes external;
+5. run static/smoke → subsystem → relevant live checks;
+6. preserve raw failure output;
+7. update current status/metadata if availability or authority changed;
+8. never use a historical compatibility path to bypass a current fail-closed boundary.
 
 ## Verification commands
 
@@ -161,7 +196,7 @@ python3 docs/handbook/tools/verify_handbook.py live --services
 python3 docs/handbook/tools/verify_handbook.py live --module agents
 ```
 
-Foundry/ZK/local G7 checks are separate explicit operations with their own prerequisites.
+Foundry/ZK/R4 physical-artifact checks are separate explicit operations with their own prerequisites.
 
 ## Optional deep references
 
@@ -169,26 +204,27 @@ Foundry/ZK/local G7 checks are separate explicit operations with their own prere
 - [Current status](16_current_status.md)
 - [Security and trust](12_security_and_trust.md)
 - [R4 master plan](../plan/ml-R4/00_MASTER_PLAN.md)
+- [`data_module/dvc.yaml`](../../data_module/dvc.yaml)
 - [`contracts/test`](../../contracts/test)
 
 ## Technical mastery layer
 
 ### Prerequisite knowledge
 
-Know Python environments, service supervision, Git worktrees, artifact hashes, HTTP/MCP, Foundry/Anvil, and least-privilege signing/transaction boundaries.
+Know Python environments, service supervision, Git worktrees, DVC repository roots/local config, artifact hashes, HTTP/MCP, Foundry/Anvil, and least-privilege signing/transaction boundaries.
 
 ### Source map and reading order
 
-Use current status first. For services, read gateway/ML/live MCP server entry points. For chain protocol, read `policy_signer.py` and V3 contract/tests. For DATA vNext local verification, follow the active R4 Phase-7 gate script rather than legacy DATA build commands.
+Use current status first. For services, read gateway/ML/live MCP server entry points. For chain protocol, read `policy_signer.py` and V3 contract/tests. For DATA/R4 physical work, follow the current Phase-8 status/decision chain rather than historical DATA build commands.
 
 ### Execution trace and worked example
 
-A normal operational demo starts Run12 ML, selected MCPs, and gateway, then ends with an off-chain report. A separate contract test can prove V3 digest/proof/storage invariants. A separate Phase-7 worktree can bind physical representations. These exercises have different authorities and must not be collapsed into one “end-to-end production” claim.
+A normal operational demo starts Run12 ML, selected MCPs, and gateway, then ends with an off-chain report. A separate contract test can prove V3 digest/proof/storage invariants. A separate R4 physical-artifact workflow can inspect or construct versioned representation candidates. These exercises have different authorities and must not be collapsed into one “end-to-end production” claim.
 
 ### Implementation practice
 
-Troubleshoot the first failed boundary and preserve its exact state. Do not respond to a missing signer, missing negative corpus, missing representation, or unavailable tool by substituting a weaker historical path.
+Troubleshoot the first failed boundary and preserve its exact state. Do not respond to a missing signer, missing negative corpus, missing representation, missing DVC remote, or unavailable tool by substituting a weaker historical path.
 
 ### Review and ownership check
 
-Can you operate the off-chain runtime, query registry history, test V3 contracts, and run DATA-vNext validation while keeping analysis, signing/broadcast, training, and local protected-artifact responsibilities separate?
+Can you operate the off-chain runtime, distinguish the two DVC contexts, identify which artifacts are Git-tracked vs local/private, query registry history, test V3 contracts, and run current R4 validation while keeping analysis, signing/broadcast, training, and protected-artifact responsibilities separate?

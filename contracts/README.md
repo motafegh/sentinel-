@@ -111,6 +111,10 @@ A production V3 signer/broadcaster would be a separate security domain with expl
 
 ## R4 relationship
 
-Current V3/proxy artifacts remain tied to the historical teacher/proxy lineage. R4 DATA/ML repair is through G6, and Phase 7 DATA vNext still requires local G7 representation binding. Any newly retrained teacher must be selected before a new proxy/circuit/verifier bundle is regenerated and bound into V3.
+Current V3/proxy artifacts remain tied to the historical teacher/proxy lineage. Historical R4 G0–G7 remain PASSED; **Phase 8 is IN_PROGRESS and no repaired teacher has been trained/promoted**.
+
+The current DATA/ML physical path has advanced through R4-D-011, which accepts the exact V10 V2.6 representation lineage, and R4-D-012, which authorizes guarded selection only for a fresh successor candidate that still requires separate physical acceptance. Full training remains unauthorized; confirmed negatives remain zero; threshold/calibration/untouched-acceptance support remains unavailable.
+
+Therefore no new proxy/circuit/verifier bundle should be regenerated or bound into V3 merely because the DATA/representation lineage advanced. A repaired teacher must first be explicitly trained, evaluated, selected, and promoted under later authority. Only then should proxy redistillation, agreement measurement, circuit/verifier regeneration, V3 identity binding, and integration/deployment validation occur.
 
 For current detail, see [contracts handbook](../docs/handbook/08_contracts.md), [ZKML](../docs/handbook/07_zkml.md), [runtime flows](../docs/handbook/02_runtime_flows.md), and [current status](../docs/handbook/16_current_status.md).

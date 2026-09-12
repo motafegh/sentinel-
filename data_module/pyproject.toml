@@ -28,7 +28,7 @@ huggingface-hub = ">=0.20"
 slither-analyzer = ">=0.10,<0.12"
 solc-select     = ">=1.0"
 
-# ── Stage 2+ — graph/token extraction (GPU optional) ─────────────────────────
+# ── Stage 2+ — graph/token extraction (GPU optional) ──────────────────────────
 # Install with: poetry install --with ml
 [tool.poetry.group.ml]
 optional = true
@@ -46,14 +46,9 @@ pytest-cov = ">=4.0"
 black      = ">=23.0"
 ruff       = ">=0.1"
 
-# ── CLI entry point ─────────────────────────────────────────────────────────────
+# ── CLI entry point ───────────────────────────────────────────────────────────
 [tool.poetry.scripts]
 sentinel-data = "sentinel_data.cli:main"
-
-[[tool.poetry.source]]
-name = "pypi-tuna"
-url = "https://pypi.tuna.tsinghua.edu.cn/simple"
-priority = "primary"
 
 [build-system]
 requires = ["poetry-core"]
