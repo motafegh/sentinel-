@@ -30,26 +30,30 @@ The portfolio program remains subordinate to `CLAUDE.md`, executable source/conf
 | **P0 readiness audit** | **COMPLETE** | Baseline audit captured and findings dispositioned. |
 | **P1 repository hygiene foundation** | **SUBSTANTIALLY COMPLETE / EXTERNAL REF CLEANUP OPEN** | Core hygiene is complete; three accidental no-work refs still require deletion through a surface that supports ref deletion. |
 | **P2 root README / public landing page** | **COMPLETE** | External-facing landing page, architecture summary, limitations, contribution-era disclosure, showcase, case-study navigation, and license boundary are present. |
-| **P3 canonical architecture/trust presentation** | **COMPLETE / VALIDATED AT P5 BOUNDARY** | Canonical runtime, DATA/ML, proof/provenance, and ownership views established. |
-| **P4 bounded showcase / demo** | **COMPLETE / VALIDATED AT P5 BOUNDARY** | `SHOWCASE.md` + `tools/showcase_sentinel.py` provide a dependency-light fresh-clone boundary demo. |
+| **P3 canonical architecture/trust presentation** | **COMPLETE** | Canonical runtime, DATA/ML, proof/provenance, and ownership views established. |
+| **P4 bounded showcase / demo** | **COMPLETE** | `SHOWCASE.md` + `tools/showcase_sentinel.py` provide a dependency-light fresh-clone boundary demo. |
 | **P5 CI/testing/security/reproducibility presentation** | **COMPLETE / VALIDATED** | Current/historical validation split, DATA lock/reproducibility CI, security scanning, and public validation semantics established. |
 | **P6 technical case-study package** | **COMPLETE** | Seven distinct evidence-first engineering case studies are complete and indexed. |
-| **P7 GitHub identity/release surface** | **COMPLETE AT REPOSITORY-CONTENT SCOPE / EXTERNAL OPERATIONS OPEN** | Repository name retained; MIT + third-party/artifact notices added; release semantics prepared. GitHub description/topics and external credential/ref operations remain outside this connector's mutation scope. |
-| **P8 final portfolio audit** | **IN PROGRESS** | Public-content credibility passes are being executed. Final merge/release remains gated by exact-head CI and external blockers. |
+| **P7 GitHub identity/release surface** | **COMPLETE AT REPOSITORY-CONTENT SCOPE / EXTERNAL OPERATIONS OPEN** | Repository name retained; MIT + third-party/artifact notices added; research-snapshot release semantics prepared. |
+| **P8 final portfolio audit** | **COMPLETE FOR PUBLIC CONTENT / HOLD EXTERNAL OPERATIONS** | Recruiter, senior-engineer, adversarial, hygiene, and exact-candidate CI passes completed. Merge/release remains held for credential/ref prerequisites. |
 
-## Exact validated baseline
+## Exact current P8 validation boundary
 
-P5 was formally closed on commit `550851eaaedb1e3f7b3cf17cb0f09f4efcf39661` after all five current pull-request workflows completed successfully:
+P8 audited candidate commit:
 
-- Handbook;
-- Portfolio showcase;
-- DATA reproducibility;
-- SENTINEL system alignment;
-- Security hygiene.
+`5f621e7ae5a7af0907e72d59d81bcbeff39f0955`
 
-The P5 history scan inspected **92,243 reachable blobs / about 3.36 GB** and baselined four reviewed historical blob identities containing the same provider-RPC credential-shaped endpoint. The current tracked tree passed. The credential value is not reproduced in current documentation.
+All five current pull-request workflow surfaces passed on that exact candidate:
 
-Repository evidence cannot prove that the external provider credential was revoked or rotated. That remains a hard release prerequisite if the historical value represented a live credential.
+- Handbook #465 — **SUCCESS**;
+- Portfolio showcase #46 — **SUCCESS**;
+- DATA reproducibility #36 — **SUCCESS**;
+- SENTINEL system alignment #171 — **SUCCESS**;
+- Security hygiene #34 — **SUCCESS**.
+
+Detailed P8 closeout: [`2026-09-12_P8_FINAL_PORTFOLIO_AUDIT_CLOSEOUT.md`](2026-09-12_P8_FINAL_PORTFOLIO_AUDIT_CLOSEOUT.md).
+
+The closeout record itself and this later administrative status update are not used to retroactively move the audited technical/public-content boundary. After the external blockers are closed, current checks must be re-observed before final merge.
 
 ## P6 closeout
 
@@ -85,7 +89,7 @@ Final decisions:
 - **Release semantics:** use a portfolio/research snapshot, recommended tag `portfolio-2026-09`, rather than a product-maturity `v1.0.0` claim.
 - **Description/topics:** recommended values are prepared, but repository-settings mutation is not exposed by the current GitHub connection; this is operationally deferred rather than analytically unresolved.
 
-### License boundary
+## Licensing boundary
 
 Observed license context:
 
@@ -95,19 +99,21 @@ Observed license context:
 - `forge-std` is Apache-2.0 upstream and remains a Git submodule;
 - retained model/proof/data/research artifacts are not automatically relicensed by the root MIT license.
 
-## P8 audit boundary
+## P8 result
 
-Protocol: [`2026-09-12_P8_FINAL_PORTFOLIO_AUDIT_PROTOCOL.md`](2026-09-12_P8_FINAL_PORTFOLIO_AUDIT_PROTOCOL.md).
+Public-content credibility: **READY**.
 
-The audit checks:
+The final audit found no material overclaim across the root README, handbook architecture/status, module READMEs, showcase, validation guide, case studies, or licensing boundary. In particular the public project does not claim:
 
-1. recruiter/hiring-manager clarity;
-2. senior-engineer source-to-claim traceability;
-3. adversarial overclaim/credibility resistance;
-4. repository hygiene/release integrity;
-5. exact candidate CI.
-
-The public surfaces currently reviewed—README, architecture, current-status handbook, showcase, validation guide, and case-study index—consistently preserve the major claim boundaries. The P8 closeout will record the exact disposition.
+- independent manual authorship/mastery of every current subsystem;
+- a trained/promoted repaired R4 teacher;
+- confirmed-negative evaluation data;
+- model quality from physical representation acceptance;
+- physical acceptance of the guarded-selector successor;
+- proof of the entire Solidity/teacher/agent verdict;
+- production signing/broadcast authority;
+- live execution of capabilities reported `NOT_RUN` by the showcase;
+- that green CI proves security/model quality.
 
 ## Remaining MUST-item disposition
 
@@ -121,21 +127,28 @@ The public surfaces currently reviewed—README, architecture, current-status ha
 | M-006 environment contract | **CLOSED** | Heavy/local prerequisites remain explicit. |
 | M-007 lightweight showcase | **CLOSED** | — |
 | M-008 canonical architecture | **CLOSED** | — |
-| M-009 CI presentation/currentness | **CLOSED / FINAL-HEAD CHECK STILL REQUIRED** | Exact P8 candidate must pass current checks before merge. |
+| M-009 CI presentation/currentness | **CLOSED / P8 CANDIDATE GREEN** | Re-observe current checks after external blockers are closed and before merge. |
 | M-010 stale PR/branch hygiene | **EXTERNAL CLEANUP OPEN** | Delete `tmp-should-not-create`, `noop`, and `ignore-me`; they contain no unique intended work. |
 | M-011 size/history policy | **CLOSED** | No history rewrite authorized. |
-| M-012 module README truth | **CLOSED for audited surfaces** | — |
-| M-013 stable release | **PREPARED / BLOCKED** | Publish only after merge, final validation, ref cleanup, and credential disposition. |
-| M-014 secret hygiene | **REPOSITORY CONTROL CLOSED / EXTERNAL CONFIRMATION OPEN** | Confirm provider credential revocation/rotation before release if applicable. |
+| M-012 module README truth | **CLOSED** | — |
+| M-013 stable release | **PREPARED / BLOCKED** | Publish only after merge, ref cleanup, credential disposition, and final revalidation. |
+| M-014 secret hygiene | **REPOSITORY CONTROL CLOSED / EXTERNAL CONFIRMATION OPEN** | Confirm/revoke/rotate the historical provider credential before release if applicable. |
 
 ## Current blockers
 
-1. **External provider credential disposition:** Git cannot establish revocation/rotation. No release may claim this prerequisite satisfied without external confirmation.
+1. **External provider credential disposition:** Git cannot establish revocation/rotation. Do not probe/reuse the exposed value merely to test it; close this safely provider-side.
 2. **Accidental refs:** `tmp-should-not-create`, `noop`, and `ignore-me` should be deleted; the exposed connector provides ref update/create but not delete.
-3. **Final candidate CI:** exact P8 candidate must complete the five current validation surfaces successfully.
 
-## Next execution order
+GitHub description/topics are desirable polish but are not a merge/security blocker.
 
-`finish P8 credibility audit → obtain exact-candidate CI → HOLD merge/release until external credential + ref-cleanup prerequisites are satisfied → merge PR #72 → create portfolio snapshot release`
+## Final execution order
 
-Do not weaken the release/merge gate merely to finish the portfolio program cosmetically.
+`close credential disposition + delete accidental refs → re-check branch/main + current CI → merge PR #72 → create portfolio-2026-09 research snapshot → derive final CV/interview wording`
+
+Current final program disposition:
+
+- **public repository content:** READY;
+- **merge:** HOLD;
+- **release:** HOLD.
+
+Do not weaken the remaining external controls merely to obtain a cosmetically complete status.
