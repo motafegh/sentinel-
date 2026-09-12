@@ -4,7 +4,17 @@
 
 SENTINEL explores how an automated smart-contract audit system can combine machine learning, multi-tool agentic analysis, verifiable inference, and on-chain provenance **without collapsing uncertainty or overstating what the evidence proves**.
 
-The repository is a long-running engineering project spanning Solidity DATA pipelines, graph/code ML, LangGraph orchestration, MCP services, ZKML, and upgradeable smart contracts. It is under active development and is **not presented as a production-ready security product**.
+The repository is a long-running engineering and research project spanning Solidity DATA pipelines, graph/code ML, LangGraph orchestration, MCP services, ZKML, and upgradeable smart contracts. It is under active development and is **not presented as a production-ready security product**.
+
+## Project eras and contribution boundary
+
+SENTINEL has two important development eras.
+
+The **original project** was Ali's long-running AI-assisted learning/building work across Python, data preparation, repeated ML training, Linux, graph/agent experiments, and dataset/model-quality diagnosis.
+
+The later **R4 continuation** is substantially AI-led research under Ali's direction. It should not be interpreted as independent ownership of the current ML/data pipeline, LangGraph, ZKML, blockchain, or full-system implementation. Repository capability, Ali's original hands-on experience, and later AI-led research are intentionally kept separate.
+
+The portfolio therefore distinguishes what the repository demonstrates from what it claims about individual implementation authorship. The later R4 work is valuable as evidence of research direction, technical decision-making, evidence review, and AI-assisted engineering practice, not as a claim that Ali manually implemented or independently mastered every current subsystem.
 
 ## Why this project exists
 
@@ -88,23 +98,23 @@ See [SHOWCASE.md](SHOWCASE.md) for expected output, the exact claim boundary, JS
 
 A major DATA/ML correction was recognizing that many historical binary `0` cells represented **unknown, unsupported, absent, or dropped evidence**, not trustworthy negatives. The repaired semantic layer therefore carries nullable targets, evidence strength, loss/metric eligibility, and explicit dataset roles instead of manufacturing negative labels.
 
-### 2. Leakage grouping was treated as an evidence problem
+### 2. [Leakage grouping was treated as an evidence problem](docs/case-studies/02_leakage_grouping_was_an_evidence_problem.md)
 
 A previous grouping approach allowed common Ethereum address literals to connect unrelated contracts into a 10,327-contract component. R4 replaced that authority with defensible artifact/code/family identity rules. The accepted logical V3 population contains **22,394 groups**, maximum group size **7**, and zero address-authority edges.
 
-### 3. Representation defects were fixed before retraining
+### 3. [Representation defects were fixed before retraining](docs/case-studies/03_version_the_representation_instead_of_patching_history.md)
 
-Full-population investigation showed that historical graph schema v9 did not reliably represent important call semantics. Rather than train on a known-bad representation or weaken the checks, SENTINEL moved to a versioned V10 lineage and independently reconciled every observed structural drift before physical acceptance.
+Full-population investigation showed that historical graph schema v9 did not reliably represent important call semantics. Rather than train on a known-bad representation or weaken the checks, SENTINEL moved to a versioned V10 lineage and independently reconciled every observed structural drift before physical acceptance. The separate [structural-drift case](docs/case-studies/04_fail_closed_on_unexplained_structural_drift.md) explains the fail-closed acceptance process.
 
-### 4. Tool silence is not a clean result
+### 4. [Tool silence is not a clean result](docs/case-studies/06_tool_silence_is_not_a_clean_result.md)
 
 The AGENTS layer distinguishes `tool did not run`, `tool failed/degraded`, and `tool ran with zero findings`. This prevents unavailable evidence from silently becoming a benign security conclusion.
 
-### 5. ZK proof scope is deliberately narrow
+### 5. [ZK proof scope is deliberately narrow](docs/case-studies/07_a_valid_proof_does_not_prove_the_whole_audit.md)
 
 The retained proof verifies only the compact proxy computation. V3 provenance/context authentication is a separate mechanism. The project explicitly refuses the stronger—but unsupported—claim that the circuit proves the source audit or final agent verdict.
 
-The curated [engineering case studies](docs/case-studies/README.md) explain selected decisions using a consistent evidence-first format. The complete evidence trail remains in the [R4 control plane](docs/plan/ml-R4/00_MASTER_PLAN.md) and [current status ledger](docs/handbook/16_current_status.md).
+The curated [engineering case studies](docs/case-studies/README.md) explain seven selected decisions using a consistent evidence-first format, including the separate [guarded-selector promotion case](docs/case-studies/05_promote_a_selector_without_rewriting_the_accepted_lineage.md). The complete evidence trail remains in the [R4 control plane](docs/plan/ml-R4/00_MASTER_PLAN.md) and [current status ledger](docs/handbook/16_current_status.md).
 
 ## Current project status
 
@@ -198,9 +208,9 @@ Large historical DATA, teacher, RAG, runtime, or proving artifacts are **not** c
 
 ## Engineering approach
 
-SENTINEL is developed with extensive **AI-assisted engineering**. AI assistants are used as implementation, investigation, review, and documentation collaborators; project ownership remains centered on architecture, evidence interpretation, scope/claim decisions, validation, and maintaining the technical provenance of what is accepted or rejected.
+SENTINEL is developed with extensive AI assistance, but the contribution model differs by project era. The original project included substantial hands-on learning/building by Ali with AI assistance. The later R4 continuation is substantially AI-led research under Ali's direction.
 
-That approach is visible in the repository history rather than hidden. The quality bar is therefore not “who typed each line,” but whether a change has a defensible design, inspectable implementation, tests/evidence, and an honest statement of its limitations.
+AI assistants are used for implementation, investigation, review, documentation, and evidence synthesis. The repository therefore treats transparent provenance, defensible decisions, validation, and an honest statement of limitations as more important than implying that one person manually authored or independently mastered every subsystem.
 
 ## Documentation authority
 
