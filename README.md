@@ -133,7 +133,7 @@ SENTINEL is active research/engineering work. The concise current boundary is:
 | AGENTS chain behavior | default gateway path is off-chain; live audit MCP is **read-only** |
 | ZKML assurance | retained proxy-only proof; current bundle still records `check_mode="UNSAFE"` as a production-assurance limitation |
 | V3 transaction authority | protocol exists; no production signer/broadcaster is claimed |
-| License | no repository license has been selected yet |
+| License | **MIT for original project code/docs; third-party/generated/data/model/proof material remains subject to its own rights and notices** |
 
 For exact counts, digests, candidate-review state, and current execution authority, use [Current status and gap ledger](docs/handbook/16_current_status.md). That file—not this summary—is the canonical explanatory status surface.
 
@@ -229,3 +229,7 @@ Historical plans, reports, learning artifacts, and case studies are intentionall
 Do not commit `.env` values, private keys, mnemonics, RPC/API credentials, or private artifact endpoints. For a suspected vulnerability or accidental credential exposure, follow [SECURITY.md](SECURITY.md) rather than posting sensitive details in a public issue.
 
 P5 also established a reachable-history secret-scan baseline. The current tracked tree is clean under that bounded scanner; a reviewed historical provider-RPC credential-shaped finding remains documented without reproducing the credential value. See [VALIDATION.md](VALIDATION.md) for its exact scope and release prerequisite.
+
+## License
+
+Sentinel's original project code and documentation are available under the [MIT License](LICENSE). Third-party dependencies, generated material, datasets, model/proof artifacts, and other externally sourced research evidence are **not automatically relicensed** by the root MIT license; see [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) for the scope and attribution boundary.
