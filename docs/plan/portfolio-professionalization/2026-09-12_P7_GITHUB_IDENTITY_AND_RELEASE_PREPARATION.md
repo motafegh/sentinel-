@@ -79,18 +79,23 @@ Recommendation: leave unset unless a real durable destination exists. Do not inv
 
 Current state: no repository license.
 
-For a public portfolio repository intended to permit broad reuse, **Apache-2.0 is the preferred candidate** because it is permissive while also providing an explicit patent grant. MIT is a simpler alternative if minimalism is preferred.
+The bounded license-sensitive content inventory is recorded in [`2026-09-12_P7_LICENSE_CONTENT_INVENTORY.md`](2026-09-12_P7_LICENSE_CONTENT_INVENTORY.md).
 
-However, adding a root license can imply licensing authority over tracked material. Before applying either license, perform a bounded inventory for third-party/generated/vendor artifacts that may require attribution, exclusion, or separate license treatment.
+That review changed the preliminary recommendation. **MIT is now the preferred repository-level candidate for original Sentinel code/documentation**, because:
 
-Therefore the P7 license sequence is:
+- every current local Solidity source file in `contracts/src/` declares MIT;
+- the retained/generated ZKML verifier declares MIT;
+- OpenZeppelin Contracts and its upgradeable variant are MIT;
+- `forge-std` is separately Apache-2.0 as a Git submodule and should retain its upstream license rather than drive Sentinel's root license;
+- MIT is simple and well matched to a public portfolio/research repository.
 
-1. bounded tracked-content/license inventory;
-2. identify any third-party/generated material requiring separate treatment;
-3. owner chooses Apache-2.0, MIT, or intentional no-license status;
-4. add the chosen license/NOTICE/exclusions only after that decision.
+Tracked retained model/proof artifacts and externally sourced DATA/provenance material mean a root license should be paired with an explicit third-party boundary rather than described as relicensing all upstream material.
 
-Do not silently add a license before this check and owner choice.
+Therefore the recommended posture, if the owner wants open reuse, is:
+
+**MIT + `THIRD_PARTY_NOTICES.md`**, preserving per-file SPDX notices, submodule licenses, and applicable upstream terms for datasets/models/tools/artifacts.
+
+The alternatives remain Apache-2.0 plus the same third-party boundary, or intentionally remaining unlicensed. Do not silently add a license before the owner chooses.
 
 ## Release strategy
 
@@ -115,7 +120,7 @@ Do not publish the first release until all of the following are satisfied:
 1. current-head applicable validation is green;
 2. accidental no-work refs are removed;
 3. repository-name decision is explicit;
-4. license decision is explicit and any required bounded license inventory is complete;
+4. license decision is explicit; the bounded inventory is now complete for decision support;
 5. description/topics are set or intentionally deferred;
 6. the historical provider-RPC credential-shaped finding has an externally confirmed revocation/rotation disposition if it represented a live credential;
 7. P8 recruiter/engineer/adversarial credibility audit is complete;
@@ -135,19 +140,26 @@ Any P7 release text must preserve these facts:
 - the retained ZK proof is proxy-only;
 - the live audit MCP is read-only and there is no claimed production signer/broadcaster.
 
-## Actions that can proceed without owner identity decisions
+## Actions completed without owner identity decisions
 
-- perform the bounded license-content inventory;
-- prepare final description/topics text;
-- prepare release-note template;
-- complete P8 audit inputs;
-- obtain final validation evidence;
+- P7 public-surface inventory;
+- recommended description/topics prepared;
+- no-tag/no-release state confirmed;
+- candidate repository rename checked in the owner's namespace;
+- bounded license-sensitive content inventory completed;
+- release semantics and blockers defined.
+
+## Actions still possible before owner decisions
+
+- prepare the release-note template;
+- prepare P8 audit inputs;
+- obtain final validation evidence when execution becomes available;
 - clean accidental refs when a delete-ref capability or local Git access is available.
 
 ## Owner/external decisions that remain
 
 1. **Repository name:** keep `sentinel-` or rename (recommended candidate: `sentinel-smart-contract-security`).
-2. **License posture:** Apache-2.0, MIT, or intentionally remain unlicensed after inventory.
+2. **License posture:** MIT + third-party notices (recommended), Apache-2.0 + notices, or intentionally remain unlicensed.
 3. **Historical provider credential:** confirm whether the identified endpoint/credential has already been revoked or rotated externally.
 
 These decisions should be resolved before the first release rather than guessed by automation.
