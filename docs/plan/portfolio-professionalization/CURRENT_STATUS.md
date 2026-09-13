@@ -1,154 +1,100 @@
 # SENTINEL Portfolio Professionalization — Current Status
 
-**Last reconciled:** 2026-09-12  
-**Branch:** `portfolio/professionalization-2026-09-02`  
-**PR:** #72  
+**Last reconciled:** 2026-09-13  
+**Branch:** `main`  
+**PR:** #72 — **MERGED**  
+**Merge commit:** `6e86b04e9d78ab9d0e6fd4a485bec7270bec0b7c`  
 **Role:** canonical live status for the portfolio-professionalization program
 
-This file is the live execution/status surface for the portfolio program. Dated plans/audits remain evidence of what was observed at the time, but they do not override this later disposition.
+The P0–P8 portfolio-professionalization program is now merged into `main`. Dated plans, audits, and closeouts remain evidence of the path taken; this file owns the current portfolio-program disposition.
 
-The portfolio program remains subordinate to `CLAUDE.md`, executable source/config/tests, current R4 machine-readable authority, accepted ADRs/evidence, and the canonical handbook. Nothing here grants DATA/ML training, model-quality, production, signer/broadcaster, or expanded ZK authority.
+This program remains subordinate to `CLAUDE.md`, executable source/config/tests, current R4 machine-readable authority, accepted ADRs/evidence, and the canonical handbook. Portfolio work does not grant DATA/ML training, model-quality, production, signer/broadcaster, or expanded ZK authority.
 
-## Current technical truth that portfolio work must preserve
+## Program result
 
-- Historical R4 G0–G7 remain PASSED and immutable.
+| Phase | Status | Current disposition |
+|---|---|---|
+| P0 readiness audit | **COMPLETE** | Baseline risks and public-readiness gaps audited. |
+| P1 repository hygiene | **COMPLETE AT REPOSITORY-CONTENT SCOPE** | DVC/runtime/ignore/security/development hygiene established; three accidental no-work refs remain external cleanup. |
+| P2 public landing page | **COMPLETE** | README, navigation, contribution boundary, limitations, showcase, and licensing are public-facing and current. |
+| P3 architecture/trust presentation | **COMPLETE** | Runtime, DATA/ML, proof/provenance, and ownership views are separated and current. |
+| P4 bounded showcase | **COMPLETE** | Dependency-light fresh-clone boundary demo is committed and CI-backed. |
+| P5 validation/security/reproducibility | **COMPLETE** | Current/historical validation split, DATA lock, CI, and secret-scanning controls are established. |
+| P6 engineering case studies | **COMPLETE** | Seven evidence-first case studies are published and indexed. |
+| P7 GitHub identity/license/release preparation | **COMPLETE AT REPOSITORY-CONTENT SCOPE** | Repository name retained; MIT + third-party notices adopted; research-snapshot release semantics prepared. |
+| P8 final portfolio audit | **COMPLETE** | Recruiter, senior-engineer, adversarial-credibility, hygiene, and exact-candidate CI review passed. |
+
+## Current technical truth preserved
+
+- Historical R4 G0–G7 remain **PASSED and immutable**.
 - Phase 8 is `IN_PROGRESS`; G8 is open.
-- R4-D-011 accepts the exact V10 V2.6 physical representation lineage and digest `d9f925588913e66476cfbc097bace7daa7e673295fe2a243760313d0bef5ebdd`.
-- R4-D-012 permits `target_aware_guarded_v1` only for a fresh versioned candidate requiring separate physical acceptance.
-- Confirmed negatives remain zero; candidate #2 has primary-review support only and still requires genuinely independent agreement.
+- R4-D-011 remains the exact accepted V10 V2.6 physical representation authority with digest `d9f925588913e66476cfbc097bace7daa7e673295fe2a243760313d0bef5ebdd`.
+- R4-D-012 permits `target_aware_guarded_v1` only for a fresh versioned successor requiring separate physical acceptance.
+- Confirmed negatives remain **zero**; candidate #2 still lacks genuinely independent confirming review.
 - Threshold fitting, calibration fitting, untouched acceptance, repaired model-quality promotion, and full Phase-8 training remain unsupported/unauthorized.
-- Run12 remains the historical operational ML baseline.
-- Gateway/LangGraph completion is off-chain; the live audit MCP is read-only.
-- A production signer/broadcaster is not claimed.
-- The retained EZKL proof proves the compact proxy computation only; V3 policy/context attestation is separate, and retained `check_mode="UNSAFE"` remains a production-assurance limitation.
-- The public contribution boundary remains explicit: the original Sentinel era was Ali's long-running AI-assisted learning/building work; the later R4 continuation is substantially AI-led research under Ali's direction and must not be represented as independent authorship/mastery of every current subsystem.
+- Run12 remains the historical operational ML baseline; no repaired R4 teacher has been trained/promoted.
+- Gateway/LangGraph completion remains off-chain and the live audit MCP remains read-only.
+- No production signer/broadcaster is claimed.
+- The retained EZKL proof proves the compact proxy computation only; V3 policy/context attestation is separate and retained `check_mode="UNSAFE"` remains a production-assurance limitation.
+- The contribution boundary remains explicit: the original Sentinel era was Ali's long-running AI-assisted learning/building work; the later R4 continuation is substantially AI-led research under Ali's direction and is not represented as independent manual authorship/mastery of every current subsystem.
 
-## Program progress
+## Final PR validation boundary
 
-| Phase / item | Status | Current disposition |
-|---|---|---|
-| **P0 readiness audit** | **COMPLETE** | Baseline audit captured and findings dispositioned. |
-| **P1 repository hygiene foundation** | **SUBSTANTIALLY COMPLETE / EXTERNAL REF CLEANUP OPEN** | Core hygiene is complete; three accidental no-work refs still require deletion through a surface that supports ref deletion. |
-| **P2 root README / public landing page** | **COMPLETE** | External-facing landing page, architecture summary, limitations, contribution-era disclosure, showcase, case-study navigation, and license boundary are present. |
-| **P3 canonical architecture/trust presentation** | **COMPLETE** | Canonical runtime, DATA/ML, proof/provenance, and ownership views established. |
-| **P4 bounded showcase / demo** | **COMPLETE** | `SHOWCASE.md` + `tools/showcase_sentinel.py` provide a dependency-light fresh-clone boundary demo. |
-| **P5 CI/testing/security/reproducibility presentation** | **COMPLETE / VALIDATED** | Current/historical validation split, DATA lock/reproducibility CI, security scanning, and public validation semantics established. |
-| **P6 technical case-study package** | **COMPLETE** | Seven distinct evidence-first engineering case studies are complete and indexed. |
-| **P7 GitHub identity/release surface** | **COMPLETE AT REPOSITORY-CONTENT SCOPE / EXTERNAL OPERATIONS OPEN** | Repository name retained; MIT + third-party/artifact notices added; research-snapshot release semantics prepared. |
-| **P8 final portfolio audit** | **COMPLETE FOR PUBLIC CONTENT / HOLD EXTERNAL OPERATIONS** | Recruiter, senior-engineer, adversarial, hygiene, and exact-candidate CI passes completed. Merge/release remains held for credential/ref prerequisites. |
+The final PR head `e2022b23002a01f7562c20895065462b94b9c01a` completed the current PR workflow surfaces successfully before merge:
 
-## Exact current P8 validation boundary
+- Handbook — **SUCCESS**;
+- Portfolio showcase — **SUCCESS**;
+- DATA reproducibility — **SUCCESS**;
+- SENTINEL system alignment — **SUCCESS**;
+- Security hygiene — **SUCCESS**.
 
-P8 audited candidate commit:
+Detailed credibility audit: [`2026-09-12_P8_FINAL_PORTFOLIO_AUDIT_CLOSEOUT.md`](2026-09-12_P8_FINAL_PORTFOLIO_AUDIT_CLOSEOUT.md).
 
-`5f621e7ae5a7af0907e72d59d81bcbeff39f0955`
+Merge closeout: [`2026-09-13_PORTFOLIO_MERGE_CLOSEOUT.md`](2026-09-13_PORTFOLIO_MERGE_CLOSEOUT.md).
 
-All five current pull-request workflow surfaces passed on that exact candidate:
+The administrative post-merge reconciliation commits on `main` must also retain green applicable workflow results; this ledger should not imply those later commits were part of the pre-merge PR candidate.
 
-- Handbook #465 — **SUCCESS**;
-- Portfolio showcase #46 — **SUCCESS**;
-- DATA reproducibility #36 — **SUCCESS**;
-- SENTINEL system alignment #171 — **SUCCESS**;
-- Security hygiene #34 — **SUCCESS**.
+## Public repository boundary now on `main`
 
-Detailed P8 closeout: [`2026-09-12_P8_FINAL_PORTFOLIO_AUDIT_CLOSEOUT.md`](2026-09-12_P8_FINAL_PORTFOLIO_AUDIT_CLOSEOUT.md).
+The merged repository now includes:
 
-The closeout record itself and this later administrative status update are not used to retroactively move the audited technical/public-content boundary. After the external blockers are closed, current checks must be re-observed before final merge.
+- professional root README and module entry points;
+- explicit project-era / AI-assistance disclosure;
+- canonical architecture and current-status handbook surfaces;
+- `DEVELOPMENT.md`, `VALIDATION.md`, `SHOWCASE.md`, and `SECURITY.md`;
+- MIT `LICENSE` plus `THIRD_PARTY_NOTICES.md`;
+- DATA lock/reproducibility workflow;
+- current-tree and baseline-aware historical secret-scanning controls;
+- current R4 authority validation;
+- seven curated engineering case studies;
+- P0–P8 planning/decision/audit evidence.
 
-## P6 closeout
+## Remaining repository polish
 
-The seven-case core is complete:
+These do **not** invalidate the merge:
 
-1. [`Unknown Is Not Negative`](../../case-studies/01_unknown_is_not_negative.md)
-2. [`Leakage Grouping Was an Evidence Problem`](../../case-studies/02_leakage_grouping_was_an_evidence_problem.md)
-3. [`Version the Representation Instead of Patching History`](../../case-studies/03_version_the_representation_instead_of_patching_history.md)
-4. [`Fail Closed on Unexplained Structural Drift`](../../case-studies/04_fail_closed_on_unexplained_structural_drift.md)
-5. [`Promote a Selector Without Rewriting the Accepted Lineage`](../../case-studies/05_promote_a_selector_without_rewriting_the_accepted_lineage.md)
-6. [`Tool Silence Is Not a Clean Result`](../../case-studies/06_tool_silence_is_not_a_clean_result.md)
-7. [`A Valid Proof Does Not Prove the Whole Audit`](../../case-studies/07_a_valid_proof_does_not_prove_the_whole_audit.md)
+1. Delete accidental no-work refs `tmp-should-not-create`, `noop`, and `ignore-me` when a ref-deletion-capable GitHub/local-Git surface is available.
+2. Optionally set the prepared GitHub repository description/topics when repository-settings mutation is available.
 
-Detailed closeout: [`2026-09-12_P6_TECHNICAL_CASE_STUDY_CLOSEOUT.md`](2026-09-12_P6_TECHNICAL_CASE_STUDY_CLOSEOUT.md).
+The current connector can read/create/update refs but does not expose ref deletion or repository description/topic mutation.
 
-During P6, `main` advanced with README contribution-boundary commit `b0c0e031b35785977a8be2c59cee3dff9f195d22`. Two-parent merge `bd58f79289e47fd0afbaf81a3b77cd47e4bf1d5c` reconciled that change without rewriting portfolio history.
+## Release security follow-up
 
-## P7 final decisions
+The current tracked tree is clean under the repository's bounded scanner, and the reviewed full-history baseline classifies only the known historical provider-RPC credential-shaped occurrences.
 
-Decision record: [`2026-09-12_P7_DECISION_RESOLUTION.md`](2026-09-12_P7_DECISION_RESOLUTION.md).
+Git cannot establish whether that historical provider credential was revoked or rotated externally. Do not probe/reuse the historical value merely to test whether it still works.
 
-Supporting records:
+Before publishing a formal portfolio release/tag, revoke/rotate the provider credential if it represented a live credential or independently confirm that revocation/rotation already occurred.
 
-- [`2026-09-12_P7_GITHUB_IDENTITY_AND_RELEASE_PREPARATION.md`](2026-09-12_P7_GITHUB_IDENTITY_AND_RELEASE_PREPARATION.md)
-- [`2026-09-12_P7_LICENSE_CONTENT_INVENTORY.md`](2026-09-12_P7_LICENSE_CONTENT_INVENTORY.md)
-- [`2026-09-12_P7_RELEASE_NOTE_TEMPLATE.md`](2026-09-12_P7_RELEASE_NOTE_TEMPLATE.md)
+Therefore:
 
-Final decisions:
-
-- **Repository name:** retain `sentinel-` for this cycle; the imperfect trailing hyphen is accepted as minor naming debt rather than creating migration churn for cosmetic value.
-- **License:** MIT for original project code/documentation, with [`THIRD_PARTY_NOTICES.md`](../../../THIRD_PARTY_NOTICES.md) making third-party/generated/data/model/proof rights explicit.
-- **Homepage:** leave unset unless a real durable destination exists.
-- **Release semantics:** use a portfolio/research snapshot, recommended tag `portfolio-2026-09`, rather than a product-maturity `v1.0.0` claim.
-- **Description/topics:** recommended values are prepared, but repository-settings mutation is not exposed by the current GitHub connection; this is operationally deferred rather than analytically unresolved.
-
-## Licensing boundary
-
-Observed license context:
-
-- all four local current Solidity files under `contracts/src/` declare MIT;
-- generated `ZKMLVerifier.sol` declares MIT;
-- OpenZeppelin dependencies are MIT upstream;
-- `forge-std` is Apache-2.0 upstream and remains a Git submodule;
-- retained model/proof/data/research artifacts are not automatically relicensed by the root MIT license.
-
-## P8 result
-
-Public-content credibility: **READY**.
-
-The final audit found no material overclaim across the root README, handbook architecture/status, module READMEs, showcase, validation guide, case studies, or licensing boundary. In particular the public project does not claim:
-
-- independent manual authorship/mastery of every current subsystem;
-- a trained/promoted repaired R4 teacher;
-- confirmed-negative evaluation data;
-- model quality from physical representation acceptance;
-- physical acceptance of the guarded-selector successor;
-- proof of the entire Solidity/teacher/agent verdict;
-- production signing/broadcast authority;
-- live execution of capabilities reported `NOT_RUN` by the showcase;
-- that green CI proves security/model quality.
-
-## Remaining MUST-item disposition
-
-| ID | Status | Remaining responsibility |
-|---|---|---|
-| M-001 public README | **CLOSED** | — |
-| M-002 GitHub identity | **CONTENT DECISIONS CLOSED / SETTINGS DEFERRED** | Optional description/topics update requires a GitHub-settings-capable surface. |
-| M-003 security policy | **CLOSED** | — |
-| M-004 DVC/artifact contract | **CLOSED** | Future heavy-artifact distribution remains optional/separate. |
-| M-005 runtime/ignore hygiene | **CLOSED** | — |
-| M-006 environment contract | **CLOSED** | Heavy/local prerequisites remain explicit. |
-| M-007 lightweight showcase | **CLOSED** | — |
-| M-008 canonical architecture | **CLOSED** | — |
-| M-009 CI presentation/currentness | **CLOSED / P8 CANDIDATE GREEN** | Re-observe current checks after external blockers are closed and before merge. |
-| M-010 stale PR/branch hygiene | **EXTERNAL CLEANUP OPEN** | Delete `tmp-should-not-create`, `noop`, and `ignore-me`; they contain no unique intended work. |
-| M-011 size/history policy | **CLOSED** | No history rewrite authorized. |
-| M-012 module README truth | **CLOSED** | — |
-| M-013 stable release | **PREPARED / BLOCKED** | Publish only after merge, ref cleanup, credential disposition, and final revalidation. |
-| M-014 secret hygiene | **REPOSITORY CONTROL CLOSED / EXTERNAL CONFIRMATION OPEN** | Confirm/revoke/rotate the historical provider credential before release if applicable. |
-
-## Current blockers
-
-1. **External provider credential disposition:** Git cannot establish revocation/rotation. Do not probe/reuse the exposed value merely to test it; close this safely provider-side.
-2. **Accidental refs:** `tmp-should-not-create`, `noop`, and `ignore-me` should be deleted; the exposed connector provides ref update/create but not delete.
-
-GitHub description/topics are desirable polish but are not a merge/security blocker.
-
-## Final execution order
-
-`close credential disposition + delete accidental refs → re-check branch/main + current CI → merge PR #72 → create portfolio-2026-09 research snapshot → derive final CV/interview wording`
-
-Current final program disposition:
-
+- **portfolio-professionalization merge:** COMPLETE;
 - **public repository content:** READY;
-- **merge:** HOLD;
-- **release:** HOLD.
+- **formal portfolio release/tag:** SECURITY FOLLOW-UP OPEN;
+- **current R4 DATA/ML execution state:** unchanged and still governed by the R4 control plane.
 
-Do not weaken the remaining external controls merely to obtain a cosmetically complete status.
+## Next project direction
+
+Portfolio professionalization is no longer the active implementation branch. Future work should begin from current `main` and choose the next responsibility explicitly.
+
+For DATA/ML R4, the next legitimate technical path remains the separately versioned R4-D-012 guarded-token physical candidate and its binding/acceptance evidence—not full training.
