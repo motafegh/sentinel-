@@ -1,0 +1,37 @@
+name: Portfolio showcase
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  fresh-clone-boundary:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Run fresh-clone Sentinel showcase
+        run: python3 tools/showcase_sentinel.py
+
+      - name: Verify machine-readable showcase output
+        run: |
+          python3 tools/showcase_sentinel.py --json > /tmp/sentinel-showcase.json
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+
+          report = json.loads(Path("/tmp/sentinel-showcase.json").read_text())
+          assert report["overall"] == "PASS", report
+          assert all(item["status"] == "NOT_RUN" for item in report["not_run"]), report
+          PY

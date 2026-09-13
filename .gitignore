@@ -8,16 +8,16 @@
 # Slither/Aderyn run checkpoints (large, regeneratable)
 *checkpoint*.jsonl
 # Root-level temp files from analysis runs
-report.json
-tmp_aderyn_fix.py
-test
+/report.json
+/tmp_aderyn_fix.py
+/test
 # Phase 3 solc binary downloads (regeneratable)
-Phase3_DeepAnalysis_2026-06-06/solc-binaries/
+/Phase3_DeepAnalysis_2026-06-06/solc-binaries/
 
 # ── ML data (large / regeneratable) ─────────────────────────────────────────
 # Raw datasets (GBs — not tracked; obtain from original source)
-docs/archive
-BCCC-SCsVul-2024/
+/docs/archive/
+/BCCC-SCsVul-2024/
 ml/data/SolidiFI/
 ml/data/SolidiFI-benchmark/
 ml/data/SolidiFI-processed/
@@ -51,7 +51,10 @@ ml/data/validation_report.json
 # ── MLflow ──────────────────────────────────────────────────────────────────
 mlruns.db
 mlruns/
+
+# ── Assistant/local workspace state ─────────────────────────────────────────
 .claude/
+
 # ── ZKML large binaries ──────────────────────────────────────────────────────
 zkml/ezkl/proving_key.pk
 zkml/ezkl/srs.params
@@ -59,7 +62,7 @@ zkml/ezkl/srs.params
 # ── Agent runtime data ───────────────────────────────────────────────────────
 agents/data/
 
-# ── Training / process output ─────────────────────────────────────────────
+# ── Training / process output ────────────────────────────────────────────────
 ml/logs/
 logs/
 nohup.out
@@ -78,10 +81,25 @@ validation_full_output.txt
 # Log files
 *.log
 
-# Environment files
+# Environment files / secrets
 .env
 .env.local
-*.env.*
+.env.*
+# Allow safe committed templates for fresh-clone setup.
+!.env.example
+!**/.env.example
+
+# Private credential/key material. Public verification keys and certificates
+# must use deliberate, reviewable filenames/extensions instead of these paths.
+*.pem
+*.key
+*.p12
+*.pfx
+*.keystore
+id_rsa
+id_rsa.*
+id_ed25519
+id_ed25519.*
 
 # Slither/crytic build-cache artifacts (regenerated on every run)
 crytic-export/
@@ -93,7 +111,7 @@ crytic-export/
 *.swp
 *.swo
 
-# Python specific
+# Python-specific generated state
 __pycache__/
 *.pyc
 *.pyo
@@ -101,16 +119,18 @@ __pycache__/
 .Python
 *.so
 *.egg-info/
-
-# Dependencies
-node_modules/
-venv/
-.venv/
 .mypy_cache/
 .pytest_cache/
+.ruff_cache/
+.hypothesis/
 .coverage
 coverage/
 htmlcov/
+
+# Dependencies / virtual environments
+node_modules/
+venv/
+.venv/
 
 # Build artifacts
 dist/
@@ -145,19 +165,24 @@ Thumbs.db
 *.tar.gz
 *.tar.bz2
 *.tar.xz
-*.tar.zstdocs/IRVLESS*.txt
+*.tar.zst
+
+docs/IRVLESS*.txt
 IRVLESS*.txt
 
-# ── SmartBugs Wild eval large files (regeneratable from state) ──────────────
+# ── SmartBugs Wild eval large files (regeneratable from state) ───────────────
 ml/data/smartbugs_wild_eval_state.json
 
 # ── SmartBugs Wild eval large per-contract/contamination outputs ─────────────
 docs/reports/**/per_contract*.json
 docs/reports/**/contamination_index.json
-.dvc/cache/
 
-# Runtime cruft
-tmp_*.py
-check_verify.sh
-submit_audit.sh
-sentinel_pipeline_comparison_audit.md:Zone.Identifier
+# DVC cache/runtime/local configuration state
+.dvc/cache/
+.dvc/tmp/
+.dvc/config.local
+
+# Root-level runtime helpers generated during local troubleshooting
+/tmp_*.py
+/check_verify.sh
+/submit_audit.sh

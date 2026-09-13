@@ -1,7 +1,12 @@
 # Scripts — Utilities & Smoke Tests
 
-Standalone scripts for smoke testing MCP servers, running real audits, and driving the
+Standalone scripts for smoke testing MCP servers, running audits, and driving the
 evaluation pipeline. No pytest framework — each script is self-contained.
+
+For the public fresh-clone portfolio entry point, start with the root
+[`SHOWCASE.md`](../../SHOWCASE.md). The scripts in this directory are deeper
+module/runtime exercises and may require the AGENTS environment, local tools, or
+live services.
 
 ## Files
 
@@ -10,7 +15,7 @@ evaluation pipeline. No pytest framework — each script is self-contained.
 | `smoke_inference_mcp.py` | Tests inference MCP server — connect, discover tools, call predict |
 | `smoke_rag_mcp.py` | Tests RAG MCP server — health, search, filters, k cap |
 | `smoke_audit_mcp.py` | Tests audit MCP server — all three tools, bad address handling |
-| `smoke_langgraph.py` | Full audit graph — mock or live mode (`--live` flag) |
+| `smoke_langgraph.py` | Full audit graph — mock-MCP or live mode (`--live` flag) |
 | `test_k_cap.py` | Quick k=99 cap test for RAG server |
 | `run_real_audit.py` | Real-LLM E2E harness — `--no-llm`, `--profile`, `--unbounded-timeouts` |
 | `eval_benchmark.py` | Evaluation benchmark runner, scores against ground truth |
@@ -32,16 +37,16 @@ poetry run python scripts/smoke_rag_mcp.py
 # Audit server (starts its own subprocess in mock mode)
 poetry run python scripts/smoke_audit_mcp.py
 
-# Full audit graph — mock mode (no services needed)
-poetry run python scripts/smoke_langgraph.py
+# Full audit graph — MCP responses mocked; disable LLM for deterministic local smoke
+AGENTS_DISABLE_LLM=1 poetry run python scripts/smoke_langgraph.py
 
-# Full audit graph — live mode (all MCP servers must be running)
+# Full audit graph — live MCP mode (required services/toolchains must be available)
 poetry run python scripts/smoke_langgraph.py --live
 
 # Quick k cap test (RAG server must be running on :8011)
 poetry run python scripts/test_k_cap.py
 
-# Real audit with LLM (LM Studio + all MCP servers running)
+# Real audit with LLM (LM Studio + all required MCP/tool services running)
 poetry run python scripts/run_real_audit.py contracts/Vault.sol
 
 # Real audit, no LLM, with profiling
@@ -57,20 +62,23 @@ poetry run python scripts/build_reliability_matrix.py \
 
 ### `smoke_langgraph.py`
 
-End-to-end test for the full LangGraph audit pipeline.
+End-to-end smoke for the LangGraph orchestration path.
 
-- **Mock mode** (default): Patches `_call_mcp_tool` so no MCP servers are needed.
-  Exercises all 14 nodes with realistic mock data.
-- **Live mode** (`--live`): Uses real MCP servers. All five servers must be running.
+- **Default mode:** patches MCP calls with deterministic fixture responses, so MCP servers are not required. It exercises the real graph/orchestration code. Set `AGENTS_DISABLE_LLM=1` for a deterministic no-LLM smoke.
+- **Live mode (`--live`):** uses live MCP/service dependencies and therefore requires the relevant local runtime/toolchains.
+
+The mock payloads are interface fixtures. A passing smoke proves orchestration/report assembly against those fixtures; it is **not** evidence of vulnerability-detection quality, model quality, or live analyzer availability. Tool/analyzer failures must remain explicit in the resulting status rather than being interpreted as clean findings.
 
 ### `smoke_audit_mcp.py`
 
 Starts the audit server as a subprocess (mock mode), waits for `/health`, then exercises
 all three tools via MCP SSE client:
 - `check_audit_exists` → `exists=True`
-- `get_latest_audit` → `score=0.7314 label=vulnerable`
-- `get_audit_history` → 2 records returned
+- `get_latest_audit` → mock record returned
+- `get_audit_history` → versioned mock records returned
 - Bad address → error returned (not a crash)
+
+These mock results validate the read interface; they are not live on-chain evidence.
 
 ### `smoke_rag_mcp.py`
 

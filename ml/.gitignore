@@ -1,1 +1,8 @@
-/checkpoints
+# Local/generated training artifacts. Keep model/checkpoint binaries out of Git;
+# publish intentionally promoted artifacts through a versioned artifact mechanism.
+/checkpoints/
+/models/
+*.pt
+*.pth
+*.ckpt
+*.safetensors
