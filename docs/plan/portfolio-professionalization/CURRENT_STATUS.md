@@ -6,7 +6,7 @@
 **Merge commit:** `6e86b04e9d78ab9d0e6fd4a485bec7270bec0b7c`  
 **Role:** canonical live status for the portfolio-professionalization program
 
-The P0–P8 portfolio-professionalization program is now merged into `main`. Dated plans, audits, and closeouts remain evidence of the path taken; this file owns the current portfolio-program disposition.
+The P0–P8 portfolio-professionalization program is merged into `main`. Dated plans, audits, and closeouts remain evidence of the path taken; this file owns the current portfolio-program disposition.
 
 This program remains subordinate to `CLAUDE.md`, executable source/config/tests, current R4 machine-readable authority, accepted ADRs/evidence, and the canonical handbook. Portfolio work does not grant DATA/ML training, model-quality, production, signer/broadcaster, or expanded ZK authority.
 
@@ -15,7 +15,7 @@ This program remains subordinate to `CLAUDE.md`, executable source/config/tests,
 | Phase | Status | Current disposition |
 |---|---|---|
 | P0 readiness audit | **COMPLETE** | Baseline risks and public-readiness gaps audited. |
-| P1 repository hygiene | **COMPLETE AT REPOSITORY-CONTENT SCOPE** | DVC/runtime/ignore/security/development hygiene established; three accidental no-work refs remain external cleanup. |
+| P1 repository hygiene | **COMPLETE AT AVAILABLE-TOOL SCOPE** | DVC/runtime/ignore/security/development hygiene established. All remaining branch refs are aligned to `main`; ref-name deletion itself is unavailable through the current connector. |
 | P2 public landing page | **COMPLETE** | README, navigation, contribution boundary, limitations, showcase, and licensing are public-facing and current. |
 | P3 architecture/trust presentation | **COMPLETE** | Runtime, DATA/ML, proof/provenance, and ownership views are separated and current. |
 | P4 bounded showcase | **COMPLETE** | Dependency-light fresh-clone boundary demo is committed and CI-backed. |
@@ -40,7 +40,7 @@ This program remains subordinate to `CLAUDE.md`, executable source/config/tests,
 
 ## Final PR validation boundary
 
-The final PR head `e2022b23002a01f7562c20895065462b94b9c01a` completed the current PR workflow surfaces successfully before merge:
+The final PR head `e2022b23002a01f7562c20895065462b94b9c01a` completed all current PR workflow surfaces successfully before merge:
 
 - Handbook — **SUCCESS**;
 - Portfolio showcase — **SUCCESS**;
@@ -52,11 +52,11 @@ Detailed credibility audit: [`2026-09-12_P8_FINAL_PORTFOLIO_AUDIT_CLOSEOUT.md`](
 
 Merge closeout: [`2026-09-13_PORTFOLIO_MERGE_CLOSEOUT.md`](2026-09-13_PORTFOLIO_MERGE_CLOSEOUT.md).
 
-The administrative post-merge reconciliation commits on `main` must also retain green applicable workflow results; this ledger should not imply those later commits were part of the pre-merge PR candidate.
+Administrative post-merge commits on `main` must retain green applicable workflow results; this ledger does not imply those later commits were part of the pre-merge PR candidate.
 
 ## Public repository boundary now on `main`
 
-The merged repository now includes:
+The merged repository includes:
 
 - professional root README and module entry points;
 - explicit project-era / AI-assistance disclosure;
@@ -69,14 +69,23 @@ The merged repository now includes:
 - seven curated engineering case studies;
 - P0–P8 planning/decision/audit evidence.
 
-## Remaining repository polish
+## Branch state
 
-These do **not** invalidate the merge:
+After merge, the non-main refs were fast-forwarded to the canonical `main` state using the available connector operations:
 
-1. Delete accidental no-work refs `tmp-should-not-create`, `noop`, and `ignore-me` when a ref-deletion-capable GitHub/local-Git surface is available.
-2. Optionally set the prepared GitHub repository description/topics when repository-settings mutation is available.
+- `portfolio/professionalization-2026-09-02`;
+- `tmp-should-not-create`;
+- `noop`;
+- `ignore-me`.
 
-The current connector can read/create/update refs but does not expose ref deletion or repository description/topic mutation.
+Therefore no non-main branch contains unique or divergent work. The three accidental names can still be deleted later for cosmetic branch-list cleanup when a ref-deletion-capable surface is available, but this is no longer a repository-integrity concern.
+
+## Remaining optional repository polish
+
+- Set the prepared GitHub repository description/topics if a repository-settings-capable surface becomes available.
+- Delete the three accidental alias branch names when ref deletion becomes available.
+
+Neither item invalidates the merged repository state.
 
 ## Release security follow-up
 
@@ -90,6 +99,7 @@ Therefore:
 
 - **portfolio-professionalization merge:** COMPLETE;
 - **public repository content:** READY;
+- **branch divergence:** NONE;
 - **formal portfolio release/tag:** SECURITY FOLLOW-UP OPEN;
 - **current R4 DATA/ML execution state:** unchanged and still governed by the R4 control plane.
 
