@@ -2,7 +2,7 @@
 
 **Status:** ACTIVE — cross-module execution controller  
 **Created:** 2026-09-14  
-**Baseline:** `main` at `796b2e809cc9956b1228930bf45ba5d8a97f5616`  
+**Planning baseline before this package:** `main` at `796b2e809cc9956b1228930bf45ba5d8a97f5616`  
 **Scope:** remaining technical completion, capability hardening, model repair/promotion, and downstream lineage reconciliation  
 
 ## 1. Purpose
