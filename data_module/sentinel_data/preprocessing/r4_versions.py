@@ -35,6 +35,12 @@ V10_SLITHER_RUNTIME_EXCEPTIONS = {
     "caa35c1a5906269bbe5e70de780d105c2968ece4fc038d7f7208efee681aeec9": "0.11.5",
 }
 
+# R4-D-012 authorizes only a fresh token/representation candidate. These
+# identifiers never rename or mutate the accepted R4-D-011 V10 V2.6 root.
+GUARDED_SELECTOR_POLICY_VERSION = "target_aware_guarded_v1"
+GUARDED_TOKEN_LINEAGE_VERSION = "r4-v10-v26-guarded-token-v1"
+GUARDED_REPRESENTATION_ROOT_NAME = "representations-r4-v4-guarded-candidate"
+
 # Graph node/feature semantics and model tensor shape are intentionally frozen.
 GRAPH_SCHEMA_VERSION = "v9"
 TOKEN_TENSOR_SHAPE = (4, 512)
