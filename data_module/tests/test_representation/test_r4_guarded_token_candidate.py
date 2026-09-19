@@ -13,6 +13,7 @@ from sentinel_data.preprocessing.r4_versions import (
     GUARDED_REPRESENTATION_ROOT_NAME,
     GUARDED_TOKEN_LINEAGE_VERSION,
     GUARDED_TOKEN_SELECTOR_VERSION,
+    GUARDED_TOKEN_TRANSFORMERS_VERSION,
     HISTORICAL_TOKEN_SELECTOR_VERSION,
     V10_REPRESENTATION_EXTRACTOR_VERSION,
 )
@@ -206,6 +207,9 @@ def test_under_cap_keeps_all_real_windows_and_pads_to_frozen_shape(tmp_path: Pat
     assert sidecar["selector_decision"] == decision
     assert sidecar["selected_window_indices"] == [0]
     assert sidecar["token_lineage"] == GUARDED_TOKEN_LINEAGE_VERSION
+    assert payload["transformers_version"] == GUARDED_TOKEN_TRANSFORMERS_VERSION
+    assert sidecar["transformers_version"] == GUARDED_TOKEN_TRANSFORMERS_VERSION
+    assert decision["transformers_version"] == GUARDED_TOKEN_TRANSFORMERS_VERSION
 
 
 def test_over_cap_uses_guarded_selector_only_for_strict_target_gain(tmp_path: Path):
@@ -388,6 +392,7 @@ def test_bounded_candidate_manifest_binds_fresh_lineage_and_stop_lines(
     assert manifest["representation_lineage"] == GUARDED_TOKEN_LINEAGE_VERSION
     assert manifest["selector_policy"] == GUARDED_TOKEN_SELECTOR_VERSION
     assert manifest["control_selector"] == HISTORICAL_TOKEN_SELECTOR_VERSION
+    assert manifest["transformers_version"] == GUARDED_TOKEN_TRANSFORMERS_VERSION
     assert manifest["full_population"] is False
     assert manifest["contracts_requested"] == 1
     assert manifest["contracts_written"] == 1
