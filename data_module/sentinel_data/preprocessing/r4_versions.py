@@ -27,6 +27,17 @@ V10_REPRESENTATION_EXTRACTOR_VERSION = (
     "v2.6-r4-call-semantics-deterministic-cfg-mutators"
 )
 V10_REPRESENTATION_ROOT_NAME = "representations-r4-v3-candidate"
+
+# R4-D-012 guarded-token successor. These identifiers authorize only a fresh
+# candidate lineage descended from the immutable R4-D-011 graph parent. They do
+# not grant physical acceptance or training authority.
+HISTORICAL_TOKEN_SELECTOR_VERSION = "historical_linspace_v1"
+GUARDED_TOKEN_SELECTOR_VERSION = "target_aware_guarded_v1"
+GUARDED_TOKEN_SELECTOR_SCHEMA_VERSION = "r4-token-selector-decision-v1"
+GUARDED_TOKEN_LINEAGE_VERSION = "r4-v10-v26-guarded-tokens-v1"
+GUARDED_REPRESENTATION_ROOT_NAME = (
+    "representations-r4-v10-v26-guarded-v1-candidate"
+)
 V10_PRIMARY_SLITHER_VERSION = "0.10.0"
 V10_SLITHER_RUNTIME_EXCEPTIONS = {
     # Slither 0.10.0 fails full analysis for this exact accepted source, while
