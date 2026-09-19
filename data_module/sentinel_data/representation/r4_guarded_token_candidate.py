@@ -525,6 +525,8 @@ def _build_guarded_token_identity(
     ):
         candidate_sidecar[key] = token_fields[key]
     candidate_sidecar["window_count"] = int(token_fields["num_windows"])
+    candidate_sidecar["tokenizer_name"] = token_fields["tokenizer_name"]
+    candidate_sidecar["transformers_version"] = token_fields["transformers_version"]
     candidate_sidecar["token_lineage"] = GUARDED_TOKEN_LINEAGE_VERSION
     candidate_sidecar["token_selector_policy"] = GUARDED_TOKEN_SELECTOR_VERSION
     candidate_sidecar["selector_decision"] = selector_decision
