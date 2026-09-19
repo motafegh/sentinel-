@@ -81,6 +81,8 @@ EVIDENCE_CASES: tuple[dict[str, Any], ...] = (
         "expected_selected_indices": [0],
         "expected_control_target_coverage_ratio": 1.0,
         "expected_selected_target_coverage_ratio": 1.0,
+        "expected_control_retained_ratio": 1.0,
+        "expected_retained_ratio": 1.0,
     },
     {
         "purpose": "strong_selector_improvement",
@@ -93,6 +95,8 @@ EVIDENCE_CASES: tuple[dict[str, Any], ...] = (
         "expected_selected_indices": [5, 6, 8, 10],
         "expected_control_target_coverage_ratio": 0.5205566097406704,
         "expected_selected_target_coverage_ratio": 0.9854522454142948,
+        "expected_control_retained_ratio": 0.6429833863556027,
+        "expected_retained_ratio": 0.5510781194768469,
     },
     {
         "purpose": "over_cap_equal_control_fallback",
@@ -105,6 +109,8 @@ EVIDENCE_CASES: tuple[dict[str, Any], ...] = (
         "expected_selected_indices": [0, 2, 5, 7],
         "expected_control_target_coverage_ratio": 0.8838709677419355,
         "expected_selected_target_coverage_ratio": 0.8838709677419355,
+        "expected_control_retained_ratio": 0.8873994638069705,
+        "expected_retained_ratio": 0.8873994638069705,
     },
     {
         "purpose": "reentrancy_target_shape_control_fallback",
@@ -117,6 +123,8 @@ EVIDENCE_CASES: tuple[dict[str, Any], ...] = (
         "expected_selected_indices": [0, 5, 11, 16],
         "expected_control_target_coverage_ratio": 1.0,
         "expected_selected_target_coverage_ratio": 1.0,
+        "expected_control_retained_ratio": 0.44148115494820367,
+        "expected_retained_ratio": 0.44148115494820367,
     },
     {
         "purpose": "long_train_batch_improvement",
@@ -129,6 +137,8 @@ EVIDENCE_CASES: tuple[dict[str, Any], ...] = (
         "expected_selected_indices": [1, 4, 7, 10],
         "expected_control_target_coverage_ratio": 0.11139967195188627,
         "expected_selected_target_coverage_ratio": 0.1394204483324221,
+        "expected_control_retained_ratio": 0.11345311408799441,
+        "expected_retained_ratio": 0.12951558631198018,
     },
     {
         "purpose": "worst_case_cuda_forward_probe",
@@ -141,6 +151,8 @@ EVIDENCE_CASES: tuple[dict[str, Any], ...] = (
         "expected_selected_indices": [96, 99, 102, 105],
         "expected_control_target_coverage_ratio": 0.016383089382569285,
         "expected_selected_target_coverage_ratio": 0.03789285979641875,
+        "expected_control_retained_ratio": 0.020759741923981233,
+        "expected_retained_ratio": 0.02273208455444,
     },
     {
         "purpose": "train_weak_improvement",
@@ -153,6 +165,8 @@ EVIDENCE_CASES: tuple[dict[str, Any], ...] = (
         "expected_selected_indices": [3, 6, 9, 12],
         "expected_control_target_coverage_ratio": 0.36030374443571617,
         "expected_selected_target_coverage_ratio": 0.5341712490180676,
+        "expected_control_retained_ratio": 0.42682650983940285,
+        "expected_retained_ratio": 0.4614340646912463,
     },
     {
         "purpose": "train_strong_target_shape_improvement",
@@ -165,6 +179,8 @@ EVIDENCE_CASES: tuple[dict[str, Any], ...] = (
         "expected_selected_indices": [1, 4, 7, 10],
         "expected_control_target_coverage_ratio": 0.6095149830089589,
         "expected_selected_target_coverage_ratio": 0.6302131603336423,
+        "expected_control_retained_ratio": 0.6166211707612982,
+        "expected_retained_ratio": 0.618744313011829,
     },
 )
 
