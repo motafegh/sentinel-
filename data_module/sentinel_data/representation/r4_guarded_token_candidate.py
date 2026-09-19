@@ -392,7 +392,7 @@ def _selector_payload(
     return token_fields, selector_decision
 
 
-def build_guarded_token_identity(
+def _build_guarded_token_identity(
     *,
     source: str,
     contract_id: str,
@@ -602,7 +602,7 @@ def build_guarded_token_candidate(
     results: list[GuardedBuildResult] = []
     for source, contract_id in requested:
         results.append(
-            build_guarded_token_identity(
+            _build_guarded_token_identity(
                 source=source,
                 contract_id=contract_id,
                 preprocessed_root=preprocessed_root,
@@ -671,6 +671,5 @@ __all__ = [
     "GuardedTokenCandidateError",
     "TargetEvidenceError",
     "build_guarded_token_candidate",
-    "build_guarded_token_identity",
     "load_accepted_v10_parent",
 ]
