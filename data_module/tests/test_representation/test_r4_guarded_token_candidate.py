@@ -484,3 +484,25 @@ def test_builder_rejects_candidate_nested_inside_preprocessed_parent(tmp_path: P
             )
 
     assert not nested_root.exists()
+
+
+def test_batch_builder_rejects_noncanonical_preprocessed_parent(tmp_path: Path):
+    fixture = _fixture(tmp_path, source_text=_source_with_target(long=False))
+    wrong_preprocessed = fixture["repo_root"] / "data_module/data/alternate-preprocessed"
+    wrong_preprocessed.mkdir(parents=True)
+    output_root = _output_root(tmp_path, "wrong-preprocessed")
+
+    with pytest.raises(
+        GuardedTokenCandidateError,
+        match="not the exact R4-D-011 accepted parent",
+    ):
+        build_guarded_token_candidate(
+            acceptance_path=fixture["repo_root"] / "acceptance.json",
+            repo_root=fixture["repo_root"],
+            preprocessed_root=wrong_preprocessed,
+            parent_root=fixture["parent_root"],
+            output_root=output_root,
+            identities=[(fixture["source"], fixture["contract_id"])],
+        )
+
+    assert not output_root.exists()
