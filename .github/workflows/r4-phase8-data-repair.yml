@@ -122,6 +122,7 @@ jobs:
             docs/plan/ml-R4/scripts/p8_audit_repaired_lineage.py \
             docs/plan/ml-R4/scripts/p8_audit_logical_v3_acceptance.py \
             docs/plan/ml-R4/scripts/p8_compare_bounded_window_strategies.py \
+            docs/plan/ml-R4/scripts/p8_validate_guarded_token_candidate_d4.py \
             docs/plan/ml-R4/scripts/p8_run_repaired_micro_smoke.py \
             docs/plan/ml-R4/scripts/p8_build_confirmed_negative_review_queue.py \
             docs/plan/ml-R4/scripts/p8_build_confirmed_negative_review_queue_v3.py \
