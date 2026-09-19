@@ -312,6 +312,13 @@ def _validate_identity(
     if decision.get("control_selector") != HISTORICAL_TOKEN_SELECTOR_VERSION:
         errors.append("selector decision control identity changed")
 
+    if first.get("transformers_version") != GUARDED_TOKEN_TRANSFORMERS_VERSION:
+        errors.append("token payload transformers runtime identity changed")
+    if first_meta.get("transformers_version") != GUARDED_TOKEN_TRANSFORMERS_VERSION:
+        errors.append("sidecar transformers runtime identity changed")
+    if decision.get("transformers_version") != GUARDED_TOKEN_TRANSFORMERS_VERSION:
+        errors.append("selector decision transformers runtime identity changed")
+
     historical_indices = [int(value) for value in historical["selected_window_indices"]]
     control_indices = [int(value) for value in decision["control_indices"]]
     selected_indices = [int(value) for value in decision["selected_indices"]]
@@ -327,6 +334,8 @@ def _validate_identity(
     selected_target = int(decision["selected_target_coverage_tokens"])
     control_target = int(decision["control_target_coverage_tokens"])
     candidate_target = int(decision["candidate_target_coverage_tokens"])
+    control_target_ratio = float(decision["control_target_coverage_ratio"])
+    selected_target_ratio = float(decision["selected_target_coverage_ratio"])
     used_fallback = bool(decision["used_control_fallback"])
     effective = str(decision["effective_selector"])
 
@@ -362,6 +371,50 @@ def _validate_identity(
             f"expected={case['expect_fallback']} actual={used_fallback}"
         )
 
+    if "expected_total_windows" in case and total_windows != int(
+        case["expected_total_windows"]
+    ):
+        errors.append(
+            "retained evidence window count changed: "
+            f"expected={case['expected_total_windows']} actual={total_windows}"
+        )
+    if "expected_control_indices" in case and control_indices != [
+        int(value) for value in case["expected_control_indices"]
+    ]:
+        errors.append(
+            "retained evidence control indices changed: "
+            f"expected={case['expected_control_indices']} actual={control_indices}"
+        )
+    if "expected_selected_indices" in case and selected_indices != [
+        int(value) for value in case["expected_selected_indices"]
+    ]:
+        errors.append(
+            "retained evidence selected indices changed: "
+            f"expected={case['expected_selected_indices']} actual={selected_indices}"
+        )
+    if "expected_control_target_coverage_ratio" in case and not math.isclose(
+        control_target_ratio,
+        float(case["expected_control_target_coverage_ratio"]),
+        rel_tol=0.0,
+        abs_tol=1e-12,
+    ):
+        errors.append(
+            "retained evidence control target coverage changed: "
+            f"expected={case['expected_control_target_coverage_ratio']} "
+            f"actual={control_target_ratio}"
+        )
+    if "expected_selected_target_coverage_ratio" in case and not math.isclose(
+        selected_target_ratio,
+        float(case["expected_selected_target_coverage_ratio"]),
+        rel_tol=0.0,
+        abs_tol=1e-12,
+    ):
+        errors.append(
+            "retained evidence selected target coverage changed: "
+            f"expected={case['expected_selected_target_coverage_ratio']} "
+            f"actual={selected_target_ratio}"
+        )
+
     parent_binding = first_meta.get("graph_parent") or {}
     if parent_binding.get("decision_id") != "R4-D-011":
         errors.append("candidate sidecar does not bind graph parent to R4-D-011")
@@ -388,15 +441,11 @@ def _validate_identity(
         "control_target_coverage_tokens": control_target,
         "candidate_target_coverage_tokens": candidate_target,
         "selected_target_coverage_tokens": selected_target,
-        "control_target_coverage_ratio": float(
-            decision["control_target_coverage_ratio"]
-        ),
+        "control_target_coverage_ratio": control_target_ratio,
         "candidate_target_coverage_ratio": float(
             decision["candidate_target_coverage_ratio"]
         ),
-        "selected_target_coverage_ratio": float(
-            decision["selected_target_coverage_ratio"]
-        ),
+        "selected_target_coverage_ratio": selected_target_ratio,
         "retained_unique_code_tokens": int(decision["retained_unique_code_tokens"]),
         "retained_token_ratio": float(decision["retained_token_ratio"]),
         "input_ids_shape": list(first_shape),
