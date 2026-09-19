@@ -557,13 +557,13 @@ def build_guarded_token_candidate(
         repo_root=repo_root,
         parent_root=parent_root,
     )
-    if output_root.exists() and any(output_root.iterdir()):
-        raise FileExistsError(f"guarded candidate output is not empty: {output_root}")
-    output_root.mkdir(parents=True, exist_ok=True)
     if output_root.name != GUARDED_REPRESENTATION_ROOT_NAME:
         raise GuardedTokenCandidateError(
             f"guarded candidate root must be named {GUARDED_REPRESENTATION_ROOT_NAME!r}"
         )
+    if output_root.exists() and any(output_root.iterdir()):
+        raise FileExistsError(f"guarded candidate output is not empty: {output_root}")
+    output_root.mkdir(parents=True, exist_ok=True)
 
     parent_inventory = _inventory_parent(parent_root)
     if len(parent_inventory) != parent.contracts:
