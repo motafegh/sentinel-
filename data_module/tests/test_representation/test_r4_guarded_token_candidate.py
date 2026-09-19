@@ -248,6 +248,7 @@ def test_guarded_build_is_deterministic_and_graph_bytes_are_parent_identical(
     )
     assert first_payload["selector_decision"] == second_payload["selector_decision"]
     assert first.selected_window_indices == second.selected_window_indices
+    assert first_meta == second_meta
 
     first_graph = first_root / fixture["source"] / f"{fixture['contract_id']}.pt"
     second_graph = second_root / fixture["source"] / f"{fixture['contract_id']}.pt"
@@ -277,7 +278,7 @@ def test_missing_target_evidence_fails_closed_without_artifacts(tmp_path: Path):
             tokenizer=CharTokenizer(),
         )
 
-    assert not list(output_root.glob("**/*")) if output_root.exists() else True
+    assert not output_root.exists()
 
 
 def test_ambiguous_or_missing_named_target_fails_closed(tmp_path: Path):
