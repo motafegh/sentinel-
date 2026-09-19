@@ -51,7 +51,7 @@ If the exact research implementation of `target_aware_guarded_v1` exists outside
 
 ## 4. Work package D0 — source/evidence reconstruction
 
-**State:** `AUDITING`
+**State:** `COMPLETE` — exact selector/source contract reconstructed and recorded
 
 Tasks:
 
@@ -72,7 +72,7 @@ Tasks:
 
 ## 5. Work package D1 — selector interface and lineage design
 
-**State:** `NOT_STARTED`
+**State:** `COMPLETE` — fresh guarded selector/lineage interface defined
 
 Design requirements:
 
@@ -101,7 +101,7 @@ Candidate metadata fields should be evaluated, not blindly fixed, but must be su
 
 ## 6. Work package D2 — implementation
 
-**State:** `NOT_STARTED`
+**State:** `COMPLETE` — bounded guarded-token candidate path implemented; historical paths unchanged
 
 Implementation goals:
 
@@ -115,6 +115,8 @@ Implementation goals:
 8. Give the new token lineage a fresh version/name; do not reuse `accepted_v9_byte_copy` semantics.
 
 ## 7. Work package D3 — unit and property validation
+
+**State:** `COMPLETE` — exact-head substantive repository CI passed at `ccf49bfae504c82c192d72499ba8766f0f185376`; inherited baseline `git diff --check` debt remains outside this tranche
 
 Required tests include:
 
@@ -136,6 +138,8 @@ Where practical, add property-style tests around index bounds, monotonic validit
 **Exit:** local unit/property suite passes and historical-control compatibility remains intact.
 
 ## 8. Work package D4 — bounded candidate validation
+
+**State:** `READY_FOR_PROTECTED_LOCAL_VALIDATION` — not yet executed; D5 remains blocked
 
 Before full-population generation, run bounded tranches covering:
 
@@ -161,6 +165,8 @@ Compare candidate versus historical control on:
 
 ## 9. Work package D5 — full physical candidate
 
+**State:** `BLOCKED_ON_D4` — the bounded builder explicitly rejects implicit full-population execution
+
 Generate the full protected-local 22,540-identity candidate only after D0–D4 pass.
 
 Required outputs:
@@ -179,6 +185,8 @@ Required outputs:
 Full generation must occur in a protected local artifact root; Git should contain the binding/evidence records, not unnecessary heavy artifacts.
 
 ## 10. Work package D6 — physical acceptance review
+
+**State:** `NOT_STARTED`
 
 The candidate is not authoritative merely because generation completed.
 
