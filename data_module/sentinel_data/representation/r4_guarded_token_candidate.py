@@ -38,6 +38,14 @@ from sentinel_data.representation.r4_target_spans import target_contract_char_sp
 
 R4_D011_DECISION_ID = "R4-D-011"
 R4_D011_ACCEPTANCE_SCHEMA = "sentinel-r4-v10-v26-physical-acceptance-v1"
+R4_D011_PHYSICAL_ROOT = (
+    "data_module/data/v10-v26-full-candidate-attempt-2026-09-01-a/"
+    "representations-r4-v3-candidate"
+)
+R4_D011_PREPROCESSED_PARENT = "data_module/data/sentinel-preprocessed-r4-v2"
+R4_D011_BINDING_DIGEST_SHA256 = (
+    "d9f925588913e66476cfbc097bace7daa7e673295fe2a243760313d0bef5ebdd"
+)
 GUARDED_CANDIDATE_MANIFEST_SCHEMA = "sentinel-r4-guarded-token-candidate-manifest-v1"
 GUARDED_CANDIDATE_STATUS_BOUNDED = "BOUNDED_GUARDED_TOKEN_CANDIDATE"
 
@@ -57,6 +65,7 @@ class AcceptedV10Parent:
     decision_id: str
     physical_root: str
     binding_digest_sha256: str
+    preprocessed_parent: str
     contracts: int
     graph_schema_version: str
     extractor_version: str
@@ -182,7 +191,15 @@ def load_accepted_v10_parent(
         raise GuardedTokenCandidateError("R4-D-011 acceptance record is not PASS")
 
     lineage = dict(acceptance.get("accepted_lineage") or {})
-    expected_root = (repo_root / str(lineage.get("physical_root") or "")).resolve()
+    if lineage.get("physical_root") != R4_D011_PHYSICAL_ROOT:
+        raise GuardedTokenCandidateError(
+            "R4-D-011 acceptance physical-root identity changed"
+        )
+    if lineage.get("preprocessed_parent") != R4_D011_PREPROCESSED_PARENT:
+        raise GuardedTokenCandidateError(
+            "R4-D-011 acceptance preprocessing-parent identity changed"
+        )
+    expected_root = (repo_root / R4_D011_PHYSICAL_ROOT).resolve()
     if parent_root != expected_root:
         raise GuardedTokenCandidateError(
             f"parent root is not the exact R4-D-011 physical root: "
@@ -199,13 +216,16 @@ def load_accepted_v10_parent(
 
     digest = str(lineage.get("binding_digest_sha256") or "")
     contracts = int(lineage.get("contracts", 0))
-    if len(digest) != 64 or contracts < 1:
-        raise GuardedTokenCandidateError("R4-D-011 acceptance lineage is incomplete")
+    if digest != R4_D011_BINDING_DIGEST_SHA256 or contracts < 1:
+        raise GuardedTokenCandidateError(
+            "R4-D-011 acceptance binding identity is incomplete or changed"
+        )
 
     return AcceptedV10Parent(
         decision_id=R4_D011_DECISION_ID,
         physical_root=str(lineage["physical_root"]),
         binding_digest_sha256=digest,
+        preprocessed_parent=R4_D011_PREPROCESSED_PARENT,
         contracts=contracts,
         graph_schema_version=V10_GRAPH_SCHEMA_VERSION,
         extractor_version=V10_REPRESENTATION_EXTRACTOR_VERSION,
@@ -608,6 +628,7 @@ def build_guarded_token_candidate(
     """Build an explicit bounded D4 candidate and write its construction manifest."""
 
     repo_root = Path(repo_root).resolve()
+    preprocessed_root = Path(preprocessed_root).resolve()
     parent_root = Path(parent_root).resolve()
     output_root = Path(output_root).resolve()
     parent = load_accepted_v10_parent(
@@ -615,6 +636,12 @@ def build_guarded_token_candidate(
         repo_root=repo_root,
         parent_root=parent_root,
     )
+    expected_preprocessed_root = (repo_root / parent.preprocessed_parent).resolve()
+    if preprocessed_root != expected_preprocessed_root:
+        raise GuardedTokenCandidateError(
+            "preprocessed source root is not the exact R4-D-011 accepted parent: "
+            f"{preprocessed_root} != {expected_preprocessed_root}"
+        )
     if identities is None:
         raise GuardedTokenCandidateError(
             "full-population guarded generation is D5 and is not authorized "
