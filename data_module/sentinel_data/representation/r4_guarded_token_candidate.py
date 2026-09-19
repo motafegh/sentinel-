@@ -18,7 +18,6 @@ import hashlib
 import json
 import shutil
 import subprocess
-import time
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Iterable
@@ -482,7 +481,6 @@ def build_guarded_token_identity(
         "source": source,
     }
 
-    started = time.monotonic()
     graph_tmp = output_graph.with_suffix(output_graph.suffix + ".tmp")
     tokens_tmp = output_tokens.with_suffix(output_tokens.suffix + ".tmp")
     sidecar_tmp = output_sidecar.with_suffix(output_sidecar.suffix + ".tmp")
@@ -492,9 +490,6 @@ def build_guarded_token_identity(
 
         shutil.copyfile(graph_path, graph_tmp)
         torch.save(token_payload, tokens_tmp)
-        candidate_sidecar["guarded_token_build_time_ms"] = (
-            time.monotonic() - started
-        ) * 1000.0
         sidecar_tmp.write_text(
             json.dumps(candidate_sidecar, indent=2, sort_keys=True) + "\n",
             encoding="utf-8",
