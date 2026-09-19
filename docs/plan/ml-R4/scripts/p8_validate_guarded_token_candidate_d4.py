@@ -218,6 +218,16 @@ def _max_rss_mb() -> float:
     return float(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss) / 1024.0
 
 
+def _portable_path(path: Path) -> str:
+    """Avoid persisting machine-specific absolute repository paths."""
+
+    resolved = Path(path).resolve()
+    try:
+        return resolved.relative_to(REPO_ROOT).as_posix()
+    except ValueError:
+        return f"<external>/{resolved.name}"
+
+
 def _resolve_runtime_exception_source(parent_root: Path) -> str:
     matches = sorted(parent_root.glob(f"*/{RUNTIME_EXCEPTION_CONTRACT_ID}.rep.json"))
     if len(matches) != 1:
@@ -555,7 +565,7 @@ def _build_once(
         "elapsed_seconds": elapsed,
         "max_rss_mb_before": before_rss,
         "max_rss_mb_after": after_rss,
-        "candidate_root": str(output_root),
+        "candidate_root": _portable_path(output_root),
     }
 
 
@@ -685,9 +695,10 @@ def main() -> int:
         "target_spans_source_sha256": target_spans_sha256,
         "accepted_target_spans_source_sha256": ACCEPTED_TARGET_SPANS_SHA256,
         "acceptance_manifest_sha256": _sha256_file(acceptance),
-        "parent_root": str(parent_root),
-        "preprocessed_root": str(preprocessed_root),
-        "work_root": str(work_root),
+        "parent_root": _portable_path(parent_root),
+        "preprocessed_root": _portable_path(preprocessed_root),
+        "work_root": _portable_path(work_root),
+        "work_root_external": not work_root.is_relative_to(REPO_ROOT),
         "selector_policy": GUARDED_TOKEN_SELECTOR_VERSION,
         "control_selector": HISTORICAL_TOKEN_SELECTOR_VERSION,
         "guarded_token_lineage": GUARDED_TOKEN_LINEAGE_VERSION,
