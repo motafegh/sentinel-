@@ -4,7 +4,7 @@
 **Branch:** `agent/data-target-aware-guarded-v1`
 **Base main:** `57f39d652cbec1092084b4efbf41bec6a117ba07`
 **Work package:** D0 — source/evidence reconstruction
-**Status:** D0 COMPLETE / D1 DESIGN READY
+**Status:** D0-D3 COMPLETE / D4 READY FOR PROTECTED-LOCAL VALIDATION / D5 BLOCKED
 
 ## 1. Question
 
@@ -323,14 +323,126 @@ D0 is complete:
 - a safe fresh-lineage integration seam is identified;
 - no contradiction was found between current source and R4-D-012 evidence.
 
-## 11. Next executable step
+## 11. D1/D2 implementation result
 
-Proceed with D1/D2 on this branch:
+Implemented on `agent/data-target-aware-guarded-v1` without modifying the
+historical selector implementation or the R4-D-011 builder/binder:
 
-1. add fresh selector/lineage constants;
-2. implement a focused guarded-token candidate builder that copies the exact
-   accepted V10 graph, derives target evidence from the accepted requested
-   contract names, dynamically creates guarded token tensors, and writes
-   selector-aware token/sidecar metadata;
-3. leave R4-D-011 builder/binder/control verifier unchanged;
-4. add focused unit/property tests before any full-population generation.
+- version-owner constants for:
+  - `historical_linspace_v1`;
+  - `target_aware_guarded_v1`;
+  - selector-decision schema;
+  - fresh guarded token lineage;
+  - fresh candidate root name;
+- focused module
+  `data_module/sentinel_data/representation/r4_guarded_token_candidate.py`;
+- exact R4-D-011 acceptance/root validation before using a parent;
+- graph byte-copy with post-copy SHA-256 equality verification;
+- explicit target-span derivation from accepted requested graph targets;
+- accepted guarded-selector execution with fail-closed target-evidence errors;
+- token and sidecar selector decision metadata;
+- bounded-candidate manifest with `physical_acceptance=false` and
+  `training_authorized=false`;
+- overwrite refusal and fresh-root enforcement.
+
+The accepted V10 historical builder, historical V10 binder and selector
+control-equivalence tooling remain unchanged.
+
+The bounded builder intentionally rejects `identities=None` before creating an
+output directory. This makes implicit full-population generation impossible
+through the D4 API and preserves the D5 stop line in executable code.
+
+## 12. D3 validation result
+
+Focused tests were added under
+`data_module/tests/test_representation/test_r4_guarded_token_candidate.py`
+covering:
+
+- under-cap complete-window selection and frozen padding;
+- strict-improvement guarded selection;
+- control fallback on equal target coverage;
+- repeated-run tensor/metadata determinism;
+- byte-identical graph-parent reuse;
+- malformed/missing target evidence failure;
+- requested/actual graph-target mismatch;
+- overwrite refusal;
+- exact accepted-parent-root validation;
+- bounded manifest persistence;
+- invalid output-root refusal;
+- explicit D5/full-population refusal.
+
+The Phase-8 repository workflow was extended to compile the new module and run
+the new focused tests.
+
+Exact code/test validation head:
+
+`ccf49bfae504c82c192d72499ba8766f0f185376`
+
+GitHub Actions run `35454628234` established:
+
+- dependency installation: PASS;
+- repaired DATA/ML/token/research module compilation: PASS;
+- repaired and Phase-8 regression suite, including the new guarded tests: PASS;
+- committed logical-V3 snapshot verification: PASS;
+- frozen historical G6 validation: PASS.
+
+The workflow-level result is still red only at the legacy
+`git diff --check a10fae...HEAD` step. That check also fails on canonical
+`main` (for example run `34870795452`) because its comparison range contains
+pre-existing trailing whitespace in historical planning documents. This is
+baseline CI debt, not a guarded-selector regression. The new working record's
+own trailing whitespace was removed rather than using the baseline issue as an
+excuse to add new debt.
+
+D3 is therefore complete on substantive executable evidence.
+
+## 13. D4 bounded tranche selected from retained evidence
+
+D4 must run only against the protected local physical roots. The initial tranche
+is evidence-derived rather than arbitrary:
+
+| Purpose | Source | Contract ID | Prior evidence |
+| --- | --- | --- | --- |
+| under-cap / fallback | `smartbugs_curated` | `85a6581669271b86cd58b837f216e6b140f726b1dce93270dcf6291995fbfe5d` | 1 window; control fallback; full target coverage |
+| strong selector improvement | `solidifi` | `08378c9d432399d34e2f5a417e0b57e47b0ef63cc99a208f9efb67744d5e837f` | 11 windows; target coverage 0.5205566 -> 0.9854522 |
+| over-cap equality/fallback | `solidifi` | `397813120698b5942a0168c339310bb57dcf2d8b4041b3590ad86ce3d3accfbd` | 8 windows; guarded equals control |
+| class/shape fallback | `solidifi` | `9b8eb361195230fb9e7d8797c3c456fce60b169564f5484ae003814ee03a6e4c` | Reentrancy; 17 windows; control already covers target |
+| long active CUDA case | `dive` | `83c9d2d26dc19eaa2aee29fa7aedb4f4e208429a96cc7a0ffee7491b9830630d` | 62 windows; guarded target coverage improvement |
+| additional improved train case | `dive` | `087f69b560460734f646e30aa9be314c7f9085289ba394677905d008cf3a7ae0` | 17 windows; guarded improvement |
+| additional strong-train shape | `solidifi` | `d4b90b62c2ab33ce14d403f1d995b132e8178a09ca243db3be58b610c30cd297` | 12 windows; guarded improvement |
+
+Also resolve and include the accepted V10 runtime-exception identity at runtime:
+
+`caa35c1a5906269bbe5e70de780d105c2968ece4fc038d7f7208efee681aeec9`
+
+Its source directory should be discovered from the protected R4-D-011 parent,
+not guessed from memory.
+
+An optional extra stress probe is the 403-window sensitivity identity
+`dive/c74bbb7fbe8eda3e6d9404b08678e9eca476aa85831e7c23b578cfa089f77b8f`.
+It is useful for token-window scale stress but is distinct from the active CUDA
+selector tranche, whose retained long case above is the primary D4 requirement.
+
+## 14. Current stop line
+
+D4 has **not** been executed against the protected local roots in this session.
+Therefore:
+
+- no guarded physical candidate is accepted;
+- D5 does not yet have permission to generate the 22,540 population;
+- D6 has not started;
+- ML receives no new physical lineage or training authority;
+- the 100-epoch Phase-8 run remains unauthorized.
+
+## 15. Exact next step
+
+Run the explicit bounded D4 tranche locally against:
+
+1. the immutable R4-D-011 parent root;
+2. the immutable repaired preprocessed source root;
+3. the fresh guarded candidate root.
+
+For each identity compare selector decision, target and retained coverage, tensor
+shape/dtype, deterministic regeneration, graph SHA-256 equality, persisted
+metadata and runtime/memory behavior. Only a clean bounded result may change D5
+from blocked to executable.
