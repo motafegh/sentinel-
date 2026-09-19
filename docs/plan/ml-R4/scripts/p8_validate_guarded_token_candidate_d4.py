@@ -119,7 +119,7 @@ EVIDENCE_CASES: tuple[dict[str, Any], ...] = (
         "expected_selected_target_coverage_ratio": 1.0,
     },
     {
-        "purpose": "long_active_cuda_improvement",
+        "purpose": "long_train_batch_improvement",
         "source": "dive",
         "contract_id": "83c9d2d26dc19eaa2aee29fa7aedb4f4e208429a96cc7a0ffee7491b9830630d",
         "expect_under_cap": False,
@@ -129,6 +129,18 @@ EVIDENCE_CASES: tuple[dict[str, Any], ...] = (
         "expected_selected_indices": [1, 4, 7, 10],
         "expected_control_target_coverage_ratio": 0.11139967195188627,
         "expected_selected_target_coverage_ratio": 0.1394204483324221,
+    },
+    {
+        "purpose": "worst_case_cuda_forward_probe",
+        "source": "dive",
+        "contract_id": "f50cd5d7df9ab644a02eb760ceab56548d327984db313015a66bca85513fa3c5",
+        "expect_under_cap": False,
+        "expect_fallback": False,
+        "expected_total_windows": 353,
+        "expected_control_indices": [0, 117, 235, 352],
+        "expected_selected_indices": [96, 99, 102, 105],
+        "expected_control_target_coverage_ratio": 0.016383089382569285,
+        "expected_selected_target_coverage_ratio": 0.03789285979641875,
     },
     {
         "purpose": "train_weak_improvement",
