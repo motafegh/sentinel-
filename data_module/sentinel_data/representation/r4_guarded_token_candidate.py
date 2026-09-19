@@ -596,6 +596,7 @@ def build_guarded_token_candidate(
         raise GuardedTokenCandidateError("bounded guarded candidate requires identities")
     _validate_fresh_output_root(
         parent_root=parent_root,
+        preprocessed_root=preprocessed_root,
         output_root=output_root,
     )
     if output_root.exists() and any(output_root.iterdir()):
