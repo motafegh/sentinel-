@@ -21,7 +21,7 @@ from sentinel_data.representation.r4_guarded_token_candidate import (
     GuardedTokenCandidateError,
     TargetEvidenceError,
     build_guarded_token_candidate,
-    build_guarded_token_identity,
+    _build_guarded_token_identity,
     load_accepted_v10_parent,
 )
 
@@ -169,7 +169,7 @@ def _output_root(tmp_path: Path, label: str) -> Path:
 
 def _build(tmp_path: Path, fixture: dict, label: str):
     output_root = _output_root(tmp_path, label)
-    result = build_guarded_token_identity(
+    result = _build_guarded_token_identity(
         source=fixture["source"],
         contract_id=fixture["contract_id"],
         preprocessed_root=fixture["preprocessed_root"],
@@ -270,7 +270,7 @@ def test_missing_target_evidence_fails_closed_without_artifacts(tmp_path: Path):
     output_root = _output_root(tmp_path, "missing-target")
 
     with pytest.raises(TargetEvidenceError, match="requested_contract_names"):
-        build_guarded_token_identity(
+        _build_guarded_token_identity(
             source=fixture["source"],
             contract_id=fixture["contract_id"],
             preprocessed_root=fixture["preprocessed_root"],
@@ -292,7 +292,7 @@ def test_ambiguous_or_missing_named_target_fails_closed(tmp_path: Path):
     output_root = _output_root(tmp_path, "bad-target-name")
 
     with pytest.raises(TargetEvidenceError, match="target declaration count"):
-        build_guarded_token_identity(
+        _build_guarded_token_identity(
             source=fixture["source"],
             contract_id=fixture["contract_id"],
             preprocessed_root=fixture["preprocessed_root"],
@@ -315,7 +315,7 @@ def test_parent_requested_actual_target_mismatch_is_rejected(tmp_path: Path):
         GuardedTokenCandidateError,
         match="requested/actual graph target mismatch",
     ):
-        build_guarded_token_identity(
+        _build_guarded_token_identity(
             source=fixture["source"],
             contract_id=fixture["contract_id"],
             preprocessed_root=fixture["preprocessed_root"],
@@ -331,7 +331,7 @@ def test_builder_refuses_existing_artifact_overwrite(tmp_path: Path):
     _, output_root, _, _ = _build(tmp_path, fixture, "no-overwrite")
 
     with pytest.raises(FileExistsError, match="refuses to overwrite"):
-        build_guarded_token_identity(
+        _build_guarded_token_identity(
             source=fixture["source"],
             contract_id=fixture["contract_id"],
             preprocessed_root=fixture["preprocessed_root"],
