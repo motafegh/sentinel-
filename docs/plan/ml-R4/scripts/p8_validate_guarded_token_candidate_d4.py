@@ -32,6 +32,7 @@ sys.path.insert(0, str(REPO_ROOT))
 sys.path.insert(0, str(REPO_ROOT / "data_module"))
 
 import torch
+import transformers
 
 from sentinel_data.preprocessing.r4_versions import (
     GUARDED_REPRESENTATION_ROOT_NAME,
@@ -419,7 +420,6 @@ def _build_once(
     parent_root: Path,
     work_root: Path,
     identities: list[tuple[str, str]],
-    tokenizer: Any,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
     output_root = _candidate_root(work_root, repeat)
     before_rss = _max_rss_mb()
@@ -431,7 +431,6 @@ def _build_once(
         parent_root=parent_root,
         output_root=output_root,
         identities=identities,
-        tokenizer=tokenizer,
     )
     elapsed = time.monotonic() - started
     after_rss = _max_rss_mb()
@@ -493,15 +492,6 @@ def main() -> int:
     if len(identities) != len(set(identities)):
         raise ValueError("D4 case set contains duplicate identities")
 
-    from transformers import AutoTokenizer
-    from ml.src.data_extraction.windowed_tokenizer import TOKENIZER_MODEL
-
-    tokenizer = AutoTokenizer.from_pretrained(
-        TOKENIZER_MODEL,
-        use_fast=True,
-        local_files_only=True,
-    )
-
     first_manifest, first_runtime = _build_once(
         repeat="repeat-a",
         acceptance=acceptance,
@@ -509,7 +499,6 @@ def main() -> int:
         parent_root=parent_root,
         work_root=work_root,
         identities=identities,
-        tokenizer=tokenizer,
     )
     second_manifest, second_runtime = _build_once(
         repeat="repeat-b",
@@ -518,7 +507,6 @@ def main() -> int:
         parent_root=parent_root,
         work_root=work_root,
         identities=identities,
-        tokenizer=tokenizer,
     )
 
     first_root = _candidate_root(work_root, "repeat-a")
@@ -570,6 +558,8 @@ def main() -> int:
         "selector_policy": GUARDED_TOKEN_SELECTOR_VERSION,
         "control_selector": HISTORICAL_TOKEN_SELECTOR_VERSION,
         "guarded_token_lineage": GUARDED_TOKEN_LINEAGE_VERSION,
+        "transformers_version": transformers.__version__,
+        "required_transformers_version": GUARDED_TOKEN_TRANSFORMERS_VERSION,
         "frozen_token_shape": list(TOKEN_TENSOR_SHAPE),
         "identities_requested": len(cases),
         "identities_passed": sum(result.get("passed", False) for result in results),
