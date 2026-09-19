@@ -458,3 +458,28 @@ def test_builder_rejects_candidate_nested_inside_accepted_parent(tmp_path: Path)
         )
 
     assert not nested_root.exists()
+
+
+def test_builder_rejects_candidate_nested_inside_preprocessed_parent(tmp_path: Path):
+    fixture = _fixture(tmp_path, source_text=_source_with_target(long=False))
+    nested_root = (
+        fixture["preprocessed_root"]
+        / "nested"
+        / GUARDED_REPRESENTATION_ROOT_NAME
+    )
+
+    with pytest.raises(
+        GuardedTokenCandidateError,
+        match="outside the immutable repaired preprocessing parent tree",
+    ):
+        build_guarded_token_candidate(
+            acceptance_path=fixture["repo_root"] / "acceptance.json",
+            repo_root=fixture["repo_root"],
+            preprocessed_root=fixture["preprocessed_root"],
+            parent_root=fixture["parent_root"],
+            output_root=nested_root,
+            identities=[(fixture["source"], fixture["contract_id"])],
+            tokenizer=CharTokenizer(),
+        )
+
+    assert not nested_root.exists()
