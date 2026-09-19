@@ -546,7 +546,7 @@ def build_guarded_token_candidate(
     identities: Iterable[tuple[str, str]] | None = None,
     tokenizer: Any | None = None,
 ) -> dict[str, Any]:
-    """Build a bounded or full fresh candidate and write its construction manifest."""
+    """Build an explicit bounded D4 candidate and write its construction manifest."""
 
     repo_root = Path(repo_root).resolve()
     parent_root = Path(parent_root).resolve()
@@ -556,6 +556,19 @@ def build_guarded_token_candidate(
         repo_root=repo_root,
         parent_root=parent_root,
     )
+    if identities is None:
+        raise GuardedTokenCandidateError(
+            "full-population guarded generation is D5 and is not authorized "
+            "before bounded D4 acceptance"
+        )
+    requested = sorted(
+        set(
+            (str(source), str(contract_id))
+            for source, contract_id in identities
+        )
+    )
+    if not requested:
+        raise GuardedTokenCandidateError("bounded guarded candidate requires identities")
     if output_root.name != GUARDED_REPRESENTATION_ROOT_NAME:
         raise GuardedTokenCandidateError(
             f"guarded candidate root must be named {GUARDED_REPRESENTATION_ROOT_NAME!r}"
@@ -571,19 +584,6 @@ def build_guarded_token_candidate(
             f"{len(parent_inventory)} != {parent.contracts}"
         )
     parent_set = set(parent_inventory)
-    if identities is None:
-        raise GuardedTokenCandidateError(
-            "full-population guarded generation is D5 and is not authorized "
-            "before bounded D4 acceptance"
-        )
-    requested = sorted(
-        set(
-            (str(source), str(contract_id))
-            for source, contract_id in identities
-        )
-    )
-    if not requested:
-        raise GuardedTokenCandidateError("bounded guarded candidate requires identities")
     missing = sorted(set(requested) - parent_set)
     if missing:
         raise GuardedTokenCandidateError(
