@@ -97,6 +97,21 @@ def _validate_contract_id(contract_id: str) -> None:
         )
 
 
+def _validate_fresh_output_root(*, parent_root: Path, output_root: Path) -> None:
+    """Reject output locations that could mutate the accepted parent tree."""
+
+    parent_root = Path(parent_root).resolve()
+    output_root = Path(output_root).resolve()
+    if output_root.name != GUARDED_REPRESENTATION_ROOT_NAME:
+        raise GuardedTokenCandidateError(
+            f"guarded candidate root must be named {GUARDED_REPRESENTATION_ROOT_NAME!r}"
+        )
+    if output_root == parent_root or output_root.is_relative_to(parent_root):
+        raise GuardedTokenCandidateError(
+            "guarded candidate root must be outside the immutable R4-D-011 parent tree"
+        )
+
+
 def load_accepted_v10_parent(
     *,
     acceptance_path: Path,
@@ -406,12 +421,10 @@ def _build_guarded_token_identity(
 
     parent_root = Path(parent_root).resolve()
     output_root = Path(output_root).resolve()
-    if output_root == parent_root:
-        raise GuardedTokenCandidateError("guarded candidate root cannot equal R4-D-011")
-    if output_root.name != GUARDED_REPRESENTATION_ROOT_NAME:
-        raise GuardedTokenCandidateError(
-            f"guarded candidate root must be named {GUARDED_REPRESENTATION_ROOT_NAME!r}"
-        )
+    _validate_fresh_output_root(
+        parent_root=parent_root,
+        output_root=output_root,
+    )
 
     graph_path, parent_token_path, parent_sidecar_path, parent_sidecar = (
         _load_parent_identity(
@@ -569,10 +582,10 @@ def build_guarded_token_candidate(
     )
     if not requested:
         raise GuardedTokenCandidateError("bounded guarded candidate requires identities")
-    if output_root.name != GUARDED_REPRESENTATION_ROOT_NAME:
-        raise GuardedTokenCandidateError(
-            f"guarded candidate root must be named {GUARDED_REPRESENTATION_ROOT_NAME!r}"
-        )
+    _validate_fresh_output_root(
+        parent_root=parent_root,
+        output_root=output_root,
+    )
     if output_root.exists() and any(output_root.iterdir()):
         raise FileExistsError(f"guarded candidate output is not empty: {output_root}")
     output_root.mkdir(parents=True, exist_ok=True)
