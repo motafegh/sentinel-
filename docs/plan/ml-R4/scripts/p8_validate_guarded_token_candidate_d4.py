@@ -59,6 +59,19 @@ DEFAULT_PARENT = (
 )
 DEFAULT_WORK_ROOT = DATA_ROOT / "r4-guarded-d4-bounded-2026-09-19"
 REPORT_SCHEMA = "sentinel-r4-guarded-token-d4-bounded-validation-v1"
+ACCEPTED_SELECTOR_SHA256 = (
+    "9eea0f837f77a512628efaa3dde444f039be81e98bf1828aa61b9099d2c87866"
+)
+ACCEPTED_TARGET_SPANS_SHA256 = (
+    "7e6f2017e43425285fd51186cd0788ec2ba5f2fe56c90f6dc7b9ef190ee4a910"
+)
+SELECTOR_SOURCE = REPO_ROOT / "ml/src/data_extraction/bounded_window_selector.py"
+TARGET_SPANS_SOURCE = (
+    REPO_ROOT / "data_module/sentinel_data/representation/r4_target_spans.py"
+)
+BUILDER_SOURCE = (
+    REPO_ROOT / "data_module/sentinel_data/representation/r4_guarded_token_candidate.py"
+)
 RUNTIME_EXCEPTION_CONTRACT_ID = (
     "caa35c1a5906269bbe5e70de780d105c2968ece4fc038d7f7208efee681aeec9"
 )
@@ -563,6 +576,18 @@ def main() -> int:
     preprocessed_root = args.preprocessed_root.resolve()
     parent_root = args.parent_root.resolve()
     work_root = args.work_root.resolve()
+    selector_sha256 = _sha256_file(SELECTOR_SOURCE)
+    target_spans_sha256 = _sha256_file(TARGET_SPANS_SOURCE)
+    if selector_sha256 != ACCEPTED_SELECTOR_SHA256:
+        raise GuardedTokenCandidateError(
+            "R4-D-012 selector implementation hash changed: "
+            f"{selector_sha256} != {ACCEPTED_SELECTOR_SHA256}"
+        )
+    if target_spans_sha256 != ACCEPTED_TARGET_SPANS_SHA256:
+        raise GuardedTokenCandidateError(
+            "R4-D-012 target-span implementation hash changed: "
+            f"{target_spans_sha256} != {ACCEPTED_TARGET_SPANS_SHA256}"
+        )
     if work_root.exists() and any(work_root.iterdir()):
         raise FileExistsError(
             f"D4 work root is not empty; use a fresh path: {work_root}"
@@ -653,7 +678,12 @@ def main() -> int:
         "schema": REPORT_SCHEMA,
         "status": status,
         "source_commit": _source_commit(),
-        "implementation_sha256": _sha256_file(Path(__file__)),
+        "validator_sha256": _sha256_file(Path(__file__)),
+        "guarded_builder_sha256": _sha256_file(BUILDER_SOURCE),
+        "selector_source_sha256": selector_sha256,
+        "accepted_selector_source_sha256": ACCEPTED_SELECTOR_SHA256,
+        "target_spans_source_sha256": target_spans_sha256,
+        "accepted_target_spans_source_sha256": ACCEPTED_TARGET_SPANS_SHA256,
         "acceptance_manifest_sha256": _sha256_file(acceptance),
         "parent_root": str(parent_root),
         "preprocessed_root": str(preprocessed_root),
