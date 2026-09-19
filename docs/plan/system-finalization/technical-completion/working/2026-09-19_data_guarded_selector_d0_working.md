@@ -1,9 +1,9 @@
 # DATA D0 — guarded-selector source/evidence reconstruction
 
-**Date:** 2026-09-19  
-**Branch:** `agent/data-target-aware-guarded-v1`  
-**Base main:** `57f39d652cbec1092084b4efbf41bec6a117ba07`  
-**Work package:** D0 — source/evidence reconstruction  
+**Date:** 2026-09-19
+**Branch:** `agent/data-target-aware-guarded-v1`
+**Base main:** `57f39d652cbec1092084b4efbf41bec6a117ba07`
+**Work package:** D0 — source/evidence reconstruction
 **Status:** D0 COMPLETE / D1 DESIGN READY
 
 ## 1. Question
