@@ -14,6 +14,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import math
 import os
 import resource
 import subprocess
@@ -36,6 +37,7 @@ from sentinel_data.preprocessing.r4_versions import (
     GUARDED_REPRESENTATION_ROOT_NAME,
     GUARDED_TOKEN_LINEAGE_VERSION,
     GUARDED_TOKEN_SELECTOR_VERSION,
+    GUARDED_TOKEN_TRANSFORMERS_VERSION,
     HISTORICAL_TOKEN_SELECTOR_VERSION,
     TOKEN_TENSOR_SHAPE,
 )
@@ -73,6 +75,11 @@ EVIDENCE_CASES: tuple[dict[str, Any], ...] = (
         "contract_id": "85a6581669271b86cd58b837f216e6b140f726b1dce93270dcf6291995fbfe5d",
         "expect_under_cap": True,
         "expect_fallback": True,
+        "expected_total_windows": 1,
+        "expected_control_indices": [0],
+        "expected_selected_indices": [0],
+        "expected_control_target_coverage_ratio": 1.0,
+        "expected_selected_target_coverage_ratio": 1.0,
     },
     {
         "purpose": "strong_selector_improvement",
@@ -80,6 +87,11 @@ EVIDENCE_CASES: tuple[dict[str, Any], ...] = (
         "contract_id": "08378c9d432399d34e2f5a417e0b57e47b0ef63cc99a208f9efb67744d5e837f",
         "expect_under_cap": False,
         "expect_fallback": False,
+        "expected_total_windows": 11,
+        "expected_control_indices": [0, 3, 7, 10],
+        "expected_selected_indices": [5, 6, 8, 10],
+        "expected_control_target_coverage_ratio": 0.5205566097406704,
+        "expected_selected_target_coverage_ratio": 0.9854522454142948,
     },
     {
         "purpose": "over_cap_equal_control_fallback",
@@ -87,6 +99,11 @@ EVIDENCE_CASES: tuple[dict[str, Any], ...] = (
         "contract_id": "397813120698b5942a0168c339310bb57dcf2d8b4041b3590ad86ce3d3accfbd",
         "expect_under_cap": False,
         "expect_fallback": True,
+        "expected_total_windows": 8,
+        "expected_control_indices": [0, 2, 5, 7],
+        "expected_selected_indices": [0, 2, 5, 7],
+        "expected_control_target_coverage_ratio": 0.8838709677419355,
+        "expected_selected_target_coverage_ratio": 0.8838709677419355,
     },
     {
         "purpose": "reentrancy_target_shape_control_fallback",
@@ -94,6 +111,11 @@ EVIDENCE_CASES: tuple[dict[str, Any], ...] = (
         "contract_id": "9b8eb361195230fb9e7d8797c3c456fce60b169564f5484ae003814ee03a6e4c",
         "expect_under_cap": False,
         "expect_fallback": True,
+        "expected_total_windows": 17,
+        "expected_control_indices": [0, 5, 11, 16],
+        "expected_selected_indices": [0, 5, 11, 16],
+        "expected_control_target_coverage_ratio": 1.0,
+        "expected_selected_target_coverage_ratio": 1.0,
     },
     {
         "purpose": "long_active_cuda_improvement",
@@ -101,6 +123,11 @@ EVIDENCE_CASES: tuple[dict[str, Any], ...] = (
         "contract_id": "83c9d2d26dc19eaa2aee29fa7aedb4f4e208429a96cc7a0ffee7491b9830630d",
         "expect_under_cap": False,
         "expect_fallback": False,
+        "expected_total_windows": 62,
+        "expected_control_indices": [0, 20, 41, 61],
+        "expected_selected_indices": [1, 4, 7, 10],
+        "expected_control_target_coverage_ratio": 0.11139967195188627,
+        "expected_selected_target_coverage_ratio": 0.1394204483324221,
     },
     {
         "purpose": "train_weak_improvement",
@@ -108,6 +135,11 @@ EVIDENCE_CASES: tuple[dict[str, Any], ...] = (
         "contract_id": "087f69b560460734f646e30aa9be314c7f9085289ba394677905d008cf3a7ae0",
         "expect_under_cap": False,
         "expect_fallback": False,
+        "expected_total_windows": 17,
+        "expected_control_indices": [0, 5, 11, 16],
+        "expected_selected_indices": [3, 6, 9, 12],
+        "expected_control_target_coverage_ratio": 0.36030374443571617,
+        "expected_selected_target_coverage_ratio": 0.5341712490180676,
     },
     {
         "purpose": "train_strong_target_shape_improvement",
@@ -115,6 +147,11 @@ EVIDENCE_CASES: tuple[dict[str, Any], ...] = (
         "contract_id": "d4b90b62c2ab33ce14d403f1d995b132e8178a09ca243db3be58b610c30cd297",
         "expect_under_cap": False,
         "expect_fallback": False,
+        "expected_total_windows": 12,
+        "expected_control_indices": [0, 4, 7, 11],
+        "expected_selected_indices": [1, 4, 7, 10],
+        "expected_control_target_coverage_ratio": 0.6095149830089589,
+        "expected_selected_target_coverage_ratio": 0.6302131603336423,
     },
 )
 
