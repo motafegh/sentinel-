@@ -366,6 +366,11 @@ def test_bounded_candidate_manifest_binds_fresh_lineage_and_stop_lines(
         "_source_commit",
         lambda _repo_root: "c" * 40,
     )
+    monkeypatch.setattr(
+        guarded_candidate,
+        "_load_canonical_tokenizer",
+        lambda: CharTokenizer(),
+    )
     output_root = _output_root(tmp_path, "bounded-manifest")
     manifest = build_guarded_token_candidate(
         acceptance_path=fixture["repo_root"] / "acceptance.json",
@@ -374,7 +379,6 @@ def test_bounded_candidate_manifest_binds_fresh_lineage_and_stop_lines(
         parent_root=fixture["parent_root"],
         output_root=output_root,
         identities=[(fixture["source"], fixture["contract_id"])],
-        tokenizer=CharTokenizer(),
     )
 
     assert manifest["status"] == "BOUNDED_GUARDED_TOKEN_CANDIDATE"
@@ -411,8 +415,7 @@ def test_batch_builder_rejects_misnamed_root_without_creating_it(
             parent_root=fixture["parent_root"],
             output_root=wrong_root,
             identities=[(fixture["source"], fixture["contract_id"])],
-            tokenizer=CharTokenizer(),
-        )
+            )
 
     assert not wrong_root.exists()
 
@@ -429,8 +432,7 @@ def test_batch_builder_blocks_full_population_before_d4_acceptance(tmp_path: Pat
             parent_root=fixture["parent_root"],
             output_root=output_root,
             identities=None,
-            tokenizer=CharTokenizer(),
-        )
+            )
 
     assert not output_root.exists()
 
@@ -454,8 +456,7 @@ def test_builder_rejects_candidate_nested_inside_accepted_parent(tmp_path: Path)
             parent_root=fixture["parent_root"],
             output_root=nested_root,
             identities=[(fixture["source"], fixture["contract_id"])],
-            tokenizer=CharTokenizer(),
-        )
+            )
 
     assert not nested_root.exists()
 
@@ -479,7 +480,6 @@ def test_builder_rejects_candidate_nested_inside_preprocessed_parent(tmp_path: P
             parent_root=fixture["parent_root"],
             output_root=nested_root,
             identities=[(fixture["source"], fixture["contract_id"])],
-            tokenizer=CharTokenizer(),
-        )
+            )
 
     assert not nested_root.exists()
