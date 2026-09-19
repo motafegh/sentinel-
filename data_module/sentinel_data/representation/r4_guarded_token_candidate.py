@@ -39,7 +39,6 @@ R4_D011_DECISION_ID = "R4-D-011"
 R4_D011_ACCEPTANCE_SCHEMA = "sentinel-r4-v10-v26-physical-acceptance-v1"
 GUARDED_CANDIDATE_MANIFEST_SCHEMA = "sentinel-r4-guarded-token-candidate-manifest-v1"
 GUARDED_CANDIDATE_STATUS_BOUNDED = "BOUNDED_GUARDED_TOKEN_CANDIDATE"
-GUARDED_CANDIDATE_STATUS_FULL = "FULL_GUARDED_TOKEN_CANDIDATE_ACCEPTANCE_PENDING"
 
 
 class GuardedTokenCandidateError(RuntimeError):
@@ -572,25 +571,24 @@ def build_guarded_token_candidate(
             f"{len(parent_inventory)} != {parent.contracts}"
         )
     parent_set = set(parent_inventory)
-    requested = (
-        list(parent_inventory)
-        if identities is None
-        else sorted(
-            set(
-                (str(source), str(contract_id))
-                for source, contract_id in identities
-            )
+    if identities is None:
+        raise GuardedTokenCandidateError(
+            "full-population guarded generation is D5 and is not authorized "
+            "before bounded D4 acceptance"
+        )
+    requested = sorted(
+        set(
+            (str(source), str(contract_id))
+            for source, contract_id in identities
         )
     )
+    if not requested:
+        raise GuardedTokenCandidateError("bounded guarded candidate requires identities")
     missing = sorted(set(requested) - parent_set)
     if missing:
         raise GuardedTokenCandidateError(
             f"requested identities are absent from R4-D-011: {missing[:5]}"
         )
-    full_population = identities is None
-    if full_population and len(requested) != parent.contracts:
-        raise GuardedTokenCandidateError("full guarded candidate population is incomplete")
-
     if tokenizer is None:
         from transformers import AutoTokenizer
         from ml.src.data_extraction.windowed_tokenizer import TOKENIZER_MODEL
@@ -619,11 +617,7 @@ def build_guarded_token_candidate(
     guarded_total = len(results) - fallback_total
     manifest = {
         "schema": GUARDED_CANDIDATE_MANIFEST_SCHEMA,
-        "status": (
-            GUARDED_CANDIDATE_STATUS_FULL
-            if full_population
-            else GUARDED_CANDIDATE_STATUS_BOUNDED
-        ),
+        "status": GUARDED_CANDIDATE_STATUS_BOUNDED,
         "physical_acceptance": False,
         "training_authorized": False,
         "source_commit": _source_commit(repo_root),
@@ -640,7 +634,7 @@ def build_guarded_token_candidate(
             "binding_digest_sha256": parent.binding_digest_sha256,
             "contracts": parent.contracts,
         },
-        "full_population": full_population,
+        "full_population": False,
         "contracts_requested": len(requested),
         "contracts_written": len(results),
         "effective_selector_counts": {
