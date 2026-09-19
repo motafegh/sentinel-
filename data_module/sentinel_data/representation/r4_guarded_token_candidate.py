@@ -97,19 +97,30 @@ def _validate_contract_id(contract_id: str) -> None:
         )
 
 
-def _validate_fresh_output_root(*, parent_root: Path, output_root: Path) -> None:
-    """Reject output locations that could mutate the accepted parent tree."""
+def _validate_fresh_output_root(
+    *,
+    parent_root: Path,
+    preprocessed_root: Path,
+    output_root: Path,
+) -> None:
+    """Reject output locations that could mutate immutable input trees."""
 
     parent_root = Path(parent_root).resolve()
+    preprocessed_root = Path(preprocessed_root).resolve()
     output_root = Path(output_root).resolve()
     if output_root.name != GUARDED_REPRESENTATION_ROOT_NAME:
         raise GuardedTokenCandidateError(
             f"guarded candidate root must be named {GUARDED_REPRESENTATION_ROOT_NAME!r}"
         )
-    if output_root == parent_root or output_root.is_relative_to(parent_root):
-        raise GuardedTokenCandidateError(
-            "guarded candidate root must be outside the immutable R4-D-011 parent tree"
-        )
+    protected_roots = {
+        "R4-D-011 parent": parent_root,
+        "repaired preprocessing parent": preprocessed_root,
+    }
+    for label, protected_root in protected_roots.items():
+        if output_root == protected_root or output_root.is_relative_to(protected_root):
+            raise GuardedTokenCandidateError(
+                f"guarded candidate root must be outside the immutable {label} tree"
+            )
 
 
 def load_accepted_v10_parent(
@@ -423,6 +434,7 @@ def _build_guarded_token_identity(
     output_root = Path(output_root).resolve()
     _validate_fresh_output_root(
         parent_root=parent_root,
+        preprocessed_root=preprocessed_root,
         output_root=output_root,
     )
 
