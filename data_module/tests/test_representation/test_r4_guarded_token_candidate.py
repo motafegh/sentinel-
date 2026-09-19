@@ -93,14 +93,10 @@ def _fixture(
     source = "fixture"
     contract_id = "a" * 64
     repo_root = tmp_path / "repo"
-    parent_root = (
-        repo_root
-        / "data_module/data/r4-d011-fixture"
-        / "representations-r4-v3-candidate"
-    )
+    parent_root = repo_root / guarded_candidate.R4_D011_PHYSICAL_ROOT
     parent_dir = parent_root / source
     parent_dir.mkdir(parents=True)
-    preprocessed_root = repo_root / "data_module/data/sentinel-preprocessed-r4-v2"
+    preprocessed_root = repo_root / guarded_candidate.R4_D011_PREPROCESSED_PARENT
     source_dir = preprocessed_root / source
     source_dir.mkdir(parents=True)
     (source_dir / f"{contract_id}.sol").write_text(source_text, encoding="utf-8")
@@ -129,7 +125,6 @@ def _fixture(
     )
 
     acceptance_path = repo_root / "acceptance.json"
-    relative_parent = parent_root.relative_to(repo_root).as_posix()
     acceptance_path.write_text(
         json.dumps(
             {
@@ -138,11 +133,12 @@ def _fixture(
                 "status": "PASS",
                 "physical_acceptance": True,
                 "accepted_lineage": {
-                    "binding_digest_sha256": "b" * 64,
+                    "binding_digest_sha256": guarded_candidate.R4_D011_BINDING_DIGEST_SHA256,
                     "contracts": 1,
                     "extractor_version": V10_REPRESENTATION_EXTRACTOR_VERSION,
                     "graph_schema_version": "v10",
-                    "physical_root": relative_parent,
+                    "physical_root": guarded_candidate.R4_D011_PHYSICAL_ROOT,
+                    "preprocessed_parent": guarded_candidate.R4_D011_PREPROCESSED_PARENT,
                 },
             }
         ),
