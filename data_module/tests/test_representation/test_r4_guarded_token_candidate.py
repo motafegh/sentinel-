@@ -415,3 +415,21 @@ def test_batch_builder_rejects_misnamed_root_without_creating_it(
         )
 
     assert not wrong_root.exists()
+
+
+def test_batch_builder_blocks_full_population_before_d4_acceptance(tmp_path: Path):
+    fixture = _fixture(tmp_path, source_text=_source_with_target(long=False))
+    output_root = _output_root(tmp_path, "blocked-full")
+
+    with pytest.raises(GuardedTokenCandidateError, match="D5.*not authorized"):
+        build_guarded_token_candidate(
+            acceptance_path=fixture["repo_root"] / "acceptance.json",
+            repo_root=fixture["repo_root"],
+            preprocessed_root=fixture["preprocessed_root"],
+            parent_root=fixture["parent_root"],
+            output_root=output_root,
+            identities=None,
+            tokenizer=CharTokenizer(),
+        )
+
+    assert not output_root.exists()
