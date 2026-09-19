@@ -27,6 +27,7 @@ from sentinel_data.preprocessing.r4_versions import (
     GUARDED_TOKEN_LINEAGE_VERSION,
     GUARDED_TOKEN_SELECTOR_SCHEMA_VERSION,
     GUARDED_TOKEN_SELECTOR_VERSION,
+    GUARDED_TOKEN_TRANSFORMERS_VERSION,
     HISTORICAL_TOKEN_SELECTOR_VERSION,
     TOKEN_TENSOR_SHAPE,
     V10_GRAPH_SCHEMA_VERSION,
@@ -121,6 +122,36 @@ def _validate_fresh_output_root(
             raise GuardedTokenCandidateError(
                 f"guarded candidate root must be outside the immutable {label} tree"
             )
+
+
+def _load_canonical_tokenizer() -> Any:
+    """Load the exact offline tokenizer runtime accepted by R4-D-012."""
+
+    import transformers
+    from transformers import AutoTokenizer
+
+    from ml.src.data_extraction.windowed_tokenizer import TOKENIZER_MODEL
+
+    if transformers.__version__ != GUARDED_TOKEN_TRANSFORMERS_VERSION:
+        raise GuardedTokenCandidateError(
+            "guarded token generation requires the accepted transformers runtime: "
+            f"{transformers.__version__!r} != {GUARDED_TOKEN_TRANSFORMERS_VERSION!r}"
+        )
+    tokenizer = AutoTokenizer.from_pretrained(
+        TOKENIZER_MODEL,
+        use_fast=True,
+        local_files_only=True,
+    )
+    if not bool(getattr(tokenizer, "is_fast", False)):
+        raise GuardedTokenCandidateError(
+            "guarded token generation requires the fast GraphCodeBERT tokenizer"
+        )
+    if str(getattr(tokenizer, "name_or_path", "")) != TOKENIZER_MODEL:
+        raise GuardedTokenCandidateError(
+            "guarded tokenizer identity mismatch: "
+            f"{getattr(tokenizer, 'name_or_path', None)!r} != {TOKENIZER_MODEL!r}"
+        )
+    return tokenizer
 
 
 def load_accepted_v10_parent(
@@ -569,7 +600,6 @@ def build_guarded_token_candidate(
     parent_root: Path,
     output_root: Path,
     identities: Iterable[tuple[str, str]] | None = None,
-    tokenizer: Any | None = None,
 ) -> dict[str, Any]:
     """Build an explicit bounded D4 candidate and write its construction manifest."""
 
@@ -615,15 +645,7 @@ def build_guarded_token_candidate(
         raise GuardedTokenCandidateError(
             f"requested identities are absent from R4-D-011: {missing[:5]}"
         )
-    if tokenizer is None:
-        from transformers import AutoTokenizer
-        from ml.src.data_extraction.windowed_tokenizer import TOKENIZER_MODEL
-
-        tokenizer = AutoTokenizer.from_pretrained(
-            TOKENIZER_MODEL,
-            use_fast=True,
-            local_files_only=True,
-        )
+    tokenizer = _load_canonical_tokenizer()
 
     results: list[GuardedBuildResult] = []
     for source, contract_id in requested:
