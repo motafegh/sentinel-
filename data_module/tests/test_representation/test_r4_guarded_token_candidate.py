@@ -16,9 +16,11 @@ from sentinel_data.preprocessing.r4_versions import (
     HISTORICAL_TOKEN_SELECTOR_VERSION,
     V10_REPRESENTATION_EXTRACTOR_VERSION,
 )
+from sentinel_data.representation import r4_guarded_token_candidate as guarded_candidate
 from sentinel_data.representation.r4_guarded_token_candidate import (
     GuardedTokenCandidateError,
     TargetEvidenceError,
+    build_guarded_token_candidate,
     build_guarded_token_identity,
     load_accepted_v10_parent,
 )
@@ -352,3 +354,64 @@ def test_parent_loader_rejects_noncanonical_parent_root(tmp_path: Path):
             repo_root=fixture["repo_root"],
             parent_root=wrong_root,
         )
+
+
+def test_bounded_candidate_manifest_binds_fresh_lineage_and_stop_lines(
+    tmp_path: Path,
+    monkeypatch,
+):
+    fixture = _fixture(tmp_path, source_text=_source_with_target(long=True))
+    monkeypatch.setattr(
+        guarded_candidate,
+        "_source_commit",
+        lambda _repo_root: "c" * 40,
+    )
+    output_root = _output_root(tmp_path, "bounded-manifest")
+    manifest = build_guarded_token_candidate(
+        acceptance_path=fixture["repo_root"] / "acceptance.json",
+        repo_root=fixture["repo_root"],
+        preprocessed_root=fixture["preprocessed_root"],
+        parent_root=fixture["parent_root"],
+        output_root=output_root,
+        identities=[(fixture["source"], fixture["contract_id"])],
+        tokenizer=CharTokenizer(),
+    )
+
+    assert manifest["status"] == "BOUNDED_GUARDED_TOKEN_CANDIDATE"
+    assert manifest["physical_acceptance"] is False
+    assert manifest["training_authorized"] is False
+    assert manifest["source_commit"] == "c" * 40
+    assert manifest["representation_lineage"] == GUARDED_TOKEN_LINEAGE_VERSION
+    assert manifest["selector_policy"] == GUARDED_TOKEN_SELECTOR_VERSION
+    assert manifest["control_selector"] == HISTORICAL_TOKEN_SELECTOR_VERSION
+    assert manifest["full_population"] is False
+    assert manifest["contracts_requested"] == 1
+    assert manifest["contracts_written"] == 1
+    assert manifest["parent"]["decision_id"] == "R4-D-011"
+    assert manifest["parent"]["contracts"] == 1
+    assert len(manifest["records"]) == 1
+
+    persisted = json.loads(
+        (output_root / "guarded_candidate_manifest.json").read_text(encoding="utf-8")
+    )
+    assert persisted == manifest
+
+
+def test_batch_builder_rejects_misnamed_root_without_creating_it(
+    tmp_path: Path,
+):
+    fixture = _fixture(tmp_path, source_text=_source_with_target(long=False))
+    wrong_root = tmp_path / "wrong-candidate-root"
+
+    with pytest.raises(GuardedTokenCandidateError, match="root must be named"):
+        build_guarded_token_candidate(
+            acceptance_path=fixture["repo_root"] / "acceptance.json",
+            repo_root=fixture["repo_root"],
+            preprocessed_root=fixture["preprocessed_root"],
+            parent_root=fixture["parent_root"],
+            output_root=wrong_root,
+            identities=[(fixture["source"], fixture["contract_id"])],
+            tokenizer=CharTokenizer(),
+        )
+
+    assert not wrong_root.exists()
