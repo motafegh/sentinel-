@@ -94,6 +94,7 @@ jobs:
             data_module/sentinel_data/representation/r4_target_spans.py \
             data_module/sentinel_data/representation/r4_compatibility.py \
             data_module/sentinel_data/representation/r4_orchestrator.py \
+            data_module/sentinel_data/representation/r4_guarded_token_candidate.py \
             data_module/sentinel_data/representation/r4_sensitivity.py \
             data_module/sentinel_data/vnext/r4_source_claims.py \
             data_module/sentinel_data/vnext/r4_builder.py \
@@ -161,6 +162,7 @@ jobs:
             data_module/tests/test_representation/test_r4_sensitivity.py \
             data_module/tests/test_representation/test_graph_schema_v10.py \
             data_module/tests/test_representation/test_r4_v10_orchestrator.py \
+            data_module/tests/test_representation/test_r4_guarded_token_candidate.py \
             data_module/tests/test_representation/test_windowed_tokenizer_coverage.py \
             data_module/tests/test_vnext/test_policy.py \
             data_module/tests/test_vnext/test_r4_source_claims.py \
