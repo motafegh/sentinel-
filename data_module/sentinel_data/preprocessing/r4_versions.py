@@ -34,6 +34,7 @@ V10_REPRESENTATION_ROOT_NAME = "representations-r4-v3-candidate"
 HISTORICAL_TOKEN_SELECTOR_VERSION = "historical_linspace_v1"
 GUARDED_TOKEN_SELECTOR_VERSION = "target_aware_guarded_v1"
 GUARDED_TOKEN_SELECTOR_SCHEMA_VERSION = "r4-token-selector-decision-v1"
+GUARDED_TOKEN_TRANSFORMERS_VERSION = "4.46.3"
 GUARDED_TOKEN_LINEAGE_VERSION = "r4-v10-v26-guarded-tokens-v1"
 GUARDED_REPRESENTATION_ROOT_NAME = (
     "representations-r4-v10-v26-guarded-v1-candidate"
