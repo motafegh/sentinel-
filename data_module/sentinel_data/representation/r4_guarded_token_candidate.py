@@ -232,6 +232,7 @@ def _selector_payload(
     )
     from ml.src.data_extraction.windowed_tokenizer import (
         STRIDE,
+        TOKEN_COVERAGE_SCHEMA_VERSION,
         TOKENIZER_MODEL,
         WINDOW_SIZE,
     )
@@ -239,6 +240,10 @@ def _selector_payload(
     if GUARDED_STRATEGY != GUARDED_TOKEN_SELECTOR_VERSION:
         raise GuardedTokenCandidateError(
             "guarded selector constant diverged from the R4-D-012 lineage owner"
+        )
+    if WINDOW_SIZE != TOKEN_TENSOR_SHAPE[1]:
+        raise GuardedTokenCandidateError(
+            "window tokenizer size diverged from the frozen token tensor contract"
         )
     try:
         char_spans = target_contract_char_spans(source_text, target_names)
@@ -372,7 +377,7 @@ def _selector_payload(
         "num_tokens": int(attention_mask.sum().item()),
         "tokenizer_name": TOKENIZER_MODEL,
         "max_length": WINDOW_SIZE,
-        "coverage_schema_version": "r4-token-coverage-v1",
+        "coverage_schema_version": TOKEN_COVERAGE_SCHEMA_VERSION,
         "pre_subsampling_window_count": len(ranges),
         "pre_subsampling_code_tokens": total_tokens,
         "selected_window_indices": selected_indices,
