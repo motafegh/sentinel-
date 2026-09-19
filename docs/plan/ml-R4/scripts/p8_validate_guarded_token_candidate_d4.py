@@ -364,6 +364,8 @@ def _validate_identity(
     candidate_target = int(decision["candidate_target_coverage_tokens"])
     control_target_ratio = float(decision["control_target_coverage_ratio"])
     selected_target_ratio = float(decision["selected_target_coverage_ratio"])
+    historical_retained_ratio = float(historical["retained_token_ratio"])
+    selected_retained_ratio = float(decision["retained_token_ratio"])
     used_fallback = bool(decision["used_control_fallback"])
     effective = str(decision["effective_selector"])
 
@@ -443,6 +445,29 @@ def _validate_identity(
             f"actual={selected_target_ratio}"
         )
 
+    if "expected_control_retained_ratio" in case and not math.isclose(
+        historical_retained_ratio,
+        float(case["expected_control_retained_ratio"]),
+        rel_tol=0.0,
+        abs_tol=1e-12,
+    ):
+        errors.append(
+            "retained evidence control retained ratio changed: "
+            f"expected={case['expected_control_retained_ratio']} "
+            f"actual={historical_retained_ratio}"
+        )
+    if "expected_retained_ratio" in case and not math.isclose(
+        selected_retained_ratio,
+        float(case["expected_retained_ratio"]),
+        rel_tol=0.0,
+        abs_tol=1e-12,
+    ):
+        errors.append(
+            "retained evidence guarded retained ratio changed: "
+            f"expected={case['expected_retained_ratio']} "
+            f"actual={selected_retained_ratio}"
+        )
+
     parent_binding = first_meta.get("graph_parent") or {}
     if parent_binding.get("decision_id") != "R4-D-011":
         errors.append("candidate sidecar does not bind graph parent to R4-D-011")
@@ -475,7 +500,8 @@ def _validate_identity(
         ),
         "selected_target_coverage_ratio": selected_target_ratio,
         "retained_unique_code_tokens": int(decision["retained_unique_code_tokens"]),
-        "retained_token_ratio": float(decision["retained_token_ratio"]),
+        "historical_retained_token_ratio": historical_retained_ratio,
+        "retained_token_ratio": selected_retained_ratio,
         "input_ids_shape": list(first_shape),
         "attention_mask_shape": list(first_mask_shape),
         "input_ids_dtype": str(first["input_ids"].dtype),
