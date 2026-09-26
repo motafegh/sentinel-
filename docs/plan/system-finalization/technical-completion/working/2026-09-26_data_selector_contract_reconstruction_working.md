@@ -333,7 +333,168 @@ historical decisions correctly; a new lineage needs a new explicit binding
 contract rather than edits that reinterpret those old decisions.
 
 
-### 8. Historical-control equivalence is already proven
+
+
+### 9. Executable consumer inventory — D0 item 4 CLOSED
+
+The selector-related fields do not all have the same authority. The audit
+separates the code that **produces** them, code that **validates** them, code
+that uses them for **research diagnostics**, and the actual **model runtime**.
+
+#### A. Candidate-build / metadata producers
+
+`ml/src/data_extraction/windowed_tokenizer.py`
+
+- produces historical `selected_window_indices`;
+- produces pre-subsampling counts, selected token ranges and retained-token
+  coverage;
+- remains the historical-control implementation.
+
+`data_module/sentinel_data/representation/r4_orchestrator.py`
+
+- writes selector/coverage telemetry into both token payload and sidecar;
+- writes `requested_contract_names` / `actual_contract_names`;
+- writes historical V10 `token_lineage = "accepted_v9_byte_copy"`;
+- is therefore a direct D2 integration surface for a fresh guarded build mode,
+  but its accepted R4-D-011 behavior must remain intact.
+
+#### B. Binding / validation consumers
+
+`data_module/sentinel_data/vnext/r4_binding.py`
+
+- validates the token tensor and the sidecar against each other;
+- requires equality for the complete coverage field set, including
+  `selected_window_indices`, selected ranges and retained-token telemetry;
+- validates requested/actual graph target identity;
+- historical repaired-v2/v9 binder; not a guarded-lineage semantic owner.
+
+`data_module/sentinel_data/vnext/r4_v10_binding.py`
+
+- reuses the token/sidecar coverage consistency checks;
+- additionally consumes `token_lineage`;
+- requires historical `accepted_v9_byte_copy` and exact accepted-V9 token
+  bytes;
+- historical R4-D-011 diagnostic binder; must remain unchanged in meaning.
+
+A guarded candidate therefore needs a successor binding path that validates the
+new selector metadata while preserving graph-byte identity to R4-D-011.
+
+#### C. Historical-control evidence consumers
+
+`docs/plan/ml-R4/scripts/p8_verify_v10_bound_token_control_equivalence.py`
+
+- reads `requested_contract_names`;
+- recomputes historical target spans and historical-control tokens;
+- compares dynamic `selected_window_indices` against both the bound token
+  payload and sidecar;
+- is tied explicitly to the R4-D-011 acceptance record/root.
+
+This verifier is immutable historical-control evidence and should not be
+repurposed into the guarded-candidate binder.
+
+#### D. Selector research / diagnostic consumers
+
+`docs/plan/ml-R4/scripts/p8_compare_bounded_window_selector_v1.py` and the
+older bounded-window comparison script:
+
+- consume `requested_contract_names`;
+- derive target spans/ranges;
+- compare control/greedy/guarded selected indices, target coverage and retained
+  coverage;
+- are research evidence only.
+
+`docs/plan/ml-R4/scripts/p8_run_selector_gpu_compare.py` and
+`p8_run_selector_gpu_compare_v3.py`:
+
+- dynamically replace only token tensors for bounded research;
+- consume `requested_contract_names`;
+- record selected/control indices, fallback flag, target coverage and retained
+  coverage;
+- verify control tensor identity where requested;
+- do not persist a production physical lineage.
+
+`data_module/sentinel_data/representation/r4_sensitivity.py`:
+
+- consumes `pre_subsampling_window_count` to identify long/worst-case
+  contracts;
+- does not depend on selected indices or token-lineage identity;
+- remains diagnostic-only.
+
+These research consumers are evidence precedents, not the production metadata
+contract by themselves.
+
+#### E. Model/dataset runtime consumers
+
+`VNextTrainingDataset`, `RepairedVNextTrainingDataset`, and the logical-V3
+dataset path load the token payload but pass only:
+
+- `input_ids`;
+- `attention_mask`.
+
+They do **not** interpret `selected_window_indices`, target spans, retained
+coverage, fallback state, `token_lineage`, or
+`requested_contract_names` during model forward/training.
+
+Therefore the frozen model tensor API does not need to change for the guarded
+selector. The model sees a different valid `[4,512]` token tensor, while the
+selector semantics remain a representation-lineage concern.
+
+The dataset/training boundary **does**, however, bind the representation digest.
+A later ML handoff must therefore consume the newly accepted guarded-lineage
+digest rather than silently pointing an old logical publication at new token
+bytes.
+
+#### F. Logical DATA / publication consumers
+
+Logical grouping, roles and supervision are selector-independent. The existing
+V3 logical publication can remain the semantic parent, but a future training
+publication/manifest must explicitly bind the newly accepted guarded physical
+digest and its acceptance evidence.
+
+No role, target or label semantics should change merely because token windows
+change.
+
+#### G. Stale future-V10 training adapter discovered
+
+`ml/src/datasets/vnext_logical_v3_v10_dataset.py` and its associated
+`build_v10_run_binding()` path are fail-closed future-training surfaces, but
+they predate R4-D-011 acceptance.
+
+Current source still:
+
+- describes the V10 population as only a candidate;
+- expects physical-acceptance schema
+  `sentinel-r4-v10-physical-acceptance-v1`;
+- while the controlling R4-D-011 machine record is
+  `sentinel-r4-v10-v26-physical-acceptance-v1`.
+
+Its tests construct the same old synthetic schema. This is a concrete stale
+downstream assumption relative to current R4 authority.
+
+It does **not** block DATA D0/D1 because:
+
+- training remains unauthorized;
+- this adapter is not the current DATA build/binding path;
+- D0 is reconstructing the new physical lineage before ML handoff.
+
+It **must** be reconciled before a later accepted guarded lineage is handed to
+ML. Do not treat its current constants/docstring as authority for D1 naming or
+acceptance semantics.
+
+#### Consumer-impact conclusion
+
+D1/D2 changes are required in the representation construction and guarded
+binding/validation surfaces. Focused tests must be added there.
+
+The frozen model architecture, forward signature and collate tensor shape do
+not require selector-specific fields. Dataset/run-control changes are downstream
+lineage-rebinding work after physical DATA acceptance, not part of implementing
+the selector itself.
+
+No current executable consumer justifies mutating R4-D-011 metadata in place.
+
+
+### 10. Historical-control equivalence is already proven
 
 The full-population verifier
 `docs/plan/ml-R4/scripts/p8_verify_v10_bound_token_control_equivalence.py`
@@ -378,11 +539,11 @@ same behavior.
 3. **CLOSED** — trace representation/version constants and binding utilities;
    establish inherited R4-D-011 identities versus new guarded-lineage identity
    and the successor-binding boundary.
-4. Identify every executable consumer of:
-   - `selected_window_indices`;
-   - token coverage metadata;
-   - token-lineage identity;
-   - `requested_contract_names`.
+4. **CLOSED** — enumerate and classify executable consumers of selected
+   indices, coverage metadata, token-lineage identity and requested targets.
+   The model runtime consumes only resulting tensors; build/binding and
+   research/evidence surfaces own selector metadata. A stale future-v10 ML
+   adapter is recorded for later handoff reconciliation.
 5. Reconcile under-cap behavior and every malformed/missing-target case with the
    accepted R4-D-012 evidence, including the exact structured fallback reason
    that D1 will need to expose.
@@ -394,14 +555,15 @@ same behavior.
 
 `AUDITING`.
 
-D0 items 1 through 3 are closed. No contradiction with R4-D-011/R4-D-012 has
-been established. The production gap remains real: historical selection is the
-live build behavior, while the guarded selector exists only in retained research
-code/evidence and has not been integrated into a fresh physical lineage.
+D0 items 1 through 4 are closed. The only concrete stale downstream assumption
+found is the future logical-V3/v10 ML adapter's pre-R4-D-011 acceptance schema;
+it is recorded for later ML-handoff reconciliation and does not alter current
+DATA authority. The guarded selector still has no fresh physical lineage.
 
 ## Next executable step
 
-Audit D0 item 4 only: enumerate every executable consumer of
-`selected_window_indices`, token coverage metadata, token-lineage identity and
-`requested_contract_names`, then classify each consumer as historical-control,
-candidate-build, binding/validation, dataset/training, or diagnostic-only.
+Audit D0 item 5 only: reconcile under-cap behavior and every missing, malformed
+or unresolvable target-evidence case against the retained selector source and
+R4-D-012. Separate valid **guard fallback** from invalid-evidence **fail-closed
+error** and determine which fallback reason values D1 may safely expose without
+inventing policy.
