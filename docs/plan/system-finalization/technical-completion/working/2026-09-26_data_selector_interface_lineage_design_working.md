@@ -138,22 +138,266 @@ The new typed decision boundary should live in a focused versioned selector
 module/interface. Existing historical tests must continue to exercise the old
 path unchanged.
 
+
+
+## D1-2 decision — canonical selector, target-evidence and lineage metadata
+
+The guarded candidate should preserve the existing top-level token coverage
+fields for compatibility and add one canonical nested selector record that is
+serialized identically into both the token payload and representation sidecar.
+
+### Versioned identities
+
+Freeze the following design identities for the guarded candidate:
+
+- selector decision schema:
+  `sentinel-r4-token-selector-decision-v1`;
+- target-evidence schema:
+  `sentinel-r4-selector-target-evidence-v1`;
+- token lineage ID:
+  `r4-v10-v26-target-aware-guarded-v1`;
+- protected candidate root name:
+  `representations-r4-v10-v26-target-aware-guarded-v1-candidate`;
+- successor binding-report schema:
+  `sentinel-r4-v10-guarded-candidate-binding-v1`.
+
+These are new identities. Existing R4-D-011 constants and root names remain
+unchanged.
+
+### Parent-lineage binding
+
+Every guarded candidate sidecar must identify the immutable physical parent by
+authority, not by a machine-specific absolute path:
+
+```text
+graph_parent
+  decision_id = R4-D-011
+  acceptance_schema = sentinel-r4-v10-v26-physical-acceptance-v1
+  binding_digest_sha256 = d9f925588913e66476cfbc097bace7daa7e673295fe2a243760313d0bef5ebdd
+  graph_schema_version = v10
+  extractor_version = v2.6-r4-call-semantics-deterministic-cfg-mutators
+```
+
+The successor binder must additionally hash-compare every candidate graph file
+against the corresponding R4-D-011 graph file. The parent binding digest is the
+governance anchor; per-identity graph-byte equality is the mechanical proof.
+
+### Selector configuration identity
+
+Selector semantics that affect physical token bytes must be represented by one
+canonical configuration mapping and SHA-256 digest.
+
+Canonical semantic fields:
+
+```text
+selector_config
+  requested_strategy = target_aware_guarded_v1
+  candidate_strategy = target_aware_greedy_v1
+  control_strategy = historical_linspace_v1
+  tokenizer_name = microsoft/graphcodebert-base
+  window_size = 512
+  stride = 256
+  max_windows = 4
+  target_metric = union_requested_target_token_coverage_v1
+  guard = candidate_target_coverage_strictly_greater_v1
+  greedy_tie_break = lowest_window_index_v1
+  fill_policy = historical_control_then_ascending_v1
+  source_view = repaired_preprocessed_bytes_v1
+```
+
+The mapping is serialized as canonical JSON
+(`sort_keys=True`, separators `,` and `:`) and hashed to
+`selector_config_sha256`.
+
+Runtime-derived values such as `content_tokens_per_window` remain per-artifact
+telemetry and must agree with the frozen tokenizer/window contract, but they do
+not create an independent selector policy name.
+
+### Canonical target-evidence record
+
+For each successful selector decision, target evidence must be deterministic and
+bound rather than inferred later:
+
+```text
+target_evidence
+  schema
+  contract_id
+  requested_contract_names
+  target_char_spans
+  target_token_ranges
+  target_tokens
+  selector_config_sha256
+  sha256
+```
+
+`sha256` is the canonical digest of the record excluding its own digest field.
+
+The requested names and spans retain their deterministic source/declaration
+order. The successor binder must verify that the sidecar
+`requested_contract_names` equals the target-evidence names exactly.
+
+Invalid target evidence produces a structured build failure and therefore no
+successful `target_evidence` or selector decision artifact.
+
+### Canonical selector decision record
+
+Both `*.tokens.pt` and `*.rep.json` must contain the same mapping under
+`token_selector`:
+
+```text
+token_selector
+  schema = sentinel-r4-token-selector-decision-v1
+  requested_strategy
+  effective_strategy
+  selector_config_sha256
+  selected_indices
+  control_indices
+  candidate_indices
+  used_control_fallback
+  fallback_reason
+  total_windows
+  max_windows
+  target_evidence_sha256
+  target_coverage_tokens
+  control_target_coverage_tokens
+  candidate_target_coverage_tokens
+  retained_tokens
+  control_retained_tokens
+  candidate_retained_tokens
+```
+
+Invariants:
+
+- `requested_strategy == target_aware_guarded_v1`;
+- `effective_strategy` is either `target_aware_guarded_v1` or
+  `historical_linspace_v1`;
+- `selected_indices` equals `candidate_indices` exactly when the strict
+  target-coverage guard succeeds;
+- otherwise `selected_indices == control_indices`,
+  `used_control_fallback == true`, and
+  `fallback_reason == candidate_target_coverage_not_strictly_greater`;
+- `candidate_indices` and candidate coverage are always present on a
+  successful decision;
+- all index arrays are sorted, unique and in range;
+- `target_evidence_sha256` binds the exact names/spans/token ranges used by the
+  decision.
+
+### Existing top-level coverage compatibility
+
+Do **not** replace the established `r4-token-coverage-v1` fields. Their meaning
+does not change: they describe the **emitted** token windows.
+
+Continue to persist at top level:
+
+- `coverage_schema_version`;
+- `pre_subsampling_window_count`;
+- `pre_subsampling_code_tokens`;
+- `selected_window_indices`;
+- `selected_code_token_ranges`;
+- `retained_unique_code_tokens`;
+- `retained_token_ratio`;
+- `content_tokens_per_window`;
+- `coverage_interpretation`.
+
+For the guarded lineage:
+
+- top-level `selected_window_indices` must equal
+  `token_selector.selected_indices`;
+- top-level retained coverage must describe those same emitted indices;
+- the token payload and sidecar must still agree on all existing coverage
+  fields.
+
+This keeps existing coverage/sensitivity tooling useful without pretending it
+knows the new selector semantics.
+
+### Token-lineage fields
+
+The new token payload and sidecar should both carry:
+
+```text
+token_lineage = r4-v10-v26-target-aware-guarded-v1
+token_lineage_parent_decision = R4-D-011
+token_lineage_parent_binding_digest_sha256 = d9f925...
+selector_config_sha256 = <canonical selector config digest>
+token_selector = <canonical selector decision mapping>
+target_evidence = <canonical target-evidence mapping>
+```
+
+The sidecar additionally carries the `graph_parent` authority mapping because
+it binds the complete graph/token/sidecar representation triple.
+
+### Successor binding digest record
+
+The guarded binder must build its population digest from sorted logical records,
+not local paths. Each record must bind at least:
+
+```text
+source
+contract_id
+graph_sha256
+parent_graph_sha256
+tokens_sha256
+sidecar_sha256
+graph_schema_version
+extractor_version
+token_lineage
+parent_decision_id
+parent_binding_digest_sha256
+selector_config_sha256
+target_evidence_sha256
+requested_strategy
+effective_strategy
+used_control_fallback
+fallback_reason
+selected_indices
+control_indices
+candidate_indices
+```
+
+Before admitting a record, the binder must prove
+`graph_sha256 == parent_graph_sha256`. The duplicate values remain in the
+record intentionally: they make the parent comparison explicit and auditable in
+the digest input.
+
+The binding report may aggregate counts such as guarded-selected versus
+control-fallback and under-cap versus over-cap, but aggregate counts never
+replace per-identity records.
+
+### Acceptance boundary
+
+The successor binding report remains diagnostic:
+
+- `physical_acceptance = false`;
+- `training_authorized = false`.
+
+A passing digest is evidence for D6 review, not authority to accept the lineage
+or launch training.
+
+## D1-2 status
+
+Canonical artifact/lineage metadata: **DESIGNED**.
+
+No production source or artifact-generation path changed in this increment.
+
+
 ## Current D1 state
 
-D1-1 selector decision semantics: **RECONCILED / READY FOR LINEAGE METADATA
-DESIGN**.
+D1-1 selector decision semantics: **RECONCILED**.
+
+D1-2 canonical artifact/lineage metadata: **DESIGNED**.
 
 No source implementation changed.
 
 ## Next D1 increment
 
-Design the canonical artifact metadata/lineage schema:
+Review the proposed interface/metadata against the exact D1 exit criterion and
+define the focused module/API ownership:
 
-- fresh representation/token lineage identifier;
-- R4-D-011 parent identity;
-- selector config identity;
-- deterministic target-evidence identity;
-- token/sidecar serialization fields;
-- successor binding-digest record shape.
+- which existing research logic is promoted/refactored versus wrapped;
+- where the validated target-evidence boundary lives;
+- where canonical serialization/digest helpers live;
+- where the successor binder lives;
+- which historical modules remain untouched.
 
-Do not implement generation before that schema is fixed.
+Only after that ownership/API review passes should D1 close and D2
+implementation begin.
