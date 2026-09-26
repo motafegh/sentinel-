@@ -715,6 +715,105 @@ Tracked R4 evidence records:
 
 This historical behavior is an immutable control requirement for later D1-D3.
 
+
+
+### 13. Final D0 selector contract and versioning table — D0 item 6 CLOSED
+
+| Contract dimension | Historical control | Guarded candidate requirement |
+|---|---|---|
+| selector identity | `historical_linspace_v1` | `target_aware_guarded_v1` |
+| source view | persisted repaired R4 `.sol` bytes | exactly the same repaired bytes |
+| tokenizer | `microsoft/graphcodebert-base` | unchanged |
+| window size | 512 | unchanged |
+| stride | 256 | unchanged |
+| max real windows | 4 | unchanged |
+| tensor shape | `[4,512]` IDs + mask | unchanged |
+| under-cap | all real windows, then pad | same output; explicit under-cap/control-equivalence evidence |
+| over-cap control | exact historical rounded linspace | retained as comparison/rollback |
+| target evidence | not used for control | exact `requested_contract_names` -> declaration/body char spans -> token ranges |
+| candidate selection | n/a | deterministic marginal union target-token coverage |
+| greedy tie | n/a | lowest window index |
+| fill after positive gains | n/a | historical control indices first, then ascending remaining indices |
+| guard criterion | n/a | candidate only when target coverage is strictly greater than control |
+| equal/lower coverage | n/a | historical control output with explicit reason |
+| missing/invalid target evidence | n/a | explicit exceptional control fallback when control tokenization remains valid; preserve error; unexpected in full parent population |
+| unsafe source/tokenizer/artifact failure | fail | fail; do not invent control artifacts |
+| graph schema | V10 parent under R4-D-011 | unchanged V10 |
+| graph extractor | V2.6 parent under R4-D-011 | unchanged |
+| graph bytes | immutable R4-D-011 parent | exact byte equality required |
+| population | 22,540 R4-D-011 identities | same 22,540 unless a separately governed blocker is discovered |
+| runtime provenance | accepted R4-D-011 partition | unchanged |
+| token bytes | immutable historical control | may differ only according to declared selector semantics |
+| selector metadata | historical coverage/index evidence | requested/actual selector, fallback category/detail, candidate/control indices, target evidence, coverage/config identity |
+| physical root/digest | immutable R4-D-011 root/digest | fresh root identity and fresh binding digest |
+| training authority | false | false until later independent gates |
+
+#### D0 versioning plan
+
+D1 must create a fresh selector/token lineage without renaming or repurposing
+existing R4-D-011 constants. The new lineage must:
+
+1. reference R4-D-011 as its graph/physical parent;
+2. retain explicit historical control identity;
+3. assign a fresh token/representation lineage identity;
+4. bind selector policy/config into token/sidecar identity;
+5. bind graph-parent hashes and new token/sidecar hashes into a successor
+   candidate digest;
+6. keep physical acceptance and training authorization separate from the binder.
+
+Exact constant and root-name spellings are a D1 interface-design decision. The
+semantic version boundary itself is no longer ambiguous.
+
+### 14. Historical controls D1-D3 must preserve
+
+The following remain historical-control authorities and must not be rewritten
+to make the guarded candidate pass:
+
+1. `ml/src/data_extraction/windowed_tokenizer.py::_selected_window_indices()`
+   — exact rounded linspace behavior.
+2. `data_module/tests/test_representation/test_windowed_tokenizer_coverage.py`
+   — exact over-cap `[0,6,13,19]`, under-cap `[0,1,2]`, frozen shape and
+   coverage behavior.
+3. `data_module/tests/test_representation/test_bounded_window_selector.py`
+   — guarded no-regression, equal-coverage fallback, target-span and
+   offset-preservation semantics.
+4. `data_module/tests/test_vnext/test_r4_v10_binding.py`
+   — R4-D-011-era V10 binder semantics, including accepted-V9 byte-copy lineage
+   and token-drift rejection.
+5. `docs/plan/ml-R4/scripts/p8_verify_v10_bound_token_control_equivalence.py`
+   plus its accepted machine report — 22,540 / 22,540 exact tensor/index
+   historical-control equivalence.
+6. R4-D-011 / ADR-R4-011 and its machine-readable acceptance record — exact
+   immutable graph/token parent authority.
+7. R4-D-012 / ADR-R4-012 — authorization for
+   `target_aware_guarded_v1` only in a fresh versioned candidate.
+
+New guarded-lineage tests may be added beside these controls. They must not
+replace or reinterpret them.
+
+### 15. D0 exit decision
+
+**D0 exit: PASS.**
+
+The required executable semantics can now be reconstructed without ad-hoc
+inference:
+
+- source/token view is known;
+- target provenance/span mapping is known;
+- historical and guarded selection algorithms are known;
+- deterministic tie/fill behavior is known;
+- under-cap/over-cap guard behavior is known;
+- exceptional fallback versus hard-failure boundary is known;
+- production integration and consumer boundaries are known;
+- immutable parent versus fresh lineage fields are known;
+- historical controls are identified.
+
+No source/evidence contradiction requiring a governance stop was found.
+
+The remaining choices are interface/serialization choices, not unresolved
+selector semantics. They belong to D1.
+
+
 ## Historical tests that must remain controls
 
 At minimum preserve the intent of:
