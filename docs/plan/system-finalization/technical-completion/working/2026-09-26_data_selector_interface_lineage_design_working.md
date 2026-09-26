@@ -380,24 +380,262 @@ Canonical artifact/lineage metadata: **DESIGNED**.
 No production source or artifact-generation path changed in this increment.
 
 
+
+
+## D1-3 decision — module and API ownership
+
+The production implementation should be DATA-owned. The retained ML research
+implementation remains evidence/control source and must not be refactored in
+place merely to make it production code.
+
+### 1. Production pure selector core
+
+Create:
+
+`data_module/sentinel_data/representation/r4_window_selector.py`
+
+Responsibilities:
+
+- define the named strategies:
+  - `historical_linspace_v1`;
+  - `target_aware_guarded_v1`;
+- implement the exact historical linspace rule;
+- implement the exact retained greedy marginal-union target-token coverage rule;
+- implement deterministic lowest-window-index tie breaking;
+- implement historical-first then ascending fill;
+- implement the strict-improvement guard;
+- return the immutable typed `SelectorDecision`;
+- validate index bounds/uniqueness/order and selector invariants.
+
+Non-responsibilities:
+
+- no filesystem access;
+- no Solidity target discovery;
+- no Hugging Face tokenizer loading;
+- no torch tensor construction;
+- no artifact serialization;
+- no physical acceptance or training logic.
+
+The production core is a clean implementation of the D0 contract, not a
+copy/paste authority claim. D3 must compare it against the retained research
+implementation on deterministic fixtures/property cases.
+
+### 2. Target evidence + guarded tokenization seam
+
+Create:
+
+`data_module/sentinel_data/representation/r4_guarded_tokenizer.py`
+
+Responsibilities:
+
+- consume the already repaired Solidity source bytes;
+- consume the exact `requested_contract_names` inherited from the R4-D-011
+  parent sidecar;
+- reuse `r4_target_spans.target_contract_char_spans()` unchanged;
+- run the frozen GraphCodeBERT tokenization/window contract;
+- map target character spans to raw-token ranges;
+- fail closed before selection when target evidence cannot be established;
+- call the pure selector core;
+- construct exactly `[4,512]` tensors;
+- compute the established top-level coverage fields for the emitted windows;
+- construct canonical `target_evidence` and `token_selector` mappings.
+
+This module owns tokenizer/offset mechanics but **not** candidate filesystem
+assembly.
+
+The existing `r4_target_spans.py` is reused unchanged unless a concrete bug is
+discovered. No new target parser should be invented.
+
+### 3. Lineage/version/serialization contract
+
+Create:
+
+`data_module/sentinel_data/representation/r4_guarded_lineage.py`
+
+Responsibilities:
+
+- own the D1 version/schema/root identifiers;
+- expose the immutable selector-config mapping;
+- canonical-JSON serialization and SHA-256 helpers;
+- construct/validate target-evidence digests;
+- construct/validate selector metadata;
+- construct/validate the R4-D-011 graph-parent authority mapping;
+- provide shared validation helpers used by candidate writer and binder.
+
+This prevents the token writer and binder from independently inventing
+serialization or digest rules.
+
+It must contain no graph generation, model logic or training logic.
+
+### 4. Fresh physical candidate assembler
+
+Create a focused successor module rather than adding guarded modes to the
+accepted orchestrator:
+
+`data_module/sentinel_data/representation/r4_guarded_candidate.py`
+
+Responsibilities:
+
+- accept the exact R4-D-011 root and acceptance record as parent inputs;
+- enumerate the exact parent population;
+- create only a fresh protected candidate root;
+- reuse/copy or hardlink each accepted parent graph without graph regeneration;
+- verify the inherited parent sidecar identity/targets/runtime before use;
+- generate guarded tokens through `r4_guarded_tokenizer.py`;
+- write a **new** sidecar carrying inherited graph semantics plus the new
+  guarded token-lineage metadata;
+- emit structured failure records and stop/fail according to D0/D1;
+- never mutate the parent root.
+
+This is preferable to overloading `r4_orchestrator.py`: the old orchestrator
+contains accepted historical graph-generation and accepted-V9-token-copy
+semantics that should remain auditable as-is.
+
+### 5. Successor population binder
+
+Create:
+
+`data_module/sentinel_data/vnext/r4_guarded_binding.py`
+
+Responsibilities:
+
+- require the R4-D-011 machine acceptance record;
+- prove exact candidate/parent population equality;
+- prove exact per-identity graph-byte equality to R4-D-011;
+- validate graph schema/extractor/runtime/target identity;
+- validate token tensor shape/dtype and token/sidecar metadata equality;
+- validate selector-config and target-evidence digests;
+- validate selector decision invariants;
+- construct the new sorted per-identity binding digest;
+- report guarded-selected/control-fallback counts and failures;
+- retain `physical_acceptance=false` and `training_authorized=false`.
+
+Do **not** weaken or parameterize `r4_v10_binding.py` to make guarded tokens
+pass. Its accepted-V9 byte-copy requirement is historical R4-D-011 meaning.
+
+### 6. Retained research implementation
+
+Keep unchanged:
+
+`ml/src/data_extraction/bounded_window_selector.py`
+
+Role:
+
+- retained source/evidence for R4-D-012;
+- research comparison/control implementation;
+- cross-implementation oracle for focused D3 equivalence tests.
+
+Production code should not import this module as its semantic engine. Doing so
+would make DATA production depend on an explicitly research-only ML module and
+would couple future maintenance to historical evidence code.
+
+### 7. Historical tokenizer/control path
+
+Keep unchanged:
+
+- `ml/src/data_extraction/windowed_tokenizer.py`;
+- `data_module/sentinel_data/representation/tokenizer.py`.
+
+They remain the historical linspace/tokenizer path and control surface.
+
+The guarded tokenizer may reuse the frozen model/window constants through the
+existing adapter or assert equality against them, but must not silently alter
+their historical behavior.
+
+### 8. Accepted V10 construction/binding path
+
+Keep unchanged in semantics:
+
+- `data_module/sentinel_data/representation/r4_orchestrator.py`;
+- `data_module/sentinel_data/vnext/r4_v10_binding.py`;
+- R4-D-011 acceptance artifacts and verifier.
+
+The guarded candidate assembler/binder sit **beside** these modules rather than
+turning them into multi-policy god-files.
+
+### 9. Test ownership
+
+Add focused tests beside the new owners:
+
+- `test_r4_window_selector.py`
+  - historical equivalence;
+  - guarded improvement/fallback;
+  - tie/fill/index properties;
+  - under-/over-cap;
+  - deterministic repeatability;
+- `test_r4_guarded_tokenizer.py`
+  - exact target-span/token-range evidence;
+  - fail-closed invalid targets;
+  - shape/padding;
+  - metadata/coverage consistency;
+  - deterministic tensors;
+- `test_r4_guarded_lineage.py`
+  - canonical serialization/digest stability;
+  - selector/target-evidence invariant validation;
+- `test_r4_guarded_candidate.py`
+  - fresh-root requirement;
+  - immutable parent;
+  - graph byte preservation;
+  - structured failure behavior;
+- `test_r4_guarded_binding.py`
+  - parent-population equality;
+  - graph drift rejection;
+  - selector metadata drift rejection;
+  - token/sidecar mismatch rejection;
+  - passing diagnostic binder does not grant acceptance/training.
+
+Existing historical tests remain unchanged and continue to run as controls.
+
+## D1 exit review
+
+D1 exit criterion:
+
+> interface and lineage fields are reviewable and do not mutate existing
+> artifact semantics.
+
+Assessment: **PASS**.
+
+The design now fixes:
+
+- typed selector decision semantics;
+- valid fallback versus invalid-evidence failure;
+- canonical selector/target-evidence metadata;
+- selector configuration identity and digest;
+- fresh token/representation lineage identity;
+- R4-D-011 parent binding;
+- successor binding-digest content;
+- focused production module ownership;
+- historical modules that must remain untouched;
+- validation/test ownership.
+
+No implementation choice now requires reinterpreting R4-D-011 or R4-D-012.
+
 ## Current D1 state
+
+`COMPLETE / PASS — D2 implementation is next`.
+
+No production source has been modified during D1.
+
+
+## Archived prior D1 state marker
 
 D1-1 selector decision semantics: **RECONCILED**.
 
 D1-2 canonical artifact/lineage metadata: **DESIGNED**.
 
-No source implementation changed.
+D1-3 module/API ownership: **DESIGNED / REVIEWED**.
 
-## Next D1 increment
+This marker is retained only as chronology; the authoritative current D1 state
+above is `COMPLETE / PASS`.
 
-Review the proposed interface/metadata against the exact D1 exit criterion and
-define the focused module/API ownership:
+## Exact next step
 
-- which existing research logic is promoted/refactored versus wrapped;
-- where the validated target-evidence boundary lives;
-- where canonical serialization/digest helpers live;
-- where the successor binder lives;
-- which historical modules remain untouched.
+Begin D2 with the **pure selector + lineage primitives only**:
 
-Only after that ownership/API review passes should D1 close and D2
-implementation begin.
+1. add `r4_guarded_lineage.py`;
+2. add `r4_window_selector.py`;
+3. add focused unit/property tests proving exact historical/research semantic
+   equivalence.
+
+Do not yet implement candidate assembly, full token generation or the successor
+population binder in that first D2 increment.
