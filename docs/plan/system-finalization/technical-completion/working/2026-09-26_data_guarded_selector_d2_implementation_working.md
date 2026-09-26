@@ -81,3 +81,118 @@ D2 increment 2 only:
 7. add focused tokenizer tests for invalid evidence, padding/shape, control fallback, strict improvement, metadata consistency and determinism.
 
 Do not yet implement `r4_guarded_candidate.py`, full-population generation or `r4_guarded_binding.py` in that increment.
+
+
+## D2 increment 2 — guarded tokenization seam
+
+Status: **CLOSED / PASS (focused local verification; repository Phase-8 CI wired for PR/main)**
+
+Implementation commits:
+
+- `25f1cb211785834de2d345616e17c43bc0da2021` — guarded tokenization seam;
+- `f595305e2b9a6e4c16712d0531b6c89d93706a09` — focused tokenizer tests;
+- `fa7dfe72eafcc71f92347d7556808bedc730e881` — fail-closed tokenizer hardening;
+- `6418844118ca4b3c6860355f496473c3789b6a25` — Phase-8 CI coverage for the new modules/tests.
+
+### Added production owner
+
+`data_module/sentinel_data/representation/r4_guarded_tokenizer.py`
+
+The seam now:
+
+1. consumes the exact persisted repaired Solidity source bytes;
+2. requires a non-empty unique requested-target tuple;
+3. reuses `r4_target_spans.target_contract_char_spans()` unchanged;
+4. requires the frozen fast
+   `microsoft/graphcodebert-base` tokenizer identity;
+5. obtains raw token IDs + offset mappings without a second comment-removal
+   transform;
+6. maps target character spans to exact raw-token ranges;
+7. computes the frozen overflow-window geometry from
+   `window_size=512`, tokenizer special-token count and `stride=256`;
+8. invokes the DATA-owned `target_aware_guarded_v1` selector;
+9. requires the computed window count to equal the tokenizer's actual overflow
+   window count;
+10. emits exactly `[4,512]` long tensors with stable padding;
+11. preserves the existing `r4-token-coverage-v1` top-level telemetry for the
+    emitted windows;
+12. binds canonical `target_evidence`, `token_selector`,
+    selector-config digest and guarded token-lineage parent identity.
+
+Invalid requested targets, zero-token target mappings, tokenizer identity drift,
+shape/window-count drift, invalid matrices and selector/metadata failures all
+fail closed before a successful token artifact can be returned.
+
+### Focused tests
+
+Added:
+
+`data_module/tests/test_representation/test_r4_guarded_tokenizer.py`
+
+Coverage includes:
+
+- under-cap control fallback + padding to `[4,512]`;
+- exact repaired-source reuse without a second source mutation;
+- over-cap strict target-coverage improvement;
+- target-evidence/selector metadata cross-binding;
+- missing/empty target evidence failure;
+- tokenizer identity failure;
+- repeated deterministic tensors/metadata;
+- exact character-span -> token-range mapping;
+- frozen overflow-window geometry.
+
+### Validation
+
+Focused isolated harness against the authored seam/tests:
+
+- `9 passed`;
+- source compiles;
+- strict-improvement and control-fallback branches both exercised;
+- repeated tensors and metadata are identical;
+- hardened fail-closed tokenizer validation retained the same `9/9` pass.
+
+Repository `Handbook` push validation passed for both implementation and
+hardening commits:
+
+- run `36263826004`: success;
+- run `36263940100`: success.
+
+The stronger `R4 Phase 8 real-data repository repair` workflow is configured
+to run only on `main`, pull requests to `main`, or manual dispatch. This
+branch does not receive that workflow on ordinary push. Commit `6418844`
+therefore adds the three new production modules and three focused tests to that
+workflow's compile/regression lists so they cannot be omitted at the PR/main
+verification boundary.
+
+No claim is made that the full Phase-8 repository regression suite ran on this
+branch.
+
+### D2 state after increment 2
+
+The selector, lineage metadata and guarded tokenization seam now exist. The
+system still cannot generate a physical guarded representation candidate; the
+accepted R4-D-011 builder/root remains untouched.
+
+## Exact next increment
+
+D2 increment 3 only: implement the fresh physical candidate assembler
+`r4_guarded_candidate.py` with focused tests.
+
+Required boundary:
+
+1. consume the exact R4-D-011 accepted root/acceptance record as immutable
+   parent;
+2. enumerate parent identities rather than rediscovering a new population;
+3. require a fresh candidate root and reject parent/candidate aliasing;
+4. preserve graph bytes exactly from the parent;
+5. validate inherited requested/actual targets and runtime identity before
+   token generation;
+6. generate only new guarded token payloads through
+   `r4_guarded_tokenizer.py`;
+7. write new sidecars carrying inherited graph semantics plus guarded lineage
+   metadata;
+8. emit structured per-identity failures;
+9. prove parent files remain unchanged in focused tests.
+
+Do not run full-population generation and do not implement the successor
+population binder in the same increment.
