@@ -2,7 +2,7 @@
 
 Date: 2026-09-26
 Work package: D0 — source/evidence reconstruction
-State: AUDITING
+State: DESIGN_READY — D0 complete; D1 next
 Branch: `work/data-d0-selector-contract`
 Base: `main@57f39d652cbec1092084b4efbf41bec6a117ba07`
 
@@ -607,7 +607,98 @@ This resolves the DATA-plan phrase "structured fallback/error path": valid
 coverage guards use fallback; invalid evidence uses the error path.
 
 
-### 12. Historical-control equivalence is already proven
+
+
+### 13. Consolidated selector contract and integration boundary — D0 item 6 CLOSED
+
+The following table is the reconstructed D0 contract. It records only semantics
+already established by executable source, tests, R4-D-011, or R4-D-012.
+
+| Concern | Reconstructed contract | Authority / integration consequence |
+|---|---|---|
+| Authoritative source bytes | Persisted repaired R4 `.sol` bytes after line-preserving lexical normalization | Selector must not introduce a second mutable preprocessing policy |
+| Tokenizer | `microsoft/graphcodebert-base`, current frozen tokenizer/runtime contract | Keep tokenizer identity bound in new lineage |
+| Window shape | 512 tokens per window, stride 256, maximum 4 real windows | Model input remains exactly `[4,512]` after padding |
+| Historical selector | `historical_linspace_v1`: all windows when under cap; otherwise rounded NumPy linspace across `[0,total_windows-1]` | Immutable control; full-population equivalence to R4-D-011 already proven |
+| Guarded selector | `target_aware_guarded_v1` | Required selector policy for the new candidate under R4-D-012 |
+| Target identity | Exact `requested_contract_names` that produced the file-graph representation | No vulnerability-label guess or later heuristic may substitute |
+| Target spans | Exact declaration/body character spans for every requested target, offset-preserving and uniquely resolved | Missing/ambiguous/unbalanced target evidence fails closed |
+| Target token ranges | Character spans mapped through GraphCodeBERT raw-token offset mapping | Zero-token target mapping fails closed |
+| Candidate objective | Greedily maximize marginal **union requested-target token coverage** | No alternative score/heuristic is authorized |
+| Greedy tie break | Maximum `(marginal_gain, -window_index)` | Lowest window index wins deterministic ties |
+| Greedy stop | Stop target-directed additions when best marginal gain is `<= 0` | No zero-gain target heuristic |
+| Fill order | First missing historical-linspace indices, then remaining indices ascending | Deterministic completion to at most four real windows |
+| Final index order | Sort selected real-window indices ascending | Stable physical token ordering |
+| Guard criterion | Use candidate only when candidate target coverage is **strictly greater** than historical control | Equal or worse coverage selects historical control |
+| Valid fallback reason | Semantically: candidate target coverage not strictly greater than control | Exact metadata spelling is D1 schema design; meaning is fixed |
+| Under-cap | All real windows are retained; candidate/control coverage tie; guarded path resolves to historical control | Pad only to `[4,512]`; under-cap is not a new policy |
+| Missing/invalid target evidence | Structured build/selection failure | Must not silently become successful historical-control fallback |
+| Determinism | Same repaired source + targets + tokenizer/config => same indices and token tensors | D3 must prove repeated-run identity |
+| Graph parent | Exact R4-D-011 V10 graph bytes, schema, extractor, targets and runtime provenance | No graph regeneration/drift is authorized by selector work |
+| Population parent | Exact R4-D-011 22,540 identities | Any population change needs separate evidence/decision |
+| Historical token lineage | R4-D-011 `accepted_v9_byte_copy` remains immutable | Never relabel old token files as guarded |
+| New token lineage | Fresh versioned physical identity using `target_aware_guarded_v1` | New root, token hashes, sidecar hashes and binding digest required |
+| Per-artifact selector evidence | Requested selector, actual selector, fallback flag/reason, control/final indices, target evidence, coverage and tokenizer/config identity | D1 must define typed/schema fields; D2 must persist them |
+| Binding | Parent graph/population identity must equal R4-D-011; token/sidecar changes allowed only in declared selector fields/payload | Existing R4-D-011 binder remains historical; guarded successor binder required |
+| Model runtime | Consumes only resulting `input_ids` + `attention_mask`; no selector metadata in forward API | No architecture/forward-signature change |
+| Logical DATA roles/labels | Remain logical-V3 authority and selector-independent | Later publication must rebind new physical digest; no role/label redefinition |
+| Acceptance | Candidate generation/binding does not self-accept | Separate physical review/decision required before ML handoff |
+| Training | Unauthorized | No training action follows from D0-D4 selector work |
+
+#### Required implementation seams identified for D1/D2
+
+The smallest **correct responsibility set**, without conflating unrelated
+modules, is:
+
+1. an explicit versioned selector interface/strategy surface around the
+   historical and guarded selection logic;
+2. a validated target-evidence input boundary using the existing repaired
+   source/target semantics;
+3. the token-build seam that emits guarded tensors plus structured selector
+   metadata;
+4. a fresh candidate construction mode/root that reuses the accepted R4-D-011
+   graph parent without mutating it;
+5. a guarded-lineage binder/validator that proves graph-parent identity and
+   declared token-only differences;
+6. focused historical-control, guarded-selector, metadata, lineage-isolation
+   and determinism tests.
+
+The model architecture, graph extractor semantics, logical role assignment,
+training objective and training runner are outside this implementation boundary.
+
+### 14. D0 exit assessment — PASSED
+
+D0 exit criterion from the DATA plan:
+
+> one unambiguous selector contract and versioning plan exists; no decision
+> semantic is inferred ad hoc.
+
+Assessment: **PASSED**.
+
+Established without unresolved selector-policy ambiguity:
+
+- exact historical control semantics;
+- exact guarded candidate objective and deterministic tie-breaking;
+- exact strict-improvement guard;
+- exact under-cap behavior;
+- exact target-evidence provenance and span/token mapping;
+- valid-fallback versus invalid-evidence boundary;
+- immutable R4-D-011 parent semantics;
+- required new lineage/binding identity;
+- executable consumer impact;
+- production integration seams;
+- historical tests/evidence that must remain controls.
+
+The only stale downstream finding is the future logical-V3/V10 ML adapter's
+pre-R4-D-011 acceptance schema. It is outside D0 selector semantics and must be
+reconciled before ML handoff, not used to redefine the DATA candidate.
+
+No source/R4 contradiction blocks selector construction. D0 is complete and
+the DATA workstream may move to D1 design. No D1 implementation is implied by
+this record.
+
+
+### 15. Historical-control equivalence is already proven
 
 The full-population verifier
 `docs/plan/ml-R4/scripts/p8_verify_v10_bound_token_control_equivalence.py`
@@ -661,22 +752,23 @@ same behavior.
    coverage is not strictly greater than control; under-cap naturally ties and
    falls back. Missing/malformed/unresolvable target evidence fails closed and
    must not silently become historical-control output.
-6. Produce the D0 selector-contract table and integration/versioning boundary.
-7. Only if that contract is unambiguous, mark D0 exit as satisfied and move to
-   D1. No production code changes before that point.
+6. **CLOSED** — consolidated selector contract and integration/versioning
+   boundary recorded above.
+7. **CLOSED / PASS** — D0 exit criterion is satisfied; no unresolved selector
+   decision semantic remains. D1 design may begin; no production code has yet
+   changed.
 
 ## Current D0 status
 
 `AUDITING`.
 
-D0 items 1 through 5 are closed. The selector behavior, target-evidence
-boundary, lineage boundary and consumer impact are now reconstructed without
-inventing new fallback semantics.
+D0 is complete and passes its exit criterion. No production source has been
+modified. The working record now supplies the source/evidence reconstruction
+needed to begin D1 without re-deriving selector policy.
 
 ## Next executable step
 
-Execute D0 item 6 only: consolidate the reconstructed semantics into one
-selector-contract/integration table covering inputs, outputs, deterministic
-selection, guard/failure behavior, immutable parent fields, new lineage fields
-and affected seams. Then assess the D0 exit criterion; do not start D1 until
-that table exposes no unresolved decision semantic.
+Begin D1 design only: define the explicit selector interface and fresh lineage
+metadata/schema using the D0 contract. Preserve
+`historical_linspace_v1` as an exact named control and do not implement the
+candidate build until the D1 interface/versioning design is reviewable.
