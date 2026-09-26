@@ -92,16 +92,77 @@ The retained guarded semantics currently reconstruct as follows:
 This establishes the central improvement criterion and fallback rule without
 inventing new semantics.
 
-### 4. Target evidence used by selector research
+### 4. Target evidence and provenance — D0 item 2 CLOSED
 
-The durable research path reads
-`requested_contract_names` from representation sidecars, resolves exact
-contract declaration/body character spans with
-`r4_target_spans.target_contract_char_spans()`, and maps those spans onto the
-GraphCodeBERT token offsets used by selector comparison.
+The target chain is explicit and fail-closed:
 
-Multi-target file-graph unions are supported; target coverage is union coverage
-across all requested target ranges.
+`ingestion manifest entry -> repaired preprocessing source_records[].ingestion_entry -> _explicit_target_from_provenance() / meta.contract_names -> _select_targets() -> resolve_file_graph_targets() -> requested_contract_names sidecar -> target_contract_char_spans() -> token target ranges -> selector`.
+
+#### Upstream provenance
+
+`r4_pipeline._materialize()` preserves every contributing ingestion entry in
+`meta["source_records"][*]["ingestion_entry"]`. It also persists
+`meta["contract_names"]`, derived during preprocessing from the exact repaired
+source.
+
+`r4_orchestrator._explicit_target_from_provenance()` scans all preserved source
+records for the explicit-target fields:
+
+- `target_contract_name`;
+- `contract_name`;
+- `label_contract_name`.
+
+If exactly one distinct non-empty name exists, it is authoritative. If multiple
+distinct explicit names exist, representation construction fails with
+`TargetSelectionError`; conflicting provenance is never guessed away.
+
+#### File-graph target resolution
+
+`_select_targets()` reads the repaired `.sol` and calls
+`resolve_file_graph_targets()` with:
+
+- the unique explicit target when available;
+- otherwise the preprocessing `contract_names` as provenance names.
+
+The resolver behavior is deterministic:
+
+1. An explicit target must name an application contract. Unknown targets,
+   libraries and interfaces fail closed.
+2. Without an explicit target, provenance-matching contract declarations are
+   preferred; if none match, all declared contracts are considered.
+3. Inheritance parents are removed and all remaining inheritance leaves are
+   retained. Therefore unrelated application leaves become a file-level union
+   rather than one guessed target.
+4. A library-only source retains executable libraries.
+5. Interface-only/no-executable-target sources fail closed.
+
+The resulting ordered tuple is passed to graph extraction and is persisted in
+the representation sidecar as `requested_contract_names`. Actual extracted
+targets are independently recorded as `actual_contract_names`.
+
+#### Selector target spans
+
+The durable selector research reads `requested_contract_names` from the
+sidecar. Empty target lists are rejected.
+
+`r4_target_spans.target_contract_char_spans()` then operates on the exact
+repaired source, requires every requested name to resolve exactly once, masks
+strings/comments while preserving offsets, and requires balanced declaration
+braces. It returns one exact declaration/body character span per requested
+target.
+
+Those spans are converted against GraphCodeBERT offset mappings into token
+ranges. Multi-target file unions remain multi-target: coverage is the union
+across all requested target token ranges.
+
+This means selector relevance is bound to the **same requested file-graph
+target identity that produced the representation**, not to a later label guess
+or vulnerability-class heuristic.
+
+Malformed, missing or contradictory target evidence currently raises instead of
+silently selecting windows. Whether D1 should expose any of those states as a
+structured control fallback is intentionally deferred to D0 item 5; item 2 does
+not invent that policy.
 
 ### 5. Production-token-view alignment — D0 item 1 CLOSED
 
@@ -190,9 +251,9 @@ same behavior.
 
 1. **CLOSED** — trace the exact preprocessing source view that reaches
    tokenization and establish comment-removal/idempotence semantics.
-2. Trace target-name provenance:
-   raw/preprocessing metadata -> `_select_targets()` ->
-   `requested_contract_names` -> target spans.
+2. **CLOSED** — trace target-name provenance:
+   ingestion/preprocessing metadata -> `_select_targets()` ->
+   `requested_contract_names` -> target spans and selector token ranges.
 3. Trace representation/version constants and binding utilities to determine
    which lineage fields must change for a fresh guarded candidate.
 4. Identify every executable consumer of:
@@ -211,13 +272,14 @@ same behavior.
 
 `AUDITING`.
 
-D0 item 1 is closed. No contradiction with R4-D-011/R4-D-012 has been
+D0 items 1 and 2 are closed. No contradiction with R4-D-011/R4-D-012 has been
 established. The production gap remains real: historical selection is the live
 build behavior, while the guarded selector exists only in retained research
 code/evidence and has not been integrated into a fresh physical lineage.
 
 ## Next executable step
 
-Audit D0 item 2 only: trace target-name provenance from ingestion/preprocessing
-metadata through `_select_targets()`, persisted
-`requested_contract_names`, target-span resolution and selector input.
+Audit D0 item 3 only: trace representation/version constants and the current
+binding/validation utilities to determine exactly which lineage identifiers and
+bound metadata must change for a fresh guarded-token candidate while preserving
+R4-D-011 unchanged.
