@@ -103,13 +103,53 @@ GraphCodeBERT token offsets used by selector comparison.
 Multi-target file-graph unions are supported; target coverage is union coverage
 across all requested target ranges.
 
-### 5. Production-token-view alignment
+### 5. Production-token-view alignment — D0 item 1 CLOSED
 
-The retained selector research explicitly uses the repaired token source view
-and preserves source offsets while removing comments. The current D0 audit must
-still trace this against the exact preprocessing write path so we record the
-single authoritative source-view contract rather than relying on comments in
-either module.
+The authoritative repaired source path is:
+
+`raw Solidity -> flatten_contract() -> normalize(..., preserve_line_structure=True) -> compile exact normalized bytes -> stage -> content-addressed repaired .sol -> representation/tokenization`.
+
+Source evidence:
+
+- `r4_pipeline._prepare_one()` normalizes `flat.content` with
+  `preserve_line_structure=True`.
+- `normalizer.normalize()` calls `strip_comments_lexically()`, replaces
+  non-newline comment characters with spaces, preserves newlines, strips
+  trailing horizontal whitespace, preserves blank-line structure in R4 mode,
+  and ensures a terminal newline.
+- The SHA used as `normalized_text_sha256` and therefore the repaired artifact
+  filename is computed from that exact normalized content.
+- The exact normalized content is compiled before promotion.
+- The same exact normalized content is written to staging and then copied into
+  the repaired physical `<normalized_text_sha256>.sol` artifact.
+- `r4_orchestrator._extract_one()` therefore correctly invokes
+  `tokenize_windowed_contract_strict(..., strip_comments=False)` for direct
+  repaired tokenization. Comment removal has already happened upstream.
+
+The repaired `.sol` bytes, not the original raw or flattened bytes, are thus
+the authoritative selector/tokenizer source view.
+
+#### Research selector compatibility
+
+`bounded_window_selector.prepare_source_for_tokenization()` calls
+`strip_comments_lexically()` again. On a valid repaired R4 artifact this is
+not a newly authorized preprocessing transform: the artifact is already
+comment-free except for comment-like marker text protected inside Solidity
+strings, which the lexical scanner preserves.
+
+This compatibility call is byte-idempotent for the repaired source contract
+established above. The preprocessing regression suite additionally proves
+`normalize(..., preserve_line_structure=True)` is idempotent and preserves
+comment markers inside strings.
+
+D1/D2 should therefore treat **the persisted repaired `.sol` bytes as the
+single authoritative input view**. A production selector interface should not
+create an independent second normalization policy. If it retains a defensive
+idempotence check, that check must prove byte equality or fail explicitly rather
+than silently changing the source view.
+
+No contradiction was found between preprocessing, historical tokenization,
+selector research, or R4-D-012.
 
 ### 6. Historical-control equivalence is already proven
 
@@ -132,6 +172,8 @@ This historical behavior is an immutable control requirement for later D1-D3.
 
 At minimum preserve the intent of:
 
+- `data_module/tests/test_preprocessing/test_r4_repair.py` for lexical
+  normalization, line preservation and repaired-normalization idempotence;
 - `data_module/tests/test_representation/test_windowed_tokenizer_coverage.py`
   for exact historical linspace indices and frozen-shape behavior;
 - `data_module/tests/test_representation/test_bounded_window_selector.py`
@@ -146,8 +188,8 @@ same behavior.
 
 ## D0 remaining audit, in order
 
-1. Trace the exact preprocessing source view that reaches tokenization and prove
-   whether comment removal is already complete/idempotent at the selector seam.
+1. **CLOSED** — trace the exact preprocessing source view that reaches
+   tokenization and establish comment-removal/idempotence semantics.
 2. Trace target-name provenance:
    raw/preprocessing metadata -> `_select_targets()` ->
    `requested_contract_names` -> target spans.
@@ -169,14 +211,13 @@ same behavior.
 
 `AUDITING`.
 
-No contradiction with R4-D-011/R4-D-012 has been established so far. The
-production gap described by the DATA plan is real: historical selection remains
-the live build behavior, while the guarded selector exists only in retained
-research code/evidence and has not been integrated into a fresh physical
-lineage.
+D0 item 1 is closed. No contradiction with R4-D-011/R4-D-012 has been
+established. The production gap remains real: historical selection is the live
+build behavior, while the guarded selector exists only in retained research
+code/evidence and has not been integrated into a fresh physical lineage.
 
 ## Next executable step
 
-Audit item 1 only: trace the exact preprocessing/comment-removal contract into
-the tokenization seam and record the result here before proceeding to target
-provenance or consumer enumeration.
+Audit D0 item 2 only: trace target-name provenance from ingestion/preprocessing
+metadata through `_select_targets()`, persisted
+`requested_contract_names`, target-span resolution and selector input.
