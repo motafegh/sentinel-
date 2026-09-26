@@ -101,7 +101,7 @@ Candidate metadata fields should be evaluated, not blindly fixed, but must be su
 
 ## 6. Work package D2 — implementation
 
-**State:** `NEXT`
+**State:** `IN_PROGRESS`
 
 Implementation goals:
 
