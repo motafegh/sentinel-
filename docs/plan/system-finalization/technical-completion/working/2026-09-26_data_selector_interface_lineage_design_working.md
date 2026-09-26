@@ -29,8 +29,8 @@ SelectorDecision
   candidate_indices
   used_control_fallback
   fallback_reason
-  target_evidence_status
-  target_evidence_detail
+  total_windows
+  max_windows
   target_coverage_tokens
   control_target_coverage_tokens
   candidate_target_coverage_tokens
@@ -51,9 +51,8 @@ This is a semantic schema, not yet a Python implementation/API commitment.
   - `historical_linspace_v1` whenever control is emitted.
 - `selected_indices` are the emitted real-window indices.
 - `control_indices` are always present.
-- `candidate_indices` are present whenever valid target evidence allowed the
-  guarded candidate to be computed; they may be absent when target evidence
-  could not be established.
+- valid target evidence is a precondition for producing a `SelectorDecision`;
+  therefore `candidate_indices` are always present on a successful decision.
 - `used_control_fallback` is true exactly when requested guarded policy emits
   historical-control indices.
 - indices are deterministic, sorted, unique and in range.
@@ -66,53 +65,32 @@ This is a semantic schema, not yet a Python implementation/API commitment.
 
 Use a small closed vocabulary tied directly to D0 semantics.
 
-Proposed reason codes:
+The successful decision vocabulary has exactly one fallback reason:
 
-- `under_cap_all_windows`
-  - expected;
-  - all real windows fit within the four-window cap;
-  - historical control emits every real window before padding.
-
-- `no_strict_target_coverage_improvement`
-  - expected guarded fallback;
+- `candidate_target_coverage_not_strictly_greater`
   - valid target evidence exists;
   - candidate target coverage is equal to or lower than control;
-  - preserve exact candidate/control coverage counts so equality versus lower
-    can be inspected without multiplying reason-code variants.
-
-- `target_evidence_unavailable`
-  - exceptional;
-  - historical tokenization remains valid but requested target evidence cannot
-    be validated/resolved;
-  - preserve the original validation failure in
-    `target_evidence_detail`;
-  - full D4/D5 generation must treat any occurrence as a discrepancy requiring
-    review because the R4-D-011 parent proved target-span resolution for
-    22,540 / 22,540 identities.
+  - historical control is emitted;
+  - exact candidate/control coverage counts remain bound so equality versus
+    lower coverage is inspectable.
 
 - no fallback reason / null
   - guarded candidate won by strict target-coverage improvement.
 
-Hard source/tokenizer/artifact failures do not produce a
-`SelectorDecision`; they fail the build path.
+Under-cap is **not** a separate fallback policy. When `total_windows <=
+max_windows`, candidate and control contain all real windows, their target
+coverage ties, and the ordinary strict-improvement guard therefore emits the
+historical control. `total_windows` and `max_windows` provide descriptive
+under-cap telemetry without multiplying policy reason codes.
 
-## Target evidence status
+Missing, malformed or unresolvable target evidence does **not** produce a
+`SelectorDecision`. The durable research/control-equivalence paths reject such
+inputs before selection, and R4-D-012 does not authorize silent substitution of
+historical control. Those conditions belong to a separate structured build
+failure/error record and no successful guarded token artifact is emitted.
 
-Keep fallback reason and evidence validity separate.
-
-Proposed closed status:
-
-- `valid`;
-- `unavailable_or_invalid`.
-
-This avoids misleading combinations such as treating equal target coverage as
-invalid evidence.
-
-For `valid`, target-span/token-range evidence must be available to metadata
-binding.
-
-For `unavailable_or_invalid`, target-aware coverage fields that cannot be
-meaningfully computed must remain absent/null rather than fabricated as zero.
+Hard source/tokenizer/artifact failures likewise fail the build path before a
+decision object exists.
 
 ## Why requested and effective strategy are separate
 
@@ -142,11 +120,12 @@ Do not allow separate ad-hoc dictionaries in token and sidecar writers.
 Large/raw diagnostics such as Python exceptions should not become unstable
 binding inputs. The bound form should use:
 
-- stable reason/status codes;
+- the stable guarded fallback reason;
 - deterministic target evidence;
-- deterministic indices/counts/config;
-- a normalized diagnostic detail string only where required for exceptional
-  evidence.
+- deterministic indices/counts/config.
+
+Selection/build failures use a separate failure record and are not serialized as
+successful selector metadata.
 
 The exact canonical serialization helper belongs to the next D1 increment.
 
@@ -161,8 +140,8 @@ path unchanged.
 
 ## Current D1 state
 
-D1-1 selector decision semantics: **DESIGNED / READY FOR REVIEW AGAINST
-LINEAGE METADATA**.
+D1-1 selector decision semantics: **RECONCILED / READY FOR LINEAGE METADATA
+DESIGN**.
 
 No source implementation changed.
 
