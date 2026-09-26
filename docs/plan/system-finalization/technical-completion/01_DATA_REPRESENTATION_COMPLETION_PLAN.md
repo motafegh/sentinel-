@@ -51,7 +51,7 @@ If the exact research implementation of `target_aware_guarded_v1` exists outside
 
 ## 4. Work package D0 — source/evidence reconstruction
 
-**State:** `AUDITING`
+**State:** `COMPLETE / PASS`
 
 Tasks:
 
@@ -72,7 +72,7 @@ Tasks:
 
 ## 5. Work package D1 — selector interface and lineage design
 
-**State:** `NOT_STARTED`
+**State:** `COMPLETE / PASS`
 
 Design requirements:
 
@@ -101,7 +101,7 @@ Candidate metadata fields should be evaluated, not blindly fixed, but must be su
 
 ## 6. Work package D2 — implementation
 
-**State:** `NOT_STARTED`
+**State:** `NEXT`
 
 Implementation goals:
 
