@@ -212,7 +212,128 @@ than silently changing the source view.
 No contradiction was found between preprocessing, historical tokenization,
 selector research, or R4-D-012.
 
-### 6. Historical-control equivalence is already proven
+
+
+### 7. Lineage/version and binding boundary — D0 item 3 CLOSED
+
+R4-D-012 requires a **new physical token/representation lineage**, not a mutation
+of either the accepted V9 token population or the accepted R4-D-011 V10 root.
+
+#### Identities that remain inherited/frozen
+
+The guarded candidate must continue to bind to the accepted R4-D-011 parent
+semantics:
+
+- population identity: the same 22,540 source/contract identities unless a later
+  evidence-backed blocker is separately decided;
+- preprocessing parent: `sentinel-preprocessed-r4-v2`;
+- graph schema: `v10`;
+- graph extractor:
+  `v2.6-r4-call-semantics-deterministic-cfg-mutators`;
+- graph bytes for each identity: unchanged from the accepted R4-D-011 parent;
+- graph target semantics: unchanged requested/actual file-graph targets;
+- Slither/crytic runtime provenance and the exact 22,539 primary + 1
+  identity-bound-exception partition;
+- frozen token tensor shape: `[4,512]`;
+- GraphCodeBERT tokenizer/model/window/stride contract.
+
+R4-D-011's exact root, digest, token files, sidecars and machine-readable
+acceptance record remain immutable historical authority.
+
+#### Identities that must be new
+
+The guarded candidate must introduce a fresh identity for the parts changed by
+R4-D-012:
+
+- physical candidate/root identity;
+- token/representation lineage identity;
+- selector policy/version identity:
+  `target_aware_guarded_v1`;
+- selector configuration identity where configuration affects semantics;
+- per-artifact selector decision metadata;
+- token payload hashes;
+- sidecar hashes, because selector/coverage metadata changes;
+- full candidate binding digest;
+- source commit/runtime/build identity for the candidate generation;
+- later physical-acceptance decision/evidence identity if the candidate passes.
+
+Final constant/root names are deliberately **not fixed in D0**. D1 must choose
+explicit names that cannot collide with the accepted R4-D-011 lineage.
+
+#### Why the existing V10 binder cannot be reused unchanged
+
+`sentinel_data.vnext.r4_v10_binding.bind_v10_candidate()` was designed for
+R4-D-010/R4-D-011 graph remediation. It intentionally requires:
+
+- `sidecar["token_lineage"] == "accepted_v9_byte_copy"`;
+- candidate token bytes exactly equal accepted-V9 token bytes;
+- a candidate root named by the current
+  `V10_REPRESENTATION_ROOT_NAME`.
+
+Those checks were correct for R4-D-011 and must remain correct for historical
+control validation. A guarded candidate is expected to change token payloads on
+some identities, so weakening these checks in place would destroy the old
+binder's semantic meaning.
+
+D1/D2 therefore require either a focused successor binder or an explicitly
+versioned/parameterized binding interface whose **historical mode preserves all
+current R4-D-011 checks exactly**.
+
+#### Required guarded-candidate binding semantics
+
+A guarded-lineage binder must prove two different classes of invariants:
+
+**Parent-preservation invariants**
+
+- exact population equality with R4-D-011;
+- exact graph-byte equality with R4-D-011 for every identity;
+- exact graph schema/extractor identity;
+- exact requested/actual target semantics;
+- exact graph/runtime provenance;
+- no unexplained graph or population drift.
+
+**Declared token-lineage changes**
+
+- selector requested identity;
+- selector actually used;
+- whether control fallback occurred;
+- explicit fallback reason;
+- guarded and control selected indices as required by the D0/D1 contract;
+- target-span/target-token evidence identity;
+- token coverage/retention evidence;
+- tokenizer/window/stride/config identity;
+- token tensor shape/dtype;
+- new token hashes and sidecar hashes.
+
+The binding digest must therefore include enough selector/token lineage metadata
+to distinguish the guarded candidate from both R4-D-011 and any future selector
+version. Merely relying on a directory name is insufficient.
+
+#### Existing binder precedent retained
+
+The earlier `r4_binding.py` and `r4_v10_binding.py` establish useful
+mechanical principles that should remain:
+
+- logical source/contract IDs rather than machine-specific absolute roots are
+  bound;
+- graph/token/sidecar content hashes participate in the digest;
+- malformed or missing triples fail closed;
+- tensor shape and graph schema are validated, not inferred from filenames;
+- requested/actual targets are checked;
+- binder reports remain diagnostic and cannot self-grant physical acceptance or
+  training authority.
+
+For the guarded candidate, the V10/R4-D-011 root becomes the physical **parent
+control**, replacing accepted V9 as the token-byte-equality authority. Token
+byte equality to R4-D-011 is **not** a required invariant; graph byte equality
+to R4-D-011 is.
+
+No contradiction was found. The existing version/binding code reflects its
+historical decisions correctly; a new lineage needs a new explicit binding
+contract rather than edits that reinterpret those old decisions.
+
+
+### 8. Historical-control equivalence is already proven
 
 The full-population verifier
 `docs/plan/ml-R4/scripts/p8_verify_v10_bound_token_control_equivalence.py`
@@ -254,8 +375,9 @@ same behavior.
 2. **CLOSED** — trace target-name provenance:
    ingestion/preprocessing metadata -> `_select_targets()` ->
    `requested_contract_names` -> target spans and selector token ranges.
-3. Trace representation/version constants and binding utilities to determine
-   which lineage fields must change for a fresh guarded candidate.
+3. **CLOSED** — trace representation/version constants and binding utilities;
+   establish inherited R4-D-011 identities versus new guarded-lineage identity
+   and the successor-binding boundary.
 4. Identify every executable consumer of:
    - `selected_window_indices`;
    - token coverage metadata;
@@ -272,14 +394,14 @@ same behavior.
 
 `AUDITING`.
 
-D0 items 1 and 2 are closed. No contradiction with R4-D-011/R4-D-012 has been
-established. The production gap remains real: historical selection is the live
-build behavior, while the guarded selector exists only in retained research
+D0 items 1 through 3 are closed. No contradiction with R4-D-011/R4-D-012 has
+been established. The production gap remains real: historical selection is the
+live build behavior, while the guarded selector exists only in retained research
 code/evidence and has not been integrated into a fresh physical lineage.
 
 ## Next executable step
 
-Audit D0 item 3 only: trace representation/version constants and the current
-binding/validation utilities to determine exactly which lineage identifiers and
-bound metadata must change for a fresh guarded-token candidate while preserving
-R4-D-011 unchanged.
+Audit D0 item 4 only: enumerate every executable consumer of
+`selected_window_indices`, token coverage metadata, token-lineage identity and
+`requested_contract_names`, then classify each consumer as historical-control,
+candidate-build, binding/validation, dataset/training, or diagnostic-only.
