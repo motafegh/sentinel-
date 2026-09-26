@@ -736,7 +736,7 @@ This historical behavior is an immutable control requirement for later D1-D3.
 | fill after positive gains | n/a | historical control indices first, then ascending remaining indices |
 | guard criterion | n/a | candidate only when target coverage is strictly greater than control |
 | equal/lower coverage | n/a | historical control output with explicit reason |
-| missing/invalid target evidence | n/a | explicit exceptional control fallback when control tokenization remains valid; preserve error; unexpected in full parent population |
+| missing/invalid target evidence | n/a | structured build/selection failure; no successful guarded artifact may be emitted by silently substituting control |
 | unsafe source/tokenizer/artifact failure | fail | fail; do not invent control artifacts |
 | graph schema | V10 parent under R4-D-011 | unchanged V10 |
 | graph extractor | V2.6 parent under R4-D-011 | unchanged |
@@ -803,7 +803,7 @@ inference:
 - historical and guarded selection algorithms are known;
 - deterministic tie/fill behavior is known;
 - under-cap/over-cap guard behavior is known;
-- exceptional fallback versus hard-failure boundary is known;
+- valid coverage fallback versus invalid-evidence fail-closed boundary is known;
 - production integration and consumer boundaries are known;
 - immutable parent versus fresh lineage fields are known;
 - historical controls are identified.
@@ -859,7 +859,7 @@ same behavior.
 
 ## Current D0 status
 
-`AUDITING`.
+`DESIGN_READY — D0 complete; D1 next`.
 
 D0 is complete and passes its exit criterion. No production source has been
 modified. The working record now supplies the source/evidence reconstruction
