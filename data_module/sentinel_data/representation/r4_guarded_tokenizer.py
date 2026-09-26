@@ -55,12 +55,12 @@ def _load_tokenizer() -> Any:
 
 
 def _validate_tokenizer_identity(tokenizer: Any) -> None:
-    if getattr(tokenizer, "is_fast", True) is False:
+    if getattr(tokenizer, "is_fast", False) is not True:
         raise GuardedTokenizationError(
             "guarded tokenization requires a fast tokenizer with offset mappings"
         )
     name = getattr(tokenizer, "name_or_path", None)
-    if isinstance(name, str) and name and name != TOKENIZER_NAME:
+    if name != TOKENIZER_NAME:
         raise GuardedTokenizationError(
             f"tokenizer identity mismatch: {name!r} != {TOKENIZER_NAME!r}"
         )
@@ -93,12 +93,11 @@ def _normalize_window_matrix(value: Any, *, field: str) -> list[list[int]]:
             raise GuardedTokenizationError(
                 f"{field}[{index}] shape drift: {len(row)} != {WINDOW_SIZE}"
             )
-        try:
-            rows.append([int(item) for item in row])
-        except (TypeError, ValueError) as exc:
+        if any(isinstance(item, bool) or not isinstance(item, int) for item in row):
             raise GuardedTokenizationError(
                 f"{field}[{index}] contains a non-integer value"
-            ) from exc
+            )
+        rows.append(list(row))
     return rows
 
 
@@ -263,11 +262,15 @@ def tokenize_repaired_source_guarded(
         raise GuardedTokenizationError("tokenizer produced zero raw code tokens")
 
     try:
-        special_tokens = int(tokenizer.num_special_tokens_to_add(pair=False))
+        special_tokens = tokenizer.num_special_tokens_to_add(pair=False)
     except Exception as exc:
         raise GuardedTokenizationError(
             f"cannot determine tokenizer special-token count: {exc}"
         ) from exc
+    if isinstance(special_tokens, bool) or not isinstance(special_tokens, int):
+        raise GuardedTokenizationError(
+            "tokenizer special-token count must be an integer"
+        )
     content_capacity = WINDOW_SIZE - special_tokens
     ranges = window_ranges(
         total_tokens,
@@ -310,6 +313,10 @@ def tokenize_repaired_source_guarded(
         raise GuardedTokenizationError(
             "windowed token IDs and attention masks have different counts"
         )
+    if any(item < 0 for row in all_ids for item in row):
+        raise GuardedTokenizationError("token IDs must be non-negative")
+    if any(item not in (0, 1) for row in all_masks for item in row):
+        raise GuardedTokenizationError("attention masks must contain only 0/1")
     if len(all_ids) != len(ranges):
         raise GuardedTokenizationError(
             "computed range count diverges from tokenizer overflow windows: "
@@ -323,10 +330,10 @@ def tokenize_repaired_source_guarded(
     pad_id = tokenizer.pad_token_id
     if pad_id is None:
         pad_id = 0
-    try:
-        pad_id = int(pad_id)
-    except (TypeError, ValueError) as exc:
-        raise GuardedTokenizationError("tokenizer pad_token_id must be an integer") from exc
+    if isinstance(pad_id, bool) or not isinstance(pad_id, int) or pad_id < 0:
+        raise GuardedTokenizationError(
+            "tokenizer pad_token_id must be a non-negative integer"
+        )
 
     while len(selected_ids) < MAX_WINDOWS:
         selected_ids.append([pad_id] * WINDOW_SIZE)
