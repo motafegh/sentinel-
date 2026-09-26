@@ -494,7 +494,120 @@ the selector itself.
 No current executable consumer justifies mutating R4-D-011 metadata in place.
 
 
-### 10. Historical-control equivalence is already proven
+
+
+### 11. Guard fallback versus invalid-evidence failure — D0 item 5 CLOSED
+
+R4-D-012 promotes a **guarded comparison policy over valid requested-target
+evidence**. It does not authorize treating absent or malformed target evidence
+as if target-aware selection succeeded.
+
+#### Valid guard fallback
+
+The exact retained condition is:
+
+`greedy_target_coverage <= historical_control_target_coverage`.
+
+When that condition is true, `target_aware_guarded_v1` selects the historical
+control indices.
+
+The safe semantic reason D1 may expose is therefore equivalent to:
+
+`candidate_target_coverage_not_strictly_greater`.
+
+The final spelling/schema is a D1 design choice, but its meaning must remain
+exactly this condition. Do not split it into policy reasons that imply evidence
+not present in R4-D-012.
+
+The fallback is valid for:
+
+- target-coverage ties;
+- any theoretical greedy regression, which the guard converts to control;
+- under-cap inputs.
+
+#### Under-cap behavior
+
+When `total_windows <= 4`, historical control selects every real window.
+
+The greedy selector may choose target-overlapping windows first, but its fill
+steps then add all remaining available windows. The sorted candidate therefore
+contains the same complete real-window set as the control.
+
+Consequences:
+
+- candidate target coverage equals control target coverage;
+- the guarded condition falls back to the historical control;
+- all real windows are retained;
+- output is padded only as needed to maintain exact `[4,512]`;
+- under-cap is not a separate selection heuristic.
+
+D1 may record `pre_subsampling_window_count <= max_windows` as descriptive
+telemetry, but should not invent a distinct selector policy from it.
+
+#### Invalid evidence is not an accepted fallback
+
+The durable research/evidence path rejects before selection when it cannot
+establish valid target evidence. Existing fail-closed cases include:
+
+- missing/empty `requested_contract_names`;
+- contradictory explicit target provenance;
+- requested target absent from the repaired source;
+- requested library/interface where an application contract is required;
+- ambiguous/invalid target declaration resolution;
+- a requested target resolving other than exactly once;
+- missing opening or balanced closing declaration brace;
+- empty/invalid character spans;
+- a target span mapping to zero GraphCodeBERT tokens;
+- empty repaired source or zero tokenizer code tokens;
+- tokenizer overflow-window/range-count divergence;
+- invalid selector/window configuration.
+
+These are evidence/contract failures, not proof that the historical selector is
+the correct target-aware outcome.
+
+R4-D-012's accepted CPU evidence had 1,018/1,018 analyzed records and zero
+failures. Its 261 control fallbacks are explicitly the **equal-coverage valid
+cases**, not malformed-target cases.
+
+#### Low-level empty-target permissiveness is not promoted semantics
+
+`target_aware_greedy_indices()` returns historical linspace indices when
+called directly with an empty `target_ranges` list, and
+`char_spans_to_token_ranges()` can return an empty list if an internal caller
+passes no spans.
+
+However, the durable CPU/CUDA/control-equivalence paths first require non-empty
+`requested_contract_names` and obtain spans through
+`target_contract_char_spans()`, which rejects an empty target list.
+
+Therefore the low-level empty-range behavior is an implementation convenience,
+not R4-D-012 authority for production fallback. D1/D2 should put a validated
+target-evidence boundary in front of the selector so missing/invalid evidence
+cannot silently become a successful control selection.
+
+#### D1 metadata/error implication
+
+For a successfully emitted guarded token artifact:
+
+- requested selector identity must be `target_aware_guarded_v1`;
+- actual selector may be guarded candidate or historical control;
+- `used_control_fallback` must be explicit;
+- when fallback is true, the reason must mean
+  `candidate target coverage was not strictly greater than control`;
+- control and final selected indices and relevant coverage counts must be bound.
+
+For invalid target evidence:
+
+- no artifact may claim successful target-aware selection;
+- the build must emit/propagate a structured error/failure record;
+- silently substituting historical control would require a new explicit policy
+  decision and is not authorized by D0/R4-D-012.
+
+This resolves the DATA-plan phrase "structured fallback/error path": valid
+coverage guards use fallback; invalid evidence uses the error path.
+
+
+### 12. Historical-control equivalence is already proven
 
 The full-population verifier
 `docs/plan/ml-R4/scripts/p8_verify_v10_bound_token_control_equivalence.py`
@@ -544,9 +657,10 @@ same behavior.
    The model runtime consumes only resulting tensors; build/binding and
    research/evidence surfaces own selector metadata. A stale future-v10 ML
    adapter is recorded for later handoff reconciliation.
-5. Reconcile under-cap behavior and every malformed/missing-target case with the
-   accepted R4-D-012 evidence, including the exact structured fallback reason
-   that D1 will need to expose.
+5. **CLOSED** — valid target evidence falls back only when candidate target
+   coverage is not strictly greater than control; under-cap naturally ties and
+   falls back. Missing/malformed/unresolvable target evidence fails closed and
+   must not silently become historical-control output.
 6. Produce the D0 selector-contract table and integration/versioning boundary.
 7. Only if that contract is unambiguous, mark D0 exit as satisfied and move to
    D1. No production code changes before that point.
@@ -555,15 +669,14 @@ same behavior.
 
 `AUDITING`.
 
-D0 items 1 through 4 are closed. The only concrete stale downstream assumption
-found is the future logical-V3/v10 ML adapter's pre-R4-D-011 acceptance schema;
-it is recorded for later ML-handoff reconciliation and does not alter current
-DATA authority. The guarded selector still has no fresh physical lineage.
+D0 items 1 through 5 are closed. The selector behavior, target-evidence
+boundary, lineage boundary and consumer impact are now reconstructed without
+inventing new fallback semantics.
 
 ## Next executable step
 
-Audit D0 item 5 only: reconcile under-cap behavior and every missing, malformed
-or unresolvable target-evidence case against the retained selector source and
-R4-D-012. Separate valid **guard fallback** from invalid-evidence **fail-closed
-error** and determine which fallback reason values D1 may safely expose without
-inventing policy.
+Execute D0 item 6 only: consolidate the reconstructed semantics into one
+selector-contract/integration table covering inputs, outputs, deterministic
+selection, guard/failure behavior, immutable parent fields, new lineage fields
+and affected seams. Then assess the D0 exit criterion; do not start D1 until
+that table exposes no unresolved decision semantic.
