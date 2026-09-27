@@ -396,6 +396,99 @@ excuse to add new debt.
 
 D3 is therefore complete on substantive executable evidence.
 
+### 12.1 2026-09-27 pre-D4 reproducibility and source-identity hardening
+
+Before protected-local D4, the guarded candidate path was independently
+re-audited against the physical-hash and immutable-parent requirements.
+
+Two concrete gaps were found and closed on the canonical PR branch.
+
+#### Token artifact byte reproducibility
+
+Candidate manifests record `tokens_sha256`, so tensor equality alone is not
+enough: repeated construction must produce the same physical token-file bytes.
+
+An initial attempt to force PyTorch's legacy serialization stream was rejected
+by the exact-head Phase-8 regression test: independently created but
+semantically identical tensors can receive different legacy storage identities.
+
+The final implementation instead serializes the token payload with the modern
+PyTorch ZIP format into an in-memory `BytesIO` stream, then writes those exact
+bytes to the candidate file. This removes candidate-root/path identity from the
+serialization seam while retaining
+`torch.load(..., weights_only=True)` compatibility.
+
+The repository-safe determinism test now requires both:
+
+- equal selected tensors/selector metadata; and
+- exact repeated `.tokens.pt` byte equality / SHA-256 equality.
+
+The protected-local D4 validator independently repeats the same physical
+token-file SHA-256 comparison and reports
+`token_artifact_repeat_equal`.
+
+Relevant commits:
+
+- `34f7495fe93b91a2f3d4e41c2277c73783ccd7cb` — first reproducibility
+  hardening attempt;
+- `a40a541354e73cc797fd87be0b11ae140ab6b735` — repository-safe byte
+  determinism assertion;
+- `a4e1b131c3558b361e474e7d78174e144bbecad6` — D4 physical-token repeat
+  assertion;
+- `10c102c515c9458821123df49e17cf0d8ee0a746` — corrected path-independent
+  in-memory ZIP serialization.
+
+#### Repaired-source identity binding
+
+The builder previously validated that the preprocessing directory was the exact
+R4-D-011 accepted parent path but did not re-prove that each persisted
+`<contract_id>.sol` still contained the bytes named by that content identity.
+
+The preprocessing owner proves that `contract_id` /
+`normalized_text_sha256` is SHA-256 of the exact normalized Solidity bytes
+copied into the repaired `.sol` artifact. The guarded builder now therefore:
+
+1. reads the persisted repaired source as bytes;
+2. requires `sha256(source_bytes) == contract_id`;
+3. only then decodes and retokenizes it.
+
+This prevents a stale accepted graph from being combined with tokens generated
+from silently changed source bytes.
+
+Relevant commits:
+
+- `8e38813ebaf01bbf2883cd0a43d23c39cafbfea0` — source-byte identity guard;
+- `54892954dc897e1d384bbab88cda5c49325bbd26` — regression coverage.
+
+#### Exact-head repository evidence
+
+Implementation head `10c102c515c9458821123df49e17cf0d8ee0a746` was
+validated by Phase-8 repository-repair run `36341534405`.
+
+Substantive results:
+
+- repaired DATA/ML/token/research module compilation: PASS;
+- main repaired + Phase-8 suite: **222 passed, 9 skipped**;
+- focused ML compatibility suite: **15 passed**;
+- deterministic semantic-evidence helper suite: **20 passed**;
+- committed logical-V3 snapshot verification: PASS;
+- frozen historical G6 validation: PASS.
+
+The workflow conclusion remains red only at the inherited
+`git diff --check a10fae...HEAD` step, which reports pre-existing trailing
+whitespace in historical planning/portfolio documents already present in the
+comparison baseline. No guarded-selector source/test failure remains.
+
+Other exact-head PR checks are green, including Handbook, security hygiene,
+Phase 3, Phase 4 G4/DIVE, Phase 5 policy/G5, Phase 6 G6 and Phase-8 vNext
+training compatibility. The Phase-7 G7 workflow remains independently red
+because that workflow installs pytest/pyarrow but then collects existing tests
+that import `torch`; its failure is `ModuleNotFoundError: torch`, not a
+guarded-candidate regression.
+
+These hardenings do not advance D4. They strengthen the executable preconditions
+for running it.
+
 ## 13. D4 bounded tranche selected from retained evidence
 
 D4 must run only against the protected local physical roots. The initial tranche
