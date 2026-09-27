@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import copy
 import hashlib
+import io
 import json
 import shutil
 import subprocess
@@ -585,15 +586,13 @@ def _build_guarded_token_identity(
         import torch
 
         shutil.copyfile(graph_path, graph_tmp)
-        # The default ZIP-based torch.save stream is not byte-stable across
-        # repeat saves of identical tensors. Candidate manifests and the future
-        # population binder hash physical token files, so use the deterministic
-        # legacy stream while preserving ordinary torch.load compatibility.
-        torch.save(
-            token_payload,
-            tokens_tmp,
-            _use_new_zipfile_serialization=False,
-        )
+        # Serialize through an in-memory stream so PyTorch's ZIP archive
+        # identity is independent of the candidate filesystem path. This keeps
+        # physical token bytes reproducible across repeat candidate roots while
+        # preserving ordinary torch.load(..., weights_only=True) compatibility.
+        token_buffer = io.BytesIO()
+        torch.save(token_payload, token_buffer)
+        tokens_tmp.write_bytes(token_buffer.getvalue())
         sidecar_tmp.write_text(
             json.dumps(candidate_sidecar, indent=2, sort_keys=True) + "\n",
             encoding="utf-8",
