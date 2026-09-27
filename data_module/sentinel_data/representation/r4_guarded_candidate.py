@@ -448,7 +448,16 @@ def assemble_guarded_candidate(
                 "sha256": contract_id,
                 "source": source,
             }
-            torch.save(token_payload, candidate_paths[1])
+            # The default ZIP-based torch.save stream is not byte-stable across
+            # repeat saves of identical tensors. The guarded physical binding
+            # hashes token files, so use the legacy torch serialization stream,
+            # which is deterministic for this tensor/dict payload and remains
+            # loadable through torch.load(..., weights_only=True).
+            torch.save(
+                token_payload,
+                candidate_paths[1],
+                _use_new_zipfile_serialization=False,
+            )
 
             sidecar = dict(parent_sidecar)
             sidecar.update(
