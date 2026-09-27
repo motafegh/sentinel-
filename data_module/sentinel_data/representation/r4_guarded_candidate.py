@@ -9,7 +9,6 @@ from __future__ import annotations
 import hashlib
 import json
 import shutil
-import time
 from pathlib import Path
 from typing import Any
 
@@ -115,6 +114,7 @@ def _runtime_contract(
     acceptance: dict[str, Any],
 ) -> dict[tuple[str, str], str]:
     runtime_map: dict[tuple[str, str], str] = {}
+    runtime_contracts = 0
     rows = acceptance.get("runtime_distribution")
     if not isinstance(rows, list) or not rows:
         raise GuardedCandidateBuildError("R4-D-011 runtime distribution is missing")
@@ -140,6 +140,11 @@ def _runtime_contract(
         if key in runtime_map and runtime_map[key] != crytic:
             raise GuardedCandidateBuildError("conflicting R4-D-011 crytic runtime identity")
         runtime_map[key] = crytic
+        runtime_contracts += count
+    if runtime_contracts != int(acceptance["accepted_lineage"]["contracts"]):
+        raise GuardedCandidateBuildError(
+            "R4-D-011 runtime distribution does not cover the accepted population"
+        )
     return runtime_map
 
 
@@ -294,6 +299,16 @@ def _validate_parent_sidecar(
     return tuple(requested)
 
 
+def _load_parent_sidecar(path: Path, *, logical: str) -> dict[str, Any]:
+    try:
+        value = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise ValueError(f"cannot read R4-D-011 sidecar {logical}: {exc}") from exc
+    if not isinstance(value, dict):
+        raise ValueError(f"R4-D-011 sidecar {logical} must contain a JSON object")
+    return value
+
+
 def _parent_paths(
     sidecar_path: Path,
     contract_id: str,
@@ -392,14 +407,12 @@ def assemble_guarded_candidate(
             candidate_dir / f"{contract_id}.tokens.pt",
             candidate_dir / f"{contract_id}.rep.json",
         )
-        started = time.monotonic()
-
         try:
             parent_paths = _parent_paths(parent_sidecar_path, contract_id)
             parent_hashes_before = _triple_hashes(parent_paths)
-            parent_sidecar = _load_json(
+            parent_sidecar = _load_parent_sidecar(
                 parent_sidecar_path,
-                label=f"R4-D-011 sidecar {logical}",
+                logical=logical,
             )
             requested_names = _validate_parent_sidecar(
                 parent_sidecar,
@@ -441,7 +454,6 @@ def assemble_guarded_candidate(
             sidecar.update(
                 {
                     "window_count": int(token_data["num_windows"]),
-                    "compute_time_ms": (time.monotonic() - started) * 1000.0,
                     **_coverage_mapping(token_data),
                     "token_lineage": TOKEN_LINEAGE_ID,
                     "token_lineage_parent_decision": PARENT_DECISION_ID,
