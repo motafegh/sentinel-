@@ -91,7 +91,7 @@ def _fixture(
     actual_names: list[str] | None = None,
 ):
     source = "fixture"
-    contract_id = "a" * 64
+    contract_id = hashlib.sha256(source_text.encode("utf-8")).hexdigest()
     repo_root = tmp_path / "repo"
     parent_root = repo_root / guarded_candidate.R4_D011_PHYSICAL_ROOT
     parent_dir = parent_root / source
@@ -303,6 +303,33 @@ def test_ambiguous_or_missing_named_target_fails_closed(tmp_path: Path):
             parent=fixture["parent"],
             tokenizer=CharTokenizer(),
         )
+
+
+def test_repaired_source_bytes_must_match_parent_identity(tmp_path: Path):
+    fixture = _fixture(tmp_path, source_text=_source_with_target(long=False))
+    source_path = (
+        fixture["preprocessed_root"]
+        / fixture["source"]
+        / f"{fixture['contract_id']}.sol"
+    )
+    source_path.write_text("contract Drift { uint changed; }\n", encoding="utf-8")
+    output_root = _output_root(tmp_path, "source-drift")
+
+    with pytest.raises(
+        GuardedTokenCandidateError,
+        match="source bytes do not match the representation identity",
+    ):
+        _build_guarded_token_identity(
+            source=fixture["source"],
+            contract_id=fixture["contract_id"],
+            preprocessed_root=fixture["preprocessed_root"],
+            parent_root=fixture["parent_root"],
+            output_root=output_root,
+            parent=fixture["parent"],
+            tokenizer=CharTokenizer(),
+        )
+
+    assert not output_root.exists()
 
 
 def test_parent_requested_actual_target_mismatch_is_rejected(tmp_path: Path):
