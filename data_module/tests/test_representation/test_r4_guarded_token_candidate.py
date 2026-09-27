@@ -250,6 +250,8 @@ def test_guarded_build_is_deterministic_and_graph_bytes_are_parent_identical(
     )
     assert first_payload["selector_decision"] == second_payload["selector_decision"]
     assert first.selected_window_indices == second.selected_window_indices
+    assert first.tokens_sha256 == second.tokens_sha256
+    assert first_tokens.read_bytes() == second_tokens.read_bytes()
     assert first_meta == second_meta
 
     first_graph = first_root / fixture["source"] / f"{fixture['contract_id']}.pt"
