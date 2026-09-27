@@ -503,7 +503,19 @@ def _build_guarded_token_identity(
         raise GuardedTokenCandidateError(
             f"missing accepted preprocessed source {source_path}"
         )
-    source_text = source_path.read_text(encoding="utf-8")
+    source_bytes = source_path.read_bytes()
+    source_sha256 = hashlib.sha256(source_bytes).hexdigest()
+    if source_sha256 != contract_id:
+        raise GuardedTokenCandidateError(
+            "accepted preprocessed source bytes do not match the representation "
+            f"identity for {source}/{contract_id}: {source_sha256}"
+        )
+    try:
+        source_text = source_bytes.decode("utf-8")
+    except UnicodeDecodeError as exc:
+        raise GuardedTokenCandidateError(
+            f"accepted preprocessed source is not valid UTF-8 for {source}/{contract_id}"
+        ) from exc
     target_names = [str(value) for value in parent_sidecar["requested_contract_names"]]
 
     token_fields, selector_decision = _selector_payload(
