@@ -344,6 +344,11 @@ def _validate_identity(
     if first_meta != second_meta:
         errors.append("repeat sidecar metadata differs")
 
+    first_tokens_sha = _sha256_file(first_tokens)
+    second_tokens_sha = _sha256_file(second_tokens)
+    if first_tokens_sha != second_tokens_sha:
+        errors.append("repeat token artifact bytes are not deterministic")
+
     parent_graph_sha = _sha256_file(parent_graph)
     first_graph_sha = _sha256_file(first_graph)
     second_graph_sha = _sha256_file(second_graph)
@@ -531,6 +536,9 @@ def _validate_identity(
         "attention_mask_dtype": str(first["attention_mask"].dtype),
         "first_tensor_digest_sha256": _tensor_digest(first),
         "second_tensor_digest_sha256": _tensor_digest(second),
+        "first_tokens_sha256": first_tokens_sha,
+        "second_tokens_sha256": second_tokens_sha,
+        "token_artifact_repeat_equal": first_tokens_sha == second_tokens_sha,
         "parent_graph_sha256": parent_graph_sha,
         "first_graph_sha256": first_graph_sha,
         "second_graph_sha256": second_graph_sha,
