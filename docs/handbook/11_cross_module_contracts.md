@@ -10,7 +10,7 @@
 
 The most dangerous SENTINEL changes are cross-module semantic changes that still satisfy old shapes. Current compatibility must therefore distinguish **historical runtime/reproduction contracts** from the **current R4 future-training contracts**.
 
-Today, the live ML runtime still serves historical Run12 against its historical v9-compatible inference seam. Separately, a possible repaired teacher must use `data-vnext-policy-v1`, accepted logical V3 grouping/roles, the exact D-011 V10 V2.6 physical graph lineage, and a separately accepted D-012 guarded-selector successor token lineage. Separately again, fusion `[128]`, the retained 138-signal proxy proof, V3 EIP-712 context binding, read-only registry observation, and versioned feedback each own distinct trust claims.
+Today, the live ML runtime still serves historical Run12 against its historical v9-compatible inference seam. Separately, a possible repaired teacher must use `data-vnext-policy-v1`, accepted logical V3 grouping/roles, the exact D-011 V10 V2.6 physical graph lineage, and the separately accepted D-013 guarded-selector successor token lineage governed by D-012. Separately again, fusion `[128]`, the retained 138-signal proxy proof, V3 EIP-712 context binding, read-only registry observation, and versioned feedback each own distinct trust claims.
 
 Compatibility means **meaning + ordering + version + provenance + role/authorization + failure semantics**, not merely array length.
 
@@ -21,7 +21,7 @@ Compatibility means **meaning + ordering + version + provenance + role/authoriza
 | historical DATA / Run12 seam | historical v9-compatible graph/token inputs + old model/checkpoint semantics | current Run12 inference/runtime continuity |
 | R4 semantic layer | `data-vnext-policy-v1` + accepted logical V3 grouping/roles | repaired dataset/training/evaluation code |
 | R4 physical representation | exact D-011 V10 V2.6 graph/control-token identity | future repaired candidate construction |
-| D-012 selector | fresh guarded-selector token successor, not yet separately accepted | future repaired candidate only |
+| D-012 / D-013 selector lineage | D-012 selector policy + D-013 exact accepted guarded-token physical successor | future repaired ML candidate only |
 | current ML runtime | ten Run12 scores/eyes, model identity, fusion `[128]` | AGENTS; retained proxy seam |
 | ZKML | proxy proof over 128 inputs + 10 outputs | V3 registry protocol |
 | V3 policy layer | fully bound EIP-712 audit context | `AuditRegistry.submitAuditV3` |
@@ -45,7 +45,7 @@ The future-training seam now has four distinct owners:
 1. **Semantic policy:** `data-vnext-policy-v1` preserves explicit outcome/training state and forbids unknown→negative collapse.
 2. **Logical authority:** D-009 accepts `r4-leakage-groups-v3` / `r4-vnext-roles-v3` and the V3 publication/logical lineage.
 3. **Physical graph authority:** D-010 withdraws v9 from eligibility for the new full run; D-011 accepts the exact V10 V2.6 physical graph lineage.
-4. **Token-selection successor:** D-012 permits `target_aware_guarded_v1` only in a fresh versioned candidate requiring separate physical acceptance.
+4. **Token-selection successor:** D-012 permits `target_aware_guarded_v1` only in a fresh versioned lineage; D-013 separately accepts the exact full physical successor.
 
 A repaired ML consumer must therefore bind semantic state, role/group identity, graph lineage, token-selector lineage, class order, and artifact/run identities together. Same tensor dimensions do not permit substituting the historical seam.
 
@@ -99,7 +99,7 @@ V3 observation and feedback policy are versioned. Current V3 promotion policy is
 | class order/count | locked list / 10 | cross-module semantic ordering |
 | historical runtime representation | v9-compatible historical seam | Run12 compatibility only |
 | current R4 physical graph authority | exact V10 V2.6 / D-011 | accepted possible-future-training graph lineage |
-| current guarded token selector | `target_aware_guarded_v1` | D-012; fresh successor still needs separate acceptance |
+| current guarded token selector | `target_aware_guarded_v1` | D-012 policy; D-013 physical successor accepted |
 | token tensor shape | `[4,512]` | historical-control/guarded-window compatibility contract |
 | repaired semantic policy | `data-vnext-policy-v1` | current outcome/training authority |
 | historical G6 roles | `r4-vnext-roles-v1` | immutable G6/G7 reproduction evidence |
@@ -162,7 +162,7 @@ python3 docs/plan/ml-R4/scripts/p6_validate_frozen_partitions.py
 cd contracts && forge test
 ```
 
-The G6 validator remains historical compatibility evidence; it does not override later D-009/D-011/D-012 authority.
+The G6 validator remains historical compatibility evidence; it does not override later D-009/D-011/D-012/D-013 authority.
 
 ## Optional deep references
 
@@ -183,11 +183,11 @@ Know producer/consumer compatibility, semantic versioning, tensor/JSON/ABI schem
 
 ### Source map and reading order
 
-Follow the seam in this order: current R4 policy/status → D-009 logical V3 → D-011/D-012 physical decisions → repaired ML dataset/training consumer → current Run12 API seam → fusion/proxy/settings → policy signer → `AuditRegistry.submitAuditV3` → read-only audit MCP → feedback observation.
+Follow the seam in this order: current R4 policy/status → D-009 logical V3 → D-011/D-012/D-013 physical decisions → repaired ML dataset/training consumer → current Run12 API seam → fusion/proxy/settings → policy signer → `AuditRegistry.submitAuditV3` → read-only audit MCP → feedback observation.
 
 ### Execution trace and worked example
 
-A contract can preserve its historical v1/v9 representation for Run12 reproduction while current R4 semantics assign explicit nullable targets and a logical V3 role. A future repaired candidate can preserve ten output classes/fusion `[128]` while consuming D-011 graphs plus a separately accepted guarded token successor. That new checkpoint then needs a new model/data identity, and any ZKML/V3 integration must bind the new identity rather than inheriting Run12 meaning from shape compatibility.
+A contract can preserve its historical v1/v9 representation for Run12 reproduction while current R4 semantics assign explicit nullable targets and a logical V3 role. A future repaired candidate can preserve ten output classes/fusion `[128]` while consuming D-011 graphs plus the separately accepted D-013 guarded token successor. That new checkpoint then needs a new model/data identity, and any ZKML/V3 integration must bind the new identity rather than inheriting Run12 meaning from shape compatibility.
 
 ### Implementation practice
 
@@ -195,4 +195,4 @@ For every cross-module change, record old/new meaning, owner, producer, consumer
 
 ### Review and ownership check
 
-Can you trace one class from source evidence through repaired state, logical V3 role/group, D-011 graph + pending guarded token successor, repaired training target, teacher output, proxy output, V3 score/hash binding, registry record, and read-only observation—while separately identifying the historical Run12 path?
+Can you trace one class from source evidence through repaired state, logical V3 role/group, D-011 graph + accepted D-013 guarded token successor, repaired training target, teacher output, proxy output, V3 score/hash binding, registry record, and read-only observation—while separately identifying the historical Run12 path?
