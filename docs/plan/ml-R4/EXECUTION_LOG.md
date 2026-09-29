@@ -467,3 +467,14 @@ Append one entry for each work package.
 - **Review decision:** D5 COMPLETE; D6 independent physical acceptance review is now the next DATA action
 - **Physical acceptance:** NO
 - **Training authorized:** NO
+
+
+### R4-LOG-20260929-027 — Independent guarded-token D6 validator implemented
+
+- **Phase:** 8 / technical-completion DATA D6 preparation
+- **Validator:** `docs/plan/ml-R4/scripts/p8_validate_guarded_token_candidate_d6.py`
+- **Scope:** independently re-inventory/re-hash all 22,540 D5 identities, reconstruct the binding digest, validate source/parent/runtime/schema/selector invariants, reject unexpected files, and regenerate the nine required D4 probes twice for byte-level comparison
+- **Reviewed D5 identity:** source commit `733f0c73eb76ab107751c30345d9a169a0429fdd`; binding digest `9885d7b88a46aff4102741d63eeaa0bd6968f0857f7bca6a389662bfaa158881`; manifest SHA-256 `5aa48ce6eb218b742af3c99823db333272d65599039b6ec550d56f713b839dca`
+- **Decision boundary:** validator evidence cannot itself grant physical acceptance or training authority
+- **Execution state:** D6 validator implemented; protected-local D6 run NOT YET EXECUTED
+- **Next action:** compile/preflight the validator from canonical main, then execute D6 against the reviewed D5 candidate using a fresh validation work root.
