@@ -589,29 +589,54 @@ Implemented on canonical `main` through `8c0e166b502908f4f801492f638c160d17c0a92
   full-population derivation and manifest/digest boundary;
 - CI compiles the D5 driver.
 
-This implementation checkpoint does **not** complete D5. The full protected-local
-22,540-identity generation has not yet run.
+This implementation checkpoint was subsequently exercised against the full protected-local population; see the D5 review below.
 
-## 16. Current stop line
+## 16. D5 protected-local result — reviewed 2026-09-29
 
-D5 has **not** been executed. No guarded full-population physical lineage is accepted yet, and training remains unauthorized.
+D5 was executed from source commit
+`733f0c73eb76ab107751c30345d9a169a0429fdd` into the fresh attempt root
+`data_module/data/r4-guarded-d5-full-2026-09-29-a`.
+
+Reviewed generation result:
+
+- status: `PASS_FULL_D5_REVIEW_REQUIRED`;
+- 22,540 / 22,540 identities requested and written;
+- `target_aware_guarded_v1`: 14,751 identities;
+- `historical_linspace_v1` guarded fallback: 7,789 identities;
+- candidate binding digest:
+  `9885d7b88a46aff4102741d63eeaa0bd6968f0857f7bca6a389662bfaa158881`;
+- candidate manifest SHA-256:
+  `5aa48ce6eb218b742af3c99823db333272d65599039b6ec550d56f713b839dca`;
+- accepted-parent manifest SHA-256:
+  `5fc83eff39d4a28db9a5b6b5255a95ad64ee75ca88a948ba99dadb2bc03ee165`;
+- graph schema remains `v10`;
+- graph extractor remains
+  `v2.6-r4-call-semantics-deterministic-cfg-mutators`;
+- token lineage is `r4-v10-v26-guarded-tokens-v1`;
+- frozen token shape remains `[4,512]`;
+- Transformers runtime remains `4.46.3`;
+- generation completed without an exception in approximately 585 seconds;
+- generation report correctly retained
+  `physical_acceptance=false`, `d6_authorized=false`, and
+  `training_authorized=false`.
+
+The long-sequence tokenizer warning is expected at the pre-windowing stage; it
+does not imply that model-facing tensors exceed the frozen `[4,512]` contract.
+
+This review closes D5 generation. It does **not** accept the candidate as
+physical authority. D6 must independently reconstruct the full population
+binding, verify every candidate artifact and selector contract, regenerate the
+required deterministic probes, preserve R4-D-011 as immutable control, and
+produce the explicit accept/reject/revise decision.
+
+## 17. Current stop line
+
+D5 is COMPLETE. D6 is READY FOR PROTECTED-LOCAL ACCEPTANCE REVIEW.
+
 Therefore:
 
-- no guarded physical candidate is accepted;
-- D5 does not yet have permission to generate the 22,540 population;
-- D6 has not started;
-- ML receives no new physical lineage or training authority;
-- the 100-epoch Phase-8 run remains unauthorized.
-
-## 15. Exact next step
-
-Run the explicit bounded D4 tranche locally against:
-
-1. the immutable R4-D-011 parent root;
-2. the immutable repaired preprocessed source root;
-3. the fresh guarded candidate root.
-
-For each identity compare selector decision, target and retained coverage, tensor
-shape/dtype, deterministic regeneration, graph SHA-256 equality, persisted
-metadata and runtime/memory behavior. Only a clean bounded result may change D5
-from blocked to executable.
+- the guarded full candidate exists but is **not yet physically accepted**;
+- R4-D-011 remains the current accepted physical control;
+- no ML training authority follows from D5;
+- the 100-epoch Phase-8 run remains unauthorized;
+- the next action is the independent D6 validator/review, not training.
