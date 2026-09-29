@@ -15,6 +15,7 @@ import json
 import os
 import resource
 import time
+from collections import Counter
 from pathlib import Path
 from typing import Any
 
@@ -33,12 +34,16 @@ from sentinel_data.preprocessing.r4_versions import (  # noqa: E402
     HISTORICAL_TOKEN_SELECTOR_VERSION,
     TOKEN_TENSOR_SHAPE,
     V10_GRAPH_SCHEMA_VERSION,
+    V10_PRIMARY_SLITHER_VERSION,
     V10_REPRESENTATION_EXTRACTOR_VERSION,
+    V10_SLITHER_RUNTIME_EXCEPTIONS,
 )
+from sentinel_data.representation.graph_schema_versions import get_graph_schema  # noqa: E402
 from sentinel_data.representation.r4_guarded_token_candidate import (  # noqa: E402
     build_guarded_token_candidate,
     load_accepted_v10_parent,
 )
+from sentinel_data.vnext.r4_binding import _validate_graph, _validate_tokens  # noqa: E402
 
 EXPECTED_D5_SOURCE_COMMIT = "733f0c73eb76ab107751c30345d9a169a0429fdd"
 EXPECTED_D5_BINDING_DIGEST = (
@@ -285,6 +290,8 @@ def _validate_full_candidate(
         HISTORICAL_TOKEN_SELECTOR_VERSION: 0,
         GUARDED_TOKEN_SELECTOR_VERSION: 0,
     }
+    slither_runtimes: Counter[tuple[str, str, str]] = Counter()
+    schema = get_graph_schema(V10_GRAPH_SCHEMA_VERSION)
     started = time.perf_counter()
 
     for index, (source, contract_id) in enumerate(sorted(parent_keys), start=1):
@@ -320,6 +327,43 @@ def _validate_full_candidate(
         if sidecar.get("transformers_version") != GUARDED_TOKEN_TRANSFORMERS_VERSION:
             raise ValueError(f"transformers version mismatch: {source}/{contract_id}")
 
+        runtime = dict(sidecar.get("slither_runtime") or {})
+        slither_version = str(runtime.get("slither_analyzer") or "")
+        crytic_compile_version = str(runtime.get("crytic_compile") or "")
+        if not slither_version or not crytic_compile_version:
+            raise ValueError(f"Slither runtime binding missing: {source}/{contract_id}")
+        required_slither = V10_SLITHER_RUNTIME_EXCEPTIONS.get(
+            contract_id, V10_PRIMARY_SLITHER_VERSION
+        )
+        required_role = (
+            "identity_bound_exception"
+            if contract_id in V10_SLITHER_RUNTIME_EXCEPTIONS
+            else "primary"
+        )
+        if slither_version != required_slither:
+            raise ValueError(f"Slither identity binding mismatch: {source}/{contract_id}")
+        if runtime.get("required_for_physical_acceptance") != required_slither:
+            raise ValueError(f"required Slither binding mismatch: {source}/{contract_id}")
+        if runtime.get("runtime_role") != required_role:
+            raise ValueError(f"Slither runtime role mismatch: {source}/{contract_id}")
+        slither_runtimes[
+            (slither_version, crytic_compile_version, required_role)
+        ] += 1
+        if str(sidecar.get("graph_extraction_mode") or "").startswith(
+            "slither_parse_only"
+        ) or bool(sidecar.get("graph_analysis_degraded")):
+            raise ValueError(f"degraded graph analysis: {source}/{contract_id}")
+        if sidecar.get("unclassified_call_ir") not in (None, []):
+            raise ValueError(f"unclassified call IR: {source}/{contract_id}")
+        if int(sidecar.get("unclassified_call_ir_count", 0)) != 0:
+            raise ValueError(f"unclassified call IR count: {source}/{contract_id}")
+        if list(sidecar.get("call_mapping_errors") or []):
+            raise ValueError(f"call mapping errors: {source}/{contract_id}")
+        if sidecar.get("classified_call_ir_counts") != sidecar.get(
+            "emitted_call_edge_counts"
+        ):
+            raise ValueError(f"classified/emitted call mismatch: {source}/{contract_id}")
+
         graph_parent = sidecar.get("graph_parent")
         if not isinstance(graph_parent, dict):
             raise ValueError(f"graph_parent missing: {source}/{contract_id}")
@@ -330,7 +374,28 @@ def _validate_full_candidate(
         if graph_parent.get("graph_sha256") != graph_sha:
             raise ValueError(f"graph parent hash mismatch: {source}/{contract_id}")
 
+        graph = torch.load(candidate_graph, map_location="cpu", weights_only=False)
+        if getattr(graph, "graph_schema_version", None) != V10_GRAPH_SCHEMA_VERSION:
+            raise ValueError(f"graph payload schema mismatch: {source}/{contract_id}")
+        if (
+            getattr(graph, "representation_extractor_version", None)
+            != V10_REPRESENTATION_EXTRACTOR_VERSION
+        ):
+            raise ValueError(f"graph payload extractor mismatch: {source}/{contract_id}")
+        if list(getattr(graph, "unclassified_call_ir", []) or []):
+            raise ValueError(f"graph payload unclassified call IR: {source}/{contract_id}")
+        if list(getattr(graph, "call_mapping_errors", []) or []):
+            raise ValueError(f"graph payload call mapping errors: {source}/{contract_id}")
+        if getattr(graph, "classified_call_ir_counts", None) != getattr(
+            graph, "emitted_call_edge_counts", None
+        ):
+            raise ValueError(
+                f"graph payload classified/emitted call mismatch: {source}/{contract_id}"
+            )
+        _validate_graph(torch, graph, sidecar, num_edge_types=schema.num_edge_types)
+
         payload = torch.load(candidate_tokens, map_location="cpu", weights_only=True)
+        _validate_tokens(torch, payload, sidecar)
         if payload.get("sha256") != contract_id or payload.get("source") != source:
             raise ValueError(f"candidate token identity mismatch: {source}/{contract_id}")
         if payload.get("token_lineage") != GUARDED_TOKEN_LINEAGE_VERSION:
@@ -405,6 +470,37 @@ def _validate_full_candidate(
         raise ValueError(
             f"independent selector counts differ: {selector_counts}"
         )
+    expected_primary = EXPECTED_CONTRACTS - len(V10_SLITHER_RUNTIME_EXCEPTIONS)
+    observed_primary = sum(
+        count
+        for (_, _, role), count in slither_runtimes.items()
+        if role == "primary"
+    )
+    observed_exceptions = sum(
+        count
+        for (_, _, role), count in slither_runtimes.items()
+        if role == "identity_bound_exception"
+    )
+    if observed_primary != expected_primary:
+        raise ValueError(
+            f"primary Slither population changed: {observed_primary} != {expected_primary}"
+        )
+    if observed_exceptions != len(V10_SLITHER_RUNTIME_EXCEPTIONS):
+        raise ValueError(
+            "identity-bound Slither exception population changed: "
+            f"{observed_exceptions} != {len(V10_SLITHER_RUNTIME_EXCEPTIONS)}"
+        )
+    manifest["_d6_slither_runtime_distribution"] = [
+        {
+            "slither_analyzer": slither_version,
+            "crytic_compile": crytic_version,
+            "runtime_role": role,
+            "contracts": count,
+        }
+        for (slither_version, crytic_version, role), count in sorted(
+            slither_runtimes.items()
+        )
+    ]
     return manifest, records, selector_counts
 
 
@@ -536,6 +632,7 @@ def main() -> int:
         "graph_schema_version": manifest["graph_schema_version"],
         "graph_extractor_version": manifest["graph_extractor_version"],
         "frozen_token_shape": manifest["frozen_token_shape"],
+        "slither_runtime_distribution": manifest["_d6_slither_runtime_distribution"],
         "runtime": {
             "elapsed_seconds": elapsed,
             "max_rss_mb_before": rss_before,
