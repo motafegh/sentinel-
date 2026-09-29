@@ -423,3 +423,15 @@ Append one entry for each work package.
 - **Physical acceptance:** NO — D6 remains required after full generation
 - **Training authorized:** NO
 - **Next permitted action:** integrate the validated implementation line to canonical `main`, then execute D5 full 22,540-identity protected-local guarded-token generation from that canonical source state.
+
+
+### R4-LOG-20260929-024 — Guarded-token D0-D4 promoted to canonical main
+
+- **Promotion:** PR #74 merged the guarded-token technical-completion tranche to canonical `main`
+- **Merge commit:** `8bbe4f48edadf9e43ab448e7d935921116049858`
+- **Branch history:** `agent/data-target-aware-guarded-v1` is now a historical development/validation line rather than the continuation authority
+- **Canonical continuation:** D5 and subsequent DATA work proceed from `main`
+- **Reason:** D0-D4 implementation and bounded protected-local validation are complete; generating the full D5 candidate from canonical source gives the new physical lineage a stable repository source identity
+- **D5:** READY, not yet executed
+- **D6:** NOT STARTED
+- **Training:** NOT AUTHORIZED
