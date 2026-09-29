@@ -1,6 +1,6 @@
 # ML Training / Evaluation Completion Plan
 
-**Status:** ACTIVE — blocked on accepted guarded-token physical lineage and evidence/design resolution  
+**Status:** ACTIVE — R4-D-013 physical lineage accepted; M0/M1 evidence/design work is now the active boundary  
 **Parent:** `00_MASTER_TECHNICAL_COMPLETION_ROADMAP.md`  
 **Primary authority:** R4 Phase 8–10 governance under `docs/plan/ml-R4/`  
 
@@ -24,6 +24,12 @@ Already implemented:
 - checkpoint/resume and run binding;
 - positive-only model-selection diagnostics;
 - strict rejection of authorized supervision cells that are not target `1.0`.
+
+Accepted physical input boundary:
+
+- R4-D-013 accepts `r4-v10-v26-guarded-tokens-v1` with binding digest `9885d7b88a46aff4102741d63eeaa0bd6968f0857f7bca6a389662bfaa158881`;
+- R4-D-011 remains the immutable V10 graph/control parent;
+- physical DATA/representation completion no longer blocks M0/M1, but it does not itself authorize optimization.
 
 Current evidence limitation:
 
@@ -61,7 +67,7 @@ At minimum:
 Before changing objective or launching a run:
 
 1. Trace exact current dataset adapter → collate → masks/strengths → loss → selection metrics → checkpoint binding.
-2. Confirm which lineage/digest the durable runner currently accepts and identify every seam that must change after DATA guarded-token acceptance.
+2. Confirm which lineage/digest the durable runner currently accepts and identify every seam that must change to consume the accepted R4-D-013 guarded-token lineage.
 3. Confirm no `INTERNAL_AUDIT` or later-role leakage reaches optimization/model selection.
 4. Confirm frozen architecture compatibility with V10 graphs and `[4,512]` guarded tokens.
 5. Audit checkpoint metadata needed by inference and later ZKML distillation.
