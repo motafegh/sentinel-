@@ -435,3 +435,16 @@ Append one entry for each work package.
 - **D5:** READY, not yet executed
 - **D6:** NOT STARTED
 - **Training:** NOT AUTHORIZED
+
+
+### R4-LOG-20260929-025 — Controlled D5 full-population generator implemented
+
+- **Phase:** 8 / technical-completion DATA D5 preparation
+- **Canonical line:** `main`
+- **Implementation checkpoint:** `8c0e166b502908f4f801492f638c160d17c0a924`
+- **Design:** preserve the bounded D4 API and add a separate full-population API that derives the exact identity set from immutable R4-D-011
+- **Binding:** full manifest hashes sorted per-identity selector/graph/token/sidecar records into a deterministic candidate binding digest
+- **Driver:** `docs/plan/ml-R4/scripts/p8_generate_guarded_token_candidate_d5.py` writes progress plus a compact D5 review report
+- **Safety boundary:** full output remains unaccepted; D6 and training stay unauthorized
+- **Execution state:** implementation complete; full protected-local D5 generation NOT YET EXECUTED
+- **Next action:** focused compile/unit verification, then run the fresh protected-local 22,540-identity D5 attempt from canonical main.
