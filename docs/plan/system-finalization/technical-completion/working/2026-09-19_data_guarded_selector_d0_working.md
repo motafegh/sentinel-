@@ -5,7 +5,7 @@
 **Branch:** `agent/data-target-aware-guarded-v1`  
 **Base main:** `57f39d652cbec1092084b4efbf41bec6a117ba07`  
 **Work package:** D0-D6 guarded-token technical-completion continuation  
-**Status:** D0-D5 COMPLETE / D6 VALIDATOR IMPLEMENTED / PROTECTED-LOCAL ACCEPTANCE REVIEW NEXT
+**Status:** D0-D6 COMPLETE / R4-D-013 ACCEPTED / DATA HANDOFF COMPLETE
 
 ### Continuation checkpoint
 
@@ -672,3 +672,48 @@ A clean validator result is `PASS_D6_REVIEW_REQUIRED`. It deliberately retains
 `physical_acceptance=false`, `acceptance_decision=PENDING_EXPLICIT_REVIEW`,
 and `training_authorized=false`. The explicit R4 decision/ADR remains the only
 authority that may accept the new lineage.
+
+
+## 19. D6 protected-local review and R4-D-013 closure — 2026-09-29
+
+D6 executed at tracked-clean source commit
+`405b58e19210e6ff796aa943f8699b788d5229c1` and returned
+`PASS_D6_REVIEW_REQUIRED`.
+
+Reviewed D6 evidence:
+
+- 22,540 / 22,540 identities independently checked;
+- binding digest independently reproduced exactly as
+  `9885d7b88a46aff4102741d63eeaa0bd6968f0857f7bca6a389662bfaa158881`;
+- selector distribution reproduced exactly: 14,751 guarded / 7,789
+  historical-control fallback;
+- R4-D-011 graph-parent digest remained
+  `d9f925588913e66476cfbc097bace7daa7e673295fe2a243760313d0bef5ebdd`;
+- exact Slither runtime distribution remained 22,539 primary 0.10.0 + one
+  identity-bound 0.11.5 exception;
+- all nine required D4 evidence/stress identities regenerated twice with
+  graph/token/sidecar bytes equal to the full D5 candidate;
+- protected-local D6 report SHA-256:
+  `8468a2b840131363444532ac4264ca048a2a39247b35d6552eea28f695b17289`;
+- protected-local D5 generation report SHA-256:
+  `e3202b77b4cb2557bcc47d19287a7c72ce248e1119f8b7d49521bce90d82f589`;
+- tracked worktree was clean at acceptance review; preserved untracked local
+  files were outside the evidence boundary.
+
+R4-D-013 / ADR-R4-013 now explicitly accepts the exact guarded-token physical
+successor. The diagnostic D6 report's `physical_acceptance=false` remains
+historically correct; governance authority comes from R4-D-013 and its committed
+machine-readable acceptance record.
+
+### DATA handoff
+
+DATA / representation technical completion is closed. The accepted ML input
+boundary is:
+
+`logical V3 roles/publication`
+→ `R4-D-011 immutable V10/V2.6 graph parent`
+→ `R4-D-013 accepted guarded-token successor`.
+
+The next active technical-completion work is ML M0/M1. No 100-epoch training,
+threshold fitting, calibration, checkpoint promotion, ZKML rebinding or
+production claim is authorized by this DATA closure.
