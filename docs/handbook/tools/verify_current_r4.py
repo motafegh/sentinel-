@@ -119,6 +119,25 @@ def validate() -> list[Check]:
     missing_adr = [phrase for phrase in adr_requirements if phrase not in selector_adr]
     checks.append(Check("D-012 promotion boundary", not missing_adr, "ok" if not missing_adr else f"missing={missing_adr}"))
 
+    guarded_cfg = contract["guarded_token_physical"]
+    guarded = _json(_relative(guarded_cfg["evidence_path"]))
+    guarded_lineage = guarded.get("accepted_lineage", {})
+    selector_distribution = guarded.get("selector_distribution", {})
+    _equal(checks, "D-013 decision id", guarded.get("decision_id"), guarded_cfg["decision_id"])
+    _equal(checks, "D-013 status", guarded.get("status"), guarded_cfg["status"])
+    _equal(checks, "D-013 decision", guarded.get("decision"), guarded_cfg["decision"])
+    _equal(checks, "D-013 lineage", guarded_lineage.get("representation_lineage"), guarded_cfg["representation_lineage"])
+    _equal(checks, "D-013 contracts", guarded_lineage.get("contracts"), guarded_cfg["contracts"])
+    _equal(checks, "D-013 digest", guarded_lineage.get("binding_digest_sha256"), guarded_cfg["binding_digest_sha256"])
+    _equal(checks, "D-013 guarded count", selector_distribution.get("target_aware_guarded_v1"), guarded_cfg["guarded_contracts"])
+    _equal(checks, "D-013 fallback count", selector_distribution.get("historical_linspace_v1"), guarded_cfg["control_fallback_contracts"])
+    _equal(checks, "D-013 graph parent decision", guarded_lineage.get("graph_parent_decision_id"), guarded_cfg["graph_parent_decision_id"])
+    _equal(checks, "D-013 graph parent digest", guarded_lineage.get("graph_parent_binding_digest_sha256"), guarded_cfg["graph_parent_binding_digest_sha256"])
+    _equal(checks, "D-013 physical acceptance", guarded.get("physical_acceptance"), True)
+    _equal(checks, "D-013 training authorization", guarded.get("training_authorized"), guarded_cfg["training_authorized"])
+    _equal(checks, "selector successor physical acceptance required", selector_cfg.get("fresh_physical_acceptance_required"), False)
+    _equal(checks, "selector successor accepted by D-013", selector_cfg.get("physical_acceptance_decision_id"), "R4-D-013")
+
     matrix = _text(STATUS_MATRIX)
     phase_cfg = contract["phase8"]
     phase8_row = "| 8 | `phases/09_PHASE_8_EXISTING_MODEL_RETRAINING.md` | IN_PROGRESS |"
@@ -130,19 +149,20 @@ def validate() -> list[Check]:
         "README.md": [
             ("R4-D-011",),
             ("R4-D-012",),
+            ("R4-D-013",),
             ("Run12",),
             ("Full repaired training", "full repaired training"),
             ("not authorized", "unauthorized"),
         ],
         "docs/handbook/01_architecture.md": [("R4-D-011", "D-011"), ("R4-D-012", "D-012"), ("Run12",)],
         "docs/handbook/03_data_pipeline.md": [("r4-leakage-groups-v3",), ("V10 V2.6",), ("R4-D-012", "D-012")],
-        "docs/handbook/04_data_artifacts.md": [("r4-vnext-roles-v3",), ("R4-D-011", "D-011"), ("R4-D-012", "D-012"), ("full training remains unauthorized",)],
+        "docs/handbook/04_data_artifacts.md": [("r4-vnext-roles-v3",), ("R4-D-011", "D-011"), ("R4-D-012", "D-012"), ("R4-D-013", "D-013"), ("full training remains unauthorized",)],
         "docs/handbook/05_ml_model_inference.md": [("Run12",), ("R4-D-011", "D-011"), ("R4-D-012", "D-012"), ("Full repaired training remains unauthorized",)],
-        "docs/handbook/06_ml_training_quality.md": [("D-011 V10 V2.6",), ("D-012 guarded-selector",), ("confirmed negatives remain zero",), ("full repaired training run",)],
+        "docs/handbook/06_ml_training_quality.md": [("D-011 V10 V2.6",), ("D-012 guarded-selector",), ("D-013",), ("confirmed negatives remain zero",), ("full repaired training run",)],
         "docs/handbook/11_cross_module_contracts.md": [("r4-vnext-roles-v3",), ("D-011 V10 V2.6",), ("D-012 guarded-selector",), ("Run12",)],
         "docs/handbook/13_evaluation.md": [("positive-only limited",), ("Confirmed negatives remain zero",), ("D-011 V10 V2.6",), ("D-012",), ("Full repaired training remains unauthorized",)],
-        "docs/handbook/16_current_status.md": [("R4-D-011",), ("R4-D-012",), ("d9f925588913e66476cfbc097bace7daa7e673295fe2a243760313d0bef5ebdd",), ("training", "Training")],
-        "docs/handbook/17_reference.md": [("logical V3",), ("D-011",), ("D-012",), ("Full repaired training remains unauthorized",)],
+        "docs/handbook/16_current_status.md": [("R4-D-011",), ("R4-D-012",), ("R4-D-013",), ("9885d7b88a46aff4102741d63eeaa0bd6968f0857f7bca6a389662bfaa158881",), ("training", "Training")],
+        "docs/handbook/17_reference.md": [("logical V3",), ("D-011",), ("D-012",), ("D-013",), ("Full repaired training remains unauthorized",)],
     }
     for raw_path, groups in current_docs.items():
         _document_check(checks, raw_path, groups)
