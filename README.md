@@ -57,7 +57,7 @@ flowchart LR
 
     subgraph REPAIR["Current R4 DATA/ML repair"]
         S["Solidity / source evidence"] --> D["accepted repaired DATA + logical V3 +\nD-011 V10 V2.6 physical representation"]
-        D --> N["D-012 guarded-selector successor\npending separate physical acceptance"]
+        D --> N["D-013 guarded-token successor\nphysically accepted; training still gated"]
         N --> RM["later repaired teacher\nonly if explicitly authorized"]
     end
 
@@ -125,7 +125,7 @@ SENTINEL is active research/engineering work. The concise current boundary is:
 | Historical R4 gates | **G0–G7 PASSED and immutable** |
 | Phase 8 / G8 | **IN PROGRESS / open** |
 | Current accepted physical representation | exact **V10 V2.6** lineage under R4-D-011 |
-| Guarded token selector | R4-D-012 authorizes it only for a **fresh successor candidate** that still requires separate physical acceptance |
+| Guarded token selector | R4-D-012 defines `target_aware_guarded_v1`; R4-D-013 accepts the exact full guarded-token physical successor. This still does not authorize full training |
 | ML runtime | **Run12** remains the historical operational baseline; no repaired R4 teacher has been trained/promoted |
 | Confirmed negatives | **0**; candidate review work remains evidence-gated |
 | Threshold/calibration/untouched acceptance | currently unsupported/empty for the repaired path |
