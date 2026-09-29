@@ -300,4 +300,6 @@ The technical-completion program is complete only when:
 
 ## 10. Immediate next action
 
-Begin `01_DATA_REPRESENTATION_COMPLETION_PLAN.md` at its source-audit/implementation boundary for R4-D-012. Do **not** begin the repaired full training run, threshold/calibration fitting, or downstream ZKML rebinding first.
+The active guarded-selector implementation line has completed DATA work packages D0-D3. The next action is **D4 protected-local bounded validation** from `01_DATA_REPRESENTATION_COMPLETION_PLAN.md`, using the immutable R4-D-011 representation parent and repaired preprocessing root. D5 full-population generation remains blocked until D4 is executed and reviewed cleanly.
+
+Do **not** restart D0/D1 merely from the older planning baseline, generate the full 22,540-contract guarded candidate before D4 passes, begin repaired full training, fit thresholds/calibration, or rebind downstream ZKML first.
