@@ -10,7 +10,7 @@
 
 SENTINEL’s teacher architecture remains a four-eye ten-output model: graph, transformer, fusion, and CFG views produce ten logits and a 128-value fusion embedding. **Run12 is still the historical operational checkpoint served by the current inference stack.** R4 has not promoted a repaired teacher yet. Current inference is therefore useful for runtime continuity and historical comparison, but its learned weights, thresholds, calibration, and historical representation seam must not be treated as the repaired R4 model.
 
-The R4-D-011 V10 V2.6 physical representation is accepted for a possible future repaired run, while D-012 requires a fresh guarded-selector successor token lineage and separate acceptance. Those artifacts do **not** currently power the Run12 inference service.
+The R4-D-011 V10 V2.6 physical representation is accepted for a possible future repaired run, while D-012 requires a fresh guarded-selector successor token lineage and D-013 now supplies that separate physical acceptance. Those artifacts do **not** currently power the Run12 inference service.
 
 ## Just-enough mental model
 
@@ -25,7 +25,7 @@ Run12 four-eye teacher
 AGENTS evidence / retained proxy seam
 
 separate R4 future-training path:
-logical V3 + D-011 V10 graph + pending D-012 guarded-token successor
+logical V3 + D-011 V10 graph/control parent + D-013 accepted guarded-token successor
         ↓
 later repaired teacher only after explicit authorization
 ```
@@ -53,7 +53,7 @@ Run12 checkpoint + historical companion thresholds
 
 Run12 remains intentionally preserved because it is the historical operational baseline against which repaired training can later be compared. It was trained before R4 established that many historical zero cells were unknown/unsupported rather than confirmed negatives.
 
-R4 therefore preserves the **architecture and historical checkpoint for compatibility**, while separately governing the DATA/representation lineage for a future repaired checkpoint. The current required future-training path includes accepted logical V3 authority, D-011 V10 V2.6 physical graphs, and a D-012 guarded-selector successor that has not yet been separately physically accepted. Full repaired training remains unauthorized.
+R4 therefore preserves the **architecture and historical checkpoint for compatibility**, while separately governing the DATA/representation lineage for a future repaired checkpoint. The current required future-training path includes accepted logical V3 authority, D-011 V10 V2.6 physical graphs, and the D-013 physically accepted guarded-selector successor governed by D-012. Full repaired training remains unauthorized.
 
 ### Runtime versus future representation identity
 
@@ -88,7 +88,7 @@ The current predictor may load historical threshold companions for Run12 runtime
 - Current probabilities reflect a model trained on the historical label contract.
 - Run12 thresholds/calibration cannot be copied to a repaired model.
 - Treating the accepted D-011 V10 lineage as already connected to the live Run12 service is false architecture.
-- Treating D-012 selector promotion as already applied to live inference is false; its successor has not been separately accepted.
+- Treating R4-D-013 physical acceptance as already applied to live inference is false; Run12 still powers the live historical inference seam until a repaired checkpoint is separately trained and promoted.
 - Confirmed negatives remain zero, so the repaired path cannot simply repeat historical binary threshold/calibration fitting.
 - GasException and UnusedReturn remain output positions even though policy v1 disables repaired supervised training for them.
 - An inference response is learned evidence, not proof or ground truth.
@@ -136,7 +136,7 @@ Know logits/sigmoid, graph batching, attention, checkpoint identity, thresholdin
 
 ### Source map and reading order
 
-Follow current runtime preprocessing → four-eye model → predictor → API. Then read current R4 status, D-009 logical V3, D-011, D-012, and Phase-8 training mechanics before changing repaired-model semantics. Do not infer the future inference seam from the historical Run12 loader.
+Follow current runtime preprocessing → four-eye model → predictor → API. Then read current R4 status, D-009 logical V3, D-011, D-012, D-013, and Phase-8 training mechanics before changing repaired-model semantics. Do not infer the future inference seam from the historical Run12 loader.
 
 ### Execution trace and worked example
 
@@ -148,4 +148,4 @@ Treat the current API as a versioned model-serving boundary. Repaired training c
 
 ### Review and ownership check
 
-Can you distinguish the frozen four-eye architecture, current Run12 runtime input/checkpoint seam, accepted R4 physical DATA/representation authority, pending guarded-token successor, and a future repaired checkpoint as separate compatibility/evidence objects?
+Can you distinguish the frozen four-eye architecture, current Run12 runtime input/checkpoint seam, accepted R4 physical DATA/representation authority, accepted guarded-token successor, and a future repaired checkpoint as separate compatibility/evidence objects?
