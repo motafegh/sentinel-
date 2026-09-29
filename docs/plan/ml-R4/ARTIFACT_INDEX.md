@@ -228,8 +228,9 @@ That V2.5 candidate is historical. The current protected-local V2.6 lineage is:
 - final V4 audit SHA-256: `c6ddc61b8005a688d422f4f8de28118fa3e644b9648d070ef53972ec9f2191ce`.
 
 The V2.6 V4 audit passes with zero unexplained drift. R4-D-011 physically
-accepts only the exact root and digest above. Selector promotion and training
-authorization remain false pending their separate decisions.
+accepts only the exact graph/control root and digest above. R4-D-012 later
+promotes guarded selection, and R4-D-013 separately accepts the exact guarded-token
+physical successor. Training authorization remains false pending its separate ML gates.
 
 ## Availability
 
