@@ -448,3 +448,22 @@ Append one entry for each work package.
 - **Safety boundary:** full output remains unaccepted; D6 and training stay unauthorized
 - **Execution state:** implementation complete; full protected-local D5 generation NOT YET EXECUTED
 - **Next action:** focused compile/unit verification, then run the fresh protected-local 22,540-identity D5 attempt from canonical main.
+
+
+### R4-LOG-20260929-026 — Guarded-token D5 full protected-local generation reviewed PASS
+
+- **Phase:** 8 / technical-completion DATA D5
+- **Generation source commit:** `733f0c73eb76ab107751c30345d9a169a0429fdd`
+- **Attempt root:** `data_module/data/r4-guarded-d5-full-2026-09-29-a`
+- **Status:** `PASS_FULL_D5_REVIEW_REQUIRED`
+- **Population:** 22,540 requested / 22,540 written
+- **Guarded selector:** 14,751
+- **Historical-control fallback:** 7,789
+- **Binding digest:** `9885d7b88a46aff4102741d63eeaa0bd6968f0857f7bca6a389662bfaa158881`
+- **Candidate manifest SHA-256:** `5aa48ce6eb218b742af3c99823db333272d65599039b6ec550d56f713b839dca`
+- **Accepted parent manifest SHA-256:** `5fc83eff39d4a28db9a5b6b5255a95ad64ee75ca88a948ba99dadb2bc03ee165`
+- **Frozen contract:** graph schema `v10`; extractor `v2.6-r4-call-semantics-deterministic-cfg-mutators`; token tensor `[4,512]`; Transformers `4.46.3`
+- **Runtime:** approximately 585 seconds; no generation exception
+- **Review decision:** D5 COMPLETE; D6 independent physical acceptance review is now the next DATA action
+- **Physical acceptance:** NO
+- **Training authorized:** NO
