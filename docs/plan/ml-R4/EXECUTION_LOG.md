@@ -405,3 +405,21 @@ Append one entry for each work package.
 - **Training launched:** NO
 - **Training authority:** NOT AUTHORIZED
 - **Next permitted action:** execute the committed D4 bounded validator against the protected local roots, review its evidence, and only then decide whether D5 may begin.
+
+
+### R4-LOG-20260929-023 — Guarded-token D4 protected-local bounded validation reviewed PASS
+
+- **Phase:** 8 / technical-completion DATA D4
+- **Source commit executed:** `4efc0676e6966d9581aa6a10f882125dda5063fc`
+- **Accepted parent:** immutable R4-D-011 V10 V2.6 physical root
+- **Validator status:** `PASS_BOUNDED_D4_REVIEW_REQUIRED`
+- **Population:** 9 / 9 requested bounded identities passed; zero identity failures; zero report failures
+- **Selector decisions:** repeat A = 6 guarded / 3 historical-control fallback; repeat B = identical
+- **Reproducibility:** repeated tensor digests, sidecars, and exact serialized `.tokens.pt` bytes match
+- **Graph preservation:** parent/repeat-A/repeat-B graph SHA-256 identities match for every bounded case
+- **Frozen tensor contract:** `[4,512]`, `torch.int64`
+- **Stress/runtime coverage:** required 353-window worst-case CUDA probe passed; declared Slither runtime-exception identity was discovered from the accepted parent and passed
+- **Review decision:** D4 COMPLETE. The validator's emitted `d5_authorized=false` is intentionally pre-review; this explicit review clears D5 as the next bounded-by-governance DATA action.
+- **Physical acceptance:** NO — D6 remains required after full generation
+- **Training authorized:** NO
+- **Next permitted action:** integrate the validated implementation line to canonical `main`, then execute D5 full 22,540-identity protected-local guarded-token generation from that canonical source state.
