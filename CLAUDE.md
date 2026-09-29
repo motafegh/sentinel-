@@ -58,7 +58,7 @@ As of the 2026-09-02 V10 V2.6 physical-acceptance decision, with R4-D-010 govern
 - accepted confirmed negatives are evaluation-only unless a later versioned policy grants optimizer authority;
 - Positive–Unlabeled (PU) learning is a future objective-design candidate, not current implementation authority;
 - threshold-fit, calibration-fit, and untouched-acceptance roles remain unsupported/empty;
-- R4-D-012 promotes the guarded selector only for construction/evaluation of a fresh versioned token lineage; that physical candidate is not yet built or accepted;
+- R4-D-012 promotes the guarded selector only for a fresh versioned token lineage; D5 has generated the full 22,540-identity candidate, but it remains unaccepted pending independent D6 physical review;
 - accepted historical/repaired representations remain graph schema `v9`; the future candidate is graph schema `v10` / extractor V2.6. The accepted token tensor contract remains `[4,512]`, and architecture remains `four_eye_v8` / `v8.1` unless a later explicit decision changes it;
 - Run12 is the historical operational ML baseline, not repaired-v2/V3 truth; do not reuse its learned weights, optimizer/scheduler state, thresholds, or calibration as current Phase-8 truth;
 - the 100-epoch Phase-8 run remains unauthorized; no model-quality improvement is claimed;
