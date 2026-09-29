@@ -4,8 +4,8 @@
 **Last reconciled:** 2026-09-29  
 **Branch:** `agent/data-target-aware-guarded-v1`  
 **Base main:** `57f39d652cbec1092084b4efbf41bec6a117ba07`  
-**Work package:** D0-D4 guarded-token technical-completion continuation  
-**Status:** D0-D4 COMPLETE / D5 READY FOR PROTECTED-LOCAL GENERATION / D6 NOT STARTED
+**Work package:** D0-D6 guarded-token technical-completion continuation  
+**Status:** D0-D5 COMPLETE / D6 VALIDATOR IMPLEMENTED / PROTECTED-LOCAL ACCEPTANCE REVIEW NEXT
 
 ### Continuation checkpoint
 
@@ -13,7 +13,7 @@ The guarded-selector implementation was developed and D4-validated on `agent/dat
 
 From that merge onward, **canonical `main` is the continuation authority for D5 and later work**. The repository may retain `agent/data-target-aware-guarded-v1`, `technical-completion/data-target-aware-guarded-v1`, and `work/data-d0-selector-contract` as historical/alternate development lines; none should supersede `main` without a new explicit reconciliation.
 
-The original implementation branch was based directly on main `57f39d652cbec1092084b4efbf41bec6a117ba07`. D0-D4 are now integrated; D5 is the first unexecuted work package.
+The original implementation branch was based directly on main `57f39d652cbec1092084b4efbf41bec6a117ba07`. D0-D5 are now complete on canonical main; D6 is the first uncompleted work package.
 
 ## 1. Question
 
@@ -640,3 +640,35 @@ Therefore:
 - no ML training authority follows from D5;
 - the 100-epoch Phase-8 run remains unauthorized;
 - the next action is the independent D6 validator/review, not training.
+
+
+## 18. D6 validator implementation checkpoint — 2026-09-29
+
+The independent D6 validator is implemented on canonical `main` at
+`docs/plan/ml-R4/scripts/p8_validate_guarded_token_candidate_d6.py`.
+
+It independently:
+
+- verifies the exact reviewed D5 manifest SHA, source commit, binding digest,
+  population count and selector counts;
+- inventories the R4-D-011 parent and D5 candidate and requires exact
+  22,540-identity equality;
+- verifies repaired source bytes still hash to every contract identity;
+- re-hashes every candidate graph/token/sidecar and reconstructs the D5 binding
+  digest rather than trusting the persisted manifest;
+- proves candidate graph bytes remain byte-identical to R4-D-011 and verifies
+  the full parent graph/token/sidecar hash binding in every candidate sidecar;
+- validates V10 graph payload/schema/runtime invariants and frozen token tensor
+  schema for every identity;
+- validates guarded-vs-control selector invariants for every identity, including
+  strict target-coverage improvement or exact historical fallback;
+- checks exact 22,539 primary + 1 identity-bound Slither runtime population;
+- rejects any unexpected or missing file in the candidate root;
+- regenerates the nine required D4 evidence/stress identities twice in fresh
+  roots and requires graph/token/sidecar bytes to equal both each other and the
+  D5 full candidate.
+
+A clean validator result is `PASS_D6_REVIEW_REQUIRED`. It deliberately retains
+`physical_acceptance=false`, `acceptance_decision=PENDING_EXPLICIT_REVIEW`,
+and `training_authorized=false`. The explicit R4 decision/ADR remains the only
+authority that may accept the new lineage.
