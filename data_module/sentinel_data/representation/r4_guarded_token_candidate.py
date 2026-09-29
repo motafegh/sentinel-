@@ -21,7 +21,7 @@ import shutil
 import subprocess
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any, Callable, Iterable
 
 from sentinel_data.preprocessing.r4_versions import (
     GUARDED_REPRESENTATION_ROOT_NAME,
@@ -49,6 +49,7 @@ R4_D011_BINDING_DIGEST_SHA256 = (
 )
 GUARDED_CANDIDATE_MANIFEST_SCHEMA = "sentinel-r4-guarded-token-candidate-manifest-v1"
 GUARDED_CANDIDATE_STATUS_BOUNDED = "BOUNDED_GUARDED_TOKEN_CANDIDATE"
+GUARDED_CANDIDATE_STATUS_FULL = "FULL_GUARDED_TOKEN_CANDIDATE"
 
 
 class GuardedTokenCandidateError(RuntimeError):
@@ -92,6 +93,11 @@ def _sha256_file(path: Path) -> str:
         for chunk in iter(lambda: handle.read(1024 * 1024), b""):
             digest.update(chunk)
     return digest.hexdigest()
+
+
+def _binding_digest(records: list[dict[str, Any]]) -> str:
+    canonical = json.dumps(records, sort_keys=True, separators=(",", ":"))
+    return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
 
 
 def _source_commit(repo_root: Path) -> str:
@@ -635,16 +641,19 @@ def _inventory_parent(parent_root: Path) -> list[tuple[str, str]]:
     return identities
 
 
-def build_guarded_token_candidate(
+def _build_guarded_candidate(
     *,
     acceptance_path: Path,
     repo_root: Path,
     preprocessed_root: Path,
     parent_root: Path,
     output_root: Path,
-    identities: Iterable[tuple[str, str]] | None = None,
+    requested_identities: Iterable[tuple[str, str]] | None,
+    status: str,
+    full_population: bool,
+    progress_callback: Callable[[int, int, GuardedBuildResult], None] | None = None,
 ) -> dict[str, Any]:
-    """Build an explicit bounded D4 candidate and write its construction manifest."""
+    """Build a guarded-token candidate under an explicit bounded/full policy."""
 
     repo_root = Path(repo_root).resolve()
     preprocessed_root = Path(preprocessed_root).resolve()
@@ -661,19 +670,56 @@ def build_guarded_token_candidate(
             "preprocessed source root is not the exact R4-D-011 accepted parent: "
             f"{preprocessed_root} != {expected_preprocessed_root}"
         )
-    if identities is None:
+
+    parent_inventory = _inventory_parent(parent_root)
+    if len(parent_inventory) != parent.contracts:
         raise GuardedTokenCandidateError(
-            "full-population guarded generation is D5 and is not authorized "
-            "before bounded D4 acceptance"
+            f"R4-D-011 parent population changed: "
+            f"{len(parent_inventory)} != {parent.contracts}"
         )
-    requested = sorted(
-        set(
-            (str(source), str(contract_id))
-            for source, contract_id in identities
+    parent_set = set(parent_inventory)
+
+    if full_population:
+        if requested_identities is not None:
+            raise GuardedTokenCandidateError(
+                "full guarded generation must derive identities from R4-D-011"
+            )
+        requested = parent_inventory
+    else:
+        if requested_identities is None:
+            raise GuardedTokenCandidateError(
+                "full-population guarded generation is D5 and is not authorized "
+                "through the bounded D4 API"
+            )
+        requested = sorted(
+            set(
+                (str(source), str(contract_id))
+                for source, contract_id in requested_identities
+            )
         )
-    )
-    if not requested:
-        raise GuardedTokenCandidateError("bounded guarded candidate requires identities")
+        if not requested:
+            raise GuardedTokenCandidateError(
+                "bounded guarded candidate requires identities"
+            )
+        missing = sorted(set(requested) - parent_set)
+        if missing:
+            raise GuardedTokenCandidateError(
+                f"requested identities are absent from R4-D-011: {missing[:5]}"
+            )
+
+    if full_population and set(requested) != parent_set:
+        missing = sorted(parent_set - set(requested))
+        extra = sorted(set(requested) - parent_set)
+        raise GuardedTokenCandidateError(
+            "full guarded population does not exactly equal R4-D-011: "
+            f"missing={missing[:5]} extra={extra[:5]}"
+        )
+    if full_population and len(requested) != parent.contracts:
+        raise GuardedTokenCandidateError(
+            "full guarded population count changed: "
+            f"{len(requested)} != {parent.contracts}"
+        )
+
     _validate_fresh_output_root(
         parent_root=parent_root,
         preprocessed_root=preprocessed_root,
@@ -683,39 +729,43 @@ def build_guarded_token_candidate(
         raise FileExistsError(f"guarded candidate output is not empty: {output_root}")
     output_root.mkdir(parents=True, exist_ok=True)
 
-    parent_inventory = _inventory_parent(parent_root)
-    if len(parent_inventory) != parent.contracts:
-        raise GuardedTokenCandidateError(
-            f"R4-D-011 parent population changed: "
-            f"{len(parent_inventory)} != {parent.contracts}"
-        )
-    parent_set = set(parent_inventory)
-    missing = sorted(set(requested) - parent_set)
-    if missing:
-        raise GuardedTokenCandidateError(
-            f"requested identities are absent from R4-D-011: {missing[:5]}"
-        )
     tokenizer = _load_canonical_tokenizer()
-
     results: list[GuardedBuildResult] = []
-    for source, contract_id in requested:
-        results.append(
-            _build_guarded_token_identity(
-                source=source,
-                contract_id=contract_id,
-                preprocessed_root=preprocessed_root,
-                parent_root=parent_root,
-                output_root=output_root,
-                parent=parent,
-                tokenizer=tokenizer,
-            )
+    total = len(requested)
+    for index, (source, contract_id) in enumerate(requested, start=1):
+        result = _build_guarded_token_identity(
+            source=source,
+            contract_id=contract_id,
+            preprocessed_root=preprocessed_root,
+            parent_root=parent_root,
+            output_root=output_root,
+            parent=parent,
+            tokenizer=tokenizer,
         )
+        results.append(result)
+        if progress_callback is not None:
+            progress_callback(index, total, result)
 
     fallback_total = sum(result.used_control_fallback for result in results)
     guarded_total = len(results) - fallback_total
+    records = [
+        {
+            "source": result.source,
+            "contract_id": result.contract_id,
+            "effective_selector": result.effective_selector,
+            "used_control_fallback": result.used_control_fallback,
+            "selected_window_indices": list(result.selected_window_indices),
+            "graph_sha256": result.graph_sha256,
+            "tokens_sha256": result.tokens_sha256,
+            "sidecar_sha256": result.sidecar_sha256,
+        }
+        for result in results
+    ]
+    records.sort(key=lambda row: (row["source"], row["contract_id"]))
+
     manifest = {
         "schema": GUARDED_CANDIDATE_MANIFEST_SCHEMA,
-        "status": GUARDED_CANDIDATE_STATUS_BOUNDED,
+        "status": status,
         "physical_acceptance": False,
         "training_authorized": False,
         "source_commit": _source_commit(repo_root),
@@ -733,7 +783,7 @@ def build_guarded_token_candidate(
             "binding_digest_sha256": parent.binding_digest_sha256,
             "contracts": parent.contracts,
         },
-        "full_population": False,
+        "full_population": full_population,
         "contracts_requested": len(requested),
         "contracts_written": len(results),
         "effective_selector_counts": {
@@ -742,19 +792,8 @@ def build_guarded_token_candidate(
         },
         "control_fallback_contracts": fallback_total,
         "guarded_contracts": guarded_total,
-        "records": [
-            {
-                "source": result.source,
-                "contract_id": result.contract_id,
-                "effective_selector": result.effective_selector,
-                "used_control_fallback": result.used_control_fallback,
-                "selected_window_indices": list(result.selected_window_indices),
-                "graph_sha256": result.graph_sha256,
-                "tokens_sha256": result.tokens_sha256,
-                "sidecar_sha256": result.sidecar_sha256,
-            }
-            for result in results
-        ],
+        "binding_digest_sha256": _binding_digest(records),
+        "records": records,
     }
     manifest_path = output_root / "guarded_candidate_manifest.json"
     manifest_path.write_text(
@@ -764,11 +803,63 @@ def build_guarded_token_candidate(
     return manifest
 
 
+def build_guarded_token_candidate(
+    *,
+    acceptance_path: Path,
+    repo_root: Path,
+    preprocessed_root: Path,
+    parent_root: Path,
+    output_root: Path,
+    identities: Iterable[tuple[str, str]] | None = None,
+) -> dict[str, Any]:
+    """Build an explicitly bounded D4 candidate.
+
+    This API intentionally keeps identities=None fail-closed even after D4
+    completion. Full-population D5 generation uses the dedicated full builder.
+    """
+
+    return _build_guarded_candidate(
+        acceptance_path=acceptance_path,
+        repo_root=repo_root,
+        preprocessed_root=preprocessed_root,
+        parent_root=parent_root,
+        output_root=output_root,
+        requested_identities=identities,
+        status=GUARDED_CANDIDATE_STATUS_BOUNDED,
+        full_population=False,
+    )
+
+
+def build_guarded_token_full_candidate(
+    *,
+    acceptance_path: Path,
+    repo_root: Path,
+    preprocessed_root: Path,
+    parent_root: Path,
+    output_root: Path,
+    progress_callback: Callable[[int, int, GuardedBuildResult], None] | None = None,
+) -> dict[str, Any]:
+    """Build the exact full R4-D-011 population as the D5 guarded candidate."""
+
+    return _build_guarded_candidate(
+        acceptance_path=acceptance_path,
+        repo_root=repo_root,
+        preprocessed_root=preprocessed_root,
+        parent_root=parent_root,
+        output_root=output_root,
+        requested_identities=None,
+        status=GUARDED_CANDIDATE_STATUS_FULL,
+        full_population=True,
+        progress_callback=progress_callback,
+    )
+
+
 __all__ = [
     "AcceptedV10Parent",
     "GuardedBuildResult",
     "GuardedTokenCandidateError",
     "TargetEvidenceError",
     "build_guarded_token_candidate",
+    "build_guarded_token_full_candidate",
     "load_accepted_v10_parent",
 ]
