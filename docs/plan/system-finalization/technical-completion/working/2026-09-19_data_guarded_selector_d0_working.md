@@ -507,7 +507,8 @@ is evidence-derived rather than arbitrary:
 | strong selector improvement | `solidifi` | `08378c9d432399d34e2f5a417e0b57e47b0ef63cc99a208f9efb67744d5e837f` | 11 windows; target coverage 0.5205566 -> 0.9854522 |
 | over-cap equality/fallback | `solidifi` | `397813120698b5942a0168c339310bb57dcf2d8b4041b3590ad86ce3d3accfbd` | 8 windows; guarded equals control |
 | class/shape fallback | `solidifi` | `9b8eb361195230fb9e7d8797c3c456fce60b169564f5484ae003814ee03a6e4c` | Reentrancy; 17 windows; control already covers target |
-| long active CUDA case | `dive` | `83c9d2d26dc19eaa2aee29fa7aedb4f4e208429a96cc7a0ffee7491b9830630d` | 62 windows; guarded target coverage improvement |
+| long train-batch improvement | `dive` | `83c9d2d26dc19eaa2aee29fa7aedb4f4e208429a96cc7a0ffee7491b9830630d` | 62 windows; guarded target coverage improvement |
+| worst-case CUDA forward probe | `dive` | `f50cd5d7df9ab644a02eb760ceab56548d327984db313015a66bca85513fa3c5` | 353 windows; retained CUDA worst-case; guarded target coverage improvement |
 | additional improved train case | `dive` | `087f69b560460734f646e30aa9be314c7f9085289ba394677905d008cf3a7ae0` | 17 windows; guarded improvement |
 | additional strong-train shape | `solidifi` | `d4b90b62c2ab33ce14d403f1d995b132e8178a09ca243db3be58b610c30cd297` | 12 windows; guarded improvement |
 
@@ -520,8 +521,7 @@ not guessed from memory.
 
 An optional extra stress probe is the 403-window sensitivity identity
 `dive/c74bbb7fbe8eda3e6d9404b08678e9eca476aa85831e7c23b578cfa089f77b8f`.
-It is useful for token-window scale stress but is distinct from the active CUDA
-selector tranche, whose retained long case above is the primary D4 requirement.
+It is useful for token-window scale stress but remains optional. The required D4 tranche already includes both the retained 62-window long train-batch case and the 353-window worst-case CUDA forward probe above.
 
 ## 14. Current stop line
 
