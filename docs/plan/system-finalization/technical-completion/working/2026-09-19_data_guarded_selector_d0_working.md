@@ -569,6 +569,29 @@ Add a separate D5 full-population seam with these requirements:
 A partial/failed full build is not resumable authority. It remains an
 unaccepted attempt root; rerun from a fresh root after the cause is understood.
 
+### D5 implementation checkpoint
+
+Implemented on canonical `main` through `8c0e166b502908f4f801492f638c160d17c0a924`:
+
+- a dedicated `build_guarded_token_full_candidate(...)` API that derives the
+  exact population from R4-D-011 rather than accepting caller-supplied identities;
+- the bounded D4 API still fails closed for `identities=None`;
+- full manifests use `FULL_GUARDED_TOKEN_CANDIDATE` and
+  `full_population=true`;
+- sorted per-identity graph/token/sidecar hashes plus selector decisions are
+  bound into a deterministic candidate digest;
+- the protected-local D5 driver
+  `docs/plan/ml-R4/scripts/p8_generate_guarded_token_candidate_d5.py`
+  emits progress and a compact `PASS_FULL_D5_REVIEW_REQUIRED` report;
+- D5 output remains `physical_acceptance=false`,
+  `d6_authorized=false`, and `training_authorized=false`;
+- focused repository-safe coverage was added for the exact-parent
+  full-population derivation and manifest/digest boundary;
+- CI compiles the D5 driver.
+
+This implementation checkpoint does **not** complete D5. The full protected-local
+22,540-identity generation has not yet run.
+
 ## 16. Current stop line
 
 D5 has **not** been executed. No guarded full-population physical lineage is accepted yet, and training remains unauthorized.
