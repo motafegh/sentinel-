@@ -8,7 +8,7 @@
 
 ## 30-second summary
 
-SENTINEL has multiple intentionally preserved DATA generations, and their meanings must not be mixed. **Historical v1** binary exports and v9 representations remain the Run12/reproducibility seam. **DATA vNext v2** introduced explicit contract×class state, nullable targets, strength/masks, provenance, and role-aware loading. Later R4 decisions repaired the physical and logical authority further: D-008 accepts the 22,540-contract repaired physical DATA population, D-009 accepts logical V3 grouping/roles, D-010 makes v9 ineligible for a new full run, and D-011 accepts the exact V10 V2.6 physical graph lineage. D-012 requires a fresh guarded-selector successor token lineage before a future repaired training candidate can use that selector.
+SENTINEL has multiple intentionally preserved DATA generations, and their meanings must not be mixed. **Historical v1** binary exports and v9 representations remain the Run12/reproducibility seam. **DATA vNext v2** introduced explicit contract×class state, nullable targets, strength/masks, provenance, and role-aware loading. Later R4 decisions repaired the physical and logical authority further: D-008 accepts the 22,540-contract repaired physical DATA population, D-009 accepts logical V3 grouping/roles, D-010 makes v9 ineligible for a new full run, and D-011 accepts the exact V10 V2.6 physical graph lineage. D-012 requires a fresh guarded-selector successor token lineage, and D-013 now accepts the exact physical successor before future repaired ML integration.
 
 No repaired teacher has been promoted and full training remains unauthorized.
 
@@ -27,7 +27,7 @@ historical/source evidence
 
 current possible future-training physical seam
 D-011 exact V10 V2.6 graph lineage
-+ D-012-required fresh guarded-selector token successor (pending acceptance)
++ D-013 accepted guarded-selector token successor
 → Phase-8 dataset/trainer only after exact candidate binding + authorization
 ```
 
@@ -89,7 +89,7 @@ R4-GAP-008 exposed semantic defects in historical v9 call edges. The repaired pa
 
 D-011 also proves exact historical-control token equivalence for its bound token tensors. That makes D-011 a stable accepted rollback/control root; it does **not** mean the new guarded selector has already been applied.
 
-### Fresh guarded-selector successor — D-012
+### Guarded-selector successor — D-012 policy / D-013 physical acceptance
 
 D-012 promotes `target_aware_guarded_v1` only for a **new versioned candidate**. The correct seam is therefore:
 
@@ -98,7 +98,7 @@ accepted logical V3 semantics/roles
 + accepted D-011 V10 graph lineage
 + fresh D-012 guarded token selection
 → new candidate artifact identity
-→ binding/review/physical acceptance
+→ D-013 binding/review/physical acceptance
 → only then later training/evaluation authority
 ```
 
@@ -131,7 +131,7 @@ A valid target is not automatically training-authorized; a valid representation 
 | `r4-vnext-roles-v3` | current accepted logical role authority |
 | v9 representation | historical/Run12/reproducibility; ineligible for new full run |
 | D-011 V10 V2.6 representation | current exact accepted physical graph/control-token authority |
-| D-012 guarded-selector successor | pending new candidate; separate acceptance required |
+| D-012 / D-013 guarded-selector successor | selector policy promoted under D-012; exact physical successor accepted under D-013 |
 | class order/count | locked ten-class compatibility boundary |
 | token tensor shape | `[4,512]` for the current historical-control / guarded-window contract |
 
@@ -171,7 +171,7 @@ python3 docs/handbook/tools/verify_handbook.py inventory
 python3 docs/plan/ml-R4/scripts/p6_validate_frozen_partitions.py
 ```
 
-The G6 validator remains a historical compatibility check. Current logical-V3 and D-011/D-012 claims are established by their later machine-readable evidence/ADR chain, not by reinterpreting the G6 validator.
+The G6 validator remains a historical compatibility check. Current logical-V3 and D-011/D-012/D-013 claims are established by their later machine-readable evidence/ADR chain, not by reinterpreting the G6 validator.
 
 ## Optional deep references
 
@@ -190,11 +190,11 @@ Know PyTorch/PyG interfaces, nullable semantic state, masks, strength weighting,
 
 ### Source map and reading order
 
-Read historical v1 dataset/collate only for Run12 compatibility. For current repaired semantics, follow policy → D-008 → D-009 logical V3 → D-010/D-011 representation decisions → D-012 selector decision → current `VNextTrainingDataset`/Phase-8 consumer code.
+Read historical v1 dataset/collate only for Run12 compatibility. For current repaired semantics, follow policy → D-008 → D-009 logical V3 → D-010/D-011 graph authority → D-012 selector decision → D-013 physical token acceptance → current `VNextTrainingDataset`/Phase-8 consumer code.
 
 ### Execution trace and worked example
 
-A SolidiFI class assertion can establish a strong positive while the other classes remain unknown. That semantic row can be assigned through accepted logical V3 without changing historical v1 artifacts. For a later repaired model, its graph must come from the exact accepted D-011 V10 lineage while a guarded token candidate must be generated under D-012 and accepted separately; neither change authorizes threshold fitting or full training by itself.
+A SolidiFI class assertion can establish a strong positive while the other classes remain unknown. That semantic row can be assigned through accepted logical V3 without changing historical v1 artifacts. For a later repaired model, its graph must come from the exact accepted D-011 V10 lineage while the guarded token successor generated under D-012 is accepted separately under D-013; neither physical acceptance authorizes threshold fitting or full training by itself.
 
 ### Implementation practice
 
@@ -202,4 +202,4 @@ Test representation identity, semantic-policy validity, logical-role/group ident
 
 ### Review and ownership check
 
-Can you trace one contract from historical v1 compatibility through DATA vNext v2 semantics, D-009 logical V3 role/group authority, D-011 V10 graph identity, pending D-012 token successor, and the repaired ML consumer without losing which artifacts are historical, accepted, or still pending?
+Can you trace one contract from historical v1 compatibility through DATA vNext v2 semantics, D-009 logical V3 role/group authority, D-011 V10 graph identity, accepted D-013 guarded-token successor, and the repaired ML consumer without losing which artifacts are historical, accepted, or still pending?
