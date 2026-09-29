@@ -29,7 +29,7 @@ The completion program uses six subordinate plans:
 - exact V10 V2.6 physical graph lineage is accepted under R4-D-011;
 - accepted V10 identity count is 22,540 contracts with the exact R4-D-011 binding digest;
 - R4-D-012 promotes `target_aware_guarded_v1` only for a **new versioned token lineage**;
-- the guarded-token physical candidate has not yet been built or accepted;
+- the guarded-token full physical candidate has been generated and reviewed under D5 but is not yet accepted; D6 independent physical acceptance remains open;
 - current executable tokenization still preserves the historical four-window linspace selector unless an accepted token tensor is copied.
 
 ### ML
@@ -300,6 +300,6 @@ The technical-completion program is complete only when:
 
 ## 10. Immediate next action
 
-The guarded-selector implementation line has completed DATA work packages D0-D4. The 2026-09-29 protected-local D4 review passed 9/9 bounded identities with zero failures and deterministic repeated token artifacts while preserving immutable R4-D-011 graph bytes. The next action is **D5 full protected-local guarded-token candidate generation** from `01_DATA_REPRESENTATION_COMPLETION_PLAN.md`.
+The guarded-token DATA workstream has completed D0-D5. D5 generated the full 22,540-identity candidate from source commit `733f0c73eb76ab107751c30345d9a169a0429fdd`, with 14,751 guarded selections, 7,789 historical fallbacks, and binding digest `9885d7b88a46aff4102741d63eeaa0bd6968f0857f7bca6a389662bfaa158881`. The next action is **D6 independent protected-local physical acceptance review** from `01_DATA_REPRESENTATION_COMPLETION_PLAN.md`.
 
-Do **not** restart D0-D4, treat the bounded D4 pass as physical acceptance, begin repaired full training, fit thresholds/calibration, or rebind downstream ZKML first. D6 physical acceptance remains separate after D5.
+Do **not** treat D5 generation as physical acceptance, begin repaired full training, fit thresholds/calibration, or rebind downstream ZKML first. R4-D-011 remains the accepted physical control until D6 makes an explicit accept/reject/revise decision.
