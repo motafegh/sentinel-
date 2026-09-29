@@ -3,6 +3,7 @@
 **Status:** ACTIVE — first critical workstream  
 **Parent:** `00_MASTER_TECHNICAL_COMPLETION_ROADMAP.md`  
 **Primary authority:** `docs/plan/ml-R4/` decisions/evidence, especially R4-D-011 and R4-D-012  
+**Current execution checkpoint:** D0-D3 complete; D4 protected-local validation next; D5 blocked pending D4  
 
 ## 1. Objective
 
@@ -116,7 +117,7 @@ Implementation goals:
 
 ## 7. Work package D3 — unit and property validation
 
-**State:** `COMPLETE` — exact-head substantive repository CI passed at `ccf49bfae504c82c192d72499ba8766f0f185376`; inherited baseline `git diff --check` debt remains outside this tranche
+**State:** `COMPLETE` — substantive implementation hardened through `10c102c515c9458821123df49e17cf0d8ee0a746` and revalidated at branch checkpoint `4fc5a928a6a017b72e08e8d3e9c32cbb1d59c8d4`; repaired/Phase-8 regression, snapshot, and G6 checks pass, while inherited baseline `git diff --check` debt remains outside this tranche
 
 Required tests include:
 
