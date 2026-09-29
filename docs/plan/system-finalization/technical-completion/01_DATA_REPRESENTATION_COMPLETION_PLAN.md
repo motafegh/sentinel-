@@ -1,15 +1,15 @@
 # DATA / Representation Completion Plan
 
-**Status:** ACTIVE — first critical workstream  
+**Status:** ACCEPTED — D0-D6 complete under R4-D-013  
 **Parent:** `00_MASTER_TECHNICAL_COMPLETION_ROADMAP.md`  
-**Primary authority:** `docs/plan/ml-R4/` decisions/evidence, especially R4-D-011 and R4-D-012  
-**Current execution checkpoint:** D0-D4 complete; D5 full protected-local candidate generation next; D6 remains pending  
+**Primary authority:** `docs/plan/ml-R4/` decisions/evidence, especially R4-D-011, R4-D-012 and R4-D-013  
+**Current execution checkpoint:** D0-D6 complete; accepted guarded-token physical lineage handed off to ML completion  
 
 ## 1. Objective
 
 Construct, validate, bind and separately accept the fresh physical token/representation lineage authorized by R4-D-012, without modifying the accepted R4-D-011 V10 V2.6 root.
 
-The immediate technical gap is explicit: the production representation path still uses the historical four-window linspace selector or byte-copies accepted historical token tensors. R4-D-012 has promoted `target_aware_guarded_v1` only as policy/evidence for a **new versioned candidate**. The new physical lineage does not yet exist.
+The guarded-token technical gap is closed. R4-D-013 accepts the exact protected-local `r4-v10-v26-guarded-tokens-v1` successor with binding digest `9885d7b88a46aff4102741d63eeaa0bd6968f0857f7bca6a389662bfaa158881`. R4-D-011 remains the immutable V10 graph/control parent. The remaining work belongs to ML objective/evaluation, final training-lineage binding, bounded pilot, and later launch authority.
 
 ## 2. Immutable inputs and constraints
 
@@ -187,7 +187,7 @@ Full generation must occur in a protected local artifact root; Git should contai
 
 ## 10. Work package D6 — physical acceptance review
 
-**State:** `READY_FOR_PROTECTED_LOCAL_ACCEPTANCE_REVIEW` — D5 generation passed review; independent full-population D6 validation/acceptance is now required
+**State:** `COMPLETE / ACCEPTED` — D6 independently checked all 22,540 identities, reproduced binding digest `9885d7b88...`, verified exact 22,539+1 runtime provenance and nine deterministic probe regenerations; R4-D-013 explicitly accepts the lineage
 
 The candidate is not authoritative merely because generation completed.
 
@@ -207,7 +207,9 @@ If acceptance changes durable representation authority, record the decision in t
 
 ## 11. Handoff to ML
 
-The DATA plan may hand off to ML only with:
+**Handoff status:** READY / ACCEPTED under R4-D-013.
+
+The DATA plan hands off to ML with:
 
 - accepted token/representation lineage name;
 - exact physical digest;
@@ -236,4 +238,4 @@ Stop and investigate if any of the following occurs:
 
 ## 13. Completion criteria
 
-This module is `ACCEPTED` when a fresh guarded-token physical lineage has been generated, bound, independently reviewed under the R4 process, and explicitly accepted or when the guarded candidate has been explicitly rejected with a documented successor decision. Merely implementing the selector is not completion.
+This module is `ACCEPTED`: R4-D-013 records the explicit physical acceptance after D5 full generation and independent D6 review. This closes DATA/representation technical completion only; it does not authorize full training or any model-quality, threshold, calibration, untouched-acceptance, production or on-chain claim.
