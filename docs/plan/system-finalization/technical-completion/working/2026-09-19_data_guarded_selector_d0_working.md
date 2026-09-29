@@ -7,11 +7,13 @@
 **Work package:** D0-D4 guarded-token technical-completion continuation  
 **Status:** D0-D4 COMPLETE / D5 READY FOR PROTECTED-LOCAL GENERATION / D6 NOT STARTED
 
-### Continuation-branch checkpoint
+### Continuation checkpoint
 
-For this workstream, `agent/data-target-aware-guarded-v1` is the current continuation branch. The repository also retains `technical-completion/data-target-aware-guarded-v1` and `work/data-d0-selector-contract` as older/alternate guarded-selector development lines. They are **not** the current continuation authority and must not be used to advance DATA-plan state without an explicit comparison/reconciliation against this branch and the accepted R4-D-011/R4-D-012 authorities.
+The guarded-selector implementation was developed and D4-validated on `agent/data-target-aware-guarded-v1`, then promoted through PR #74 and merged to canonical `main` at `8bbe4f48edadf9e43ab448e7d935921116049858`.
 
-The current branch is based directly on canonical `main` at `57f39d652cbec1092084b4efbf41bec6a117ba07`; D4 remains the first unexecuted work package.
+From that merge onward, **canonical `main` is the continuation authority for D5 and later work**. The repository may retain `agent/data-target-aware-guarded-v1`, `technical-completion/data-target-aware-guarded-v1`, and `work/data-d0-selector-contract` as historical/alternate development lines; none should supersede `main` without a new explicit reconciliation.
+
+The original implementation branch was based directly on main `57f39d652cbec1092084b4efbf41bec6a117ba07`. D0-D4 are now integrated; D5 is the first unexecuted work package.
 
 ## 1. Question
 
