@@ -18,7 +18,7 @@ A later protected-local audit found five post-acceptance research/reporting defe
 
 There are still **zero confirmed-negative examples**. R4-GAP-007 is **pilot in progress** using the hardened 200-cell / 200-group queue. Candidate #1 (`CallToUnknown`) is `NOT_CONFIRMED`. Candidate #2's source-first primary review supports `CONFIRMED_NEGATIVE`, but it remains `UNKNOWN` / `PENDING_REVIEW` with target `None` until a genuinely independent reviewer agrees.
 
-Candidate #2 also exposed a real v9 representation defect: all 30 of its type-11 `EXTERNAL_CALL` edges describe same-file `SafeMath` library calls, while its actual Ether `transfer` has no type-11 edge. The R4-GAP-008 audit reproduced this semantic mismatch across all 22,540 graphs. R4-D-010 therefore preserves v9 as immutable historical/reproducibility evidence but makes it ineligible for the new full run. The later V2.6 lineage passes all 22,540 mechanics and reconciles its exact 355-identity drift population as 349 persistent-storage WRITE corrections plus 6 exact index-equivalent graphs. R4-D-011 physically accepts only the exact protected-local V2.6 root and digest `d9f925588913e66476cfbc097bace7daa7e673295fe2a243760313d0bef5ebdd`. R4-D-012 promotes guarded selection only for a fresh candidate; that token lineage is not yet built or accepted. Threshold fitting, calibration, untouched acceptance, and the 100-epoch run remain unauthorized.
+Candidate #2 also exposed a real v9 representation defect: all 30 of its type-11 `EXTERNAL_CALL` edges describe same-file `SafeMath` library calls, while its actual Ether `transfer` has no type-11 edge. The R4-GAP-008 audit reproduced this semantic mismatch across all 22,540 graphs. R4-D-010 therefore preserves v9 as immutable historical/reproducibility evidence but makes it ineligible for the new full run. The later V2.6 lineage passes all 22,540 mechanics and reconciles its exact 355-identity drift population as 349 persistent-storage WRITE corrections plus 6 exact index-equivalent graphs. R4-D-011 physically accepts only the exact protected-local V2.6 root and digest `d9f925588913e66476cfbc097bace7daa7e673295fe2a243760313d0bef5ebdd`. R4-D-012 promotes guarded selection only for a fresh lineage; R4-D-013 now accepts the exact full guarded-token physical successor with digest `9885d7b88a46aff4102741d63eeaa0bd6968f0857f7bca6a389662bfaa158881`. Threshold fitting, calibration, untouched acceptance, and the 100-epoch run remain unauthorized.
 
 ## Just-enough mental model
 
@@ -58,7 +58,7 @@ R4-GAP-008 v10 representation remediation
 versioned V2.6 protected-local candidate
   PHYSICALLY ACCEPTED / 22,540 / DIGEST d9f925...
         ↓
-R4-D-012 guarded-selector policy accepted
+R4-D-012 guarded-selector policy accepted\n  ↓\nR4-D-013 guarded-token physical successor accepted
   NEW PHYSICAL TOKEN LINEAGE NOT YET BUILT
         ↓
 objective/evaluation design
@@ -83,7 +83,7 @@ valid physical DATA
 | Phase | State | Current meaning |
 |---:|---|---|
 | 0–7 | PASSED | historical G0–G7 remain immutable/reproducible |
-| 8 | IN_PROGRESS | repaired-v2 physical DATA and logical V3 remain accepted evidence; exact V2.6 physical representation is accepted under R4-D-011; candidate #1 is `NOT_CONFIRMED`; candidate #2 primary supports a negative pending independent review; full training unauthorized |
+| 8 | IN_PROGRESS | repaired-v2 physical DATA, logical V3, exact V2.6 graph authority (R4-D-011), and the guarded-token physical successor (R4-D-013) are accepted; candidate #1 is `NOT_CONFIRMED`; candidate #2 primary supports a negative pending independent review; full training unauthorized |
 | 9–10 | WAITING | evaluation/calibration/promotion remain gated by G8 and missing evidence |
 
 ### Historical G7 validation anchors
@@ -235,7 +235,7 @@ CUDA rerun:
 
 This is durable mechanical/coverage evidence. It still cannot establish false-positive discrimination because the relevant supervised/model-selection evidence remains positive-only.
 
-The later full-population prerequisite passed 22,540/22,540, and R4-D-012 promotes guarded selection only for a fresh versioned candidate. These historical evidence files retain their original false authority flags; governance changed later without editing them.
+The later full-population prerequisite passed 22,540/22,540, R4-D-012 promoted guarded selection for a fresh versioned lineage, and R4-D-013 subsequently accepted the exact full guarded-token physical successor. Historical evidence files retain their original false authority flags; governance changed later without editing them.
 
 ### Confirmed-negative state
 
@@ -297,7 +297,7 @@ the current authority.
 | current execution restart | `runs/2026-09-02_PHASE8_v10_v26_physical_acceptance_and_no_launch.md`; candidate #2 review is a separate pending-independent track |
 | confirmed-negative review | R4-GAP-007 / candidate #1 `NOT_CONFIRMED` / candidate #2 primary-support only, independent pending |
 | physical representation for a future authorized run | R4-D-011 exact v10 / extractor `v2.6-r4-call-semantics-deterministic-cfg-mutators` / protected-local `representations-r4-v3-candidate`; digest `d9f925...`; physically accepted, not training-authorized |
-| selector | R4-D-012 guarded policy promoted for a new candidate; historical control remains bound in current R4-D-011 physical authority until a new lineage passes acceptance |
+| selector / token physical lineage | R4-D-012 guarded policy promoted; R4-D-013 accepts the exact full guarded-token successor; R4-D-011 remains immutable graph/control parent |
 | training authorization | HOLD / none |
 
 ### Stable accepted-v9 shapes
@@ -350,8 +350,8 @@ Any future replacement/recomputed V3 report must still fail closed if acceptance
 - v9 type-11 edges conflate library calls and omit most Transfer/Send nodes; v9 is prohibited for the new full run;
 - exact V2.6 protected-local physical acceptance is complete under R4-D-011; it grants no selector or training authority;
 - `[4,512]` capacity omits material code on long contracts;
-- guarded target-aware selection remains promising but unpromoted;
-- full-population historical-control → R4-D-011 bound-token equivalence passes 22,540/22,540; R4-D-012 promotes guarded selection only for a fresh physical candidate, which is not yet built or accepted.
+- guarded target-aware selection is promoted under R4-D-012 and physically accepted under R4-D-013 for the exact successor lineage;
+- full-population historical-control → R4-D-011 bound-token equivalence passes 22,540/22,540; R4-D-013 accepts the separately generated guarded-token successor after D5/D6 full-population review.
 
 ### Training
 
@@ -367,7 +367,7 @@ For the current Phase-8 boundary:
 1. synchronize local `main`;
 2. read `PLAN_STATUS_MATRIX.md`, the R4-D-011 acceptance/no-launch record, ADR-R4-012, candidate #2 primary review, and the hardened snapshot closeout;
 3. preserve v9/repaired-v2 roots, accepted logical V3, the R4-D-011 V2.6 root, and the committed evidence snapshots;
-4. build a fresh R4-D-012 guarded-token candidate without mutating R4-D-011, then bind and review it separately;
+4. consume the accepted R4-D-013 guarded-token lineage only through the ML completion plan, preserving R4-D-011 as immutable graph/control parent;
 5. have a genuinely independent reviewer evaluate candidate #2 from the blind bundle; keep target `None` unless dual review agrees;
 6. keep any accepted negative evaluation-only unless later policy explicitly grants optimizer authority;
 7. revisit objective/evaluation/training authorization, including PU learning, only after new evidence supports it.
@@ -490,4 +490,4 @@ Before proceeding, be able to answer:
 - What evidence is still missing before G8 can authorize full training?
 - Why can v9 remain valid historical evidence while being ineligible for a new training run?
 
-If any answer is unclear, use the 2026-08-16 hardened V3 evidence snapshot closeout for the accepted pre-pilot baseline, then the 2026-09-02 V2.6 physical-acceptance/no-launch record and ADR-R4-011 for the current execution point. Use candidate #2's primary-review record only for its pending-independent review track.
+If any answer is unclear, use the 2026-08-16 hardened V3 evidence snapshot closeout for the accepted pre-pilot baseline, then the 2026-09-02 V2.6 graph acceptance and the 2026-09-29 R4-D-013 guarded-token physical-acceptance record for the current DATA/ML boundary. Use candidate #2's primary-review record only for its pending-independent review track.
