@@ -1,0 +1,77 @@
+{
+  "accepted_lineage": {
+    "binding_digest_sha256": "9885d7b88a46aff4102741d63eeaa0bd6968f0857f7bca6a389662bfaa158881",
+    "candidate_manifest_sha256": "5aa48ce6eb218b742af3c99823db333272d65599039b6ec550d56f713b839dca",
+    "contracts": 22540,
+    "control_selector": "historical_linspace_v1",
+    "extractor_version": "v2.6-r4-call-semantics-deterministic-cfg-mutators",
+    "graph_parent_binding_digest_sha256": "d9f925588913e66476cfbc097bace7daa7e673295fe2a243760313d0bef5ebdd",
+    "graph_parent_decision_id": "R4-D-011",
+    "graph_parent_physical_root": "data_module/data/v10-v26-full-candidate-attempt-2026-09-01-a/representations-r4-v3-candidate",
+    "graph_schema_version": "v10",
+    "physical_root": "data_module/data/r4-guarded-d5-full-2026-09-29-a/representations-r4-v10-v26-guarded-v1-candidate",
+    "preprocessed_parent": "data_module/data/sentinel-preprocessed-r4-v2",
+    "protected_local": true,
+    "representation_files": 67620,
+    "representation_lineage": "r4-v10-v26-guarded-tokens-v1",
+    "selector_policy": "target_aware_guarded_v1",
+    "token_shape": [
+      4,
+      512
+    ],
+    "transformers_version": "4.46.3"
+  },
+  "checks": {
+    "binding_digest_independently_reproduced": true,
+    "candidate_population_complete": true,
+    "deterministic_probe_regeneration_passed": true,
+    "exact_runtime_partition_proven": true,
+    "graph_parent_bytes_preserved": true,
+    "independent_full_population_validation_passed": true,
+    "no_extra_candidate_identities": true,
+    "no_missing_candidate_identities": true,
+    "no_unexpected_candidate_files": true,
+    "r4_d011_preserved_immutable": true,
+    "repaired_source_identity_verified": true,
+    "selector_policy_compliant_full_population": true,
+    "tracked_worktree_clean_at_acceptance_review": true
+  },
+  "decision": "ACCEPTED_IMMUTABLE_LOCAL_GUARDED_TOKEN_REPRESENTATION",
+  "decision_id": "R4-D-013",
+  "evidence": {
+    "acceptance_review_source_commit": "405b58e19210e6ff796aa943f8699b788d5229c1",
+    "d5_generation_report_sha256": "e3202b77b4cb2557bcc47d19287a7c72ce248e1119f8b7d49521bce90d82f589",
+    "d6_validation_report_sha256": "8468a2b840131363444532ac4264ca048a2a39247b35d6552eea28f695b17289",
+    "generation_source_commit": "733f0c73eb76ab107751c30345d9a169a0429fdd",
+    "r4_d011_acceptance_manifest_sha256": "5fc83eff39d4a28db9a5b6b5255a95ad64ee75ca88a948ba99dadb2bc03ee165"
+  },
+  "g8_passed": false,
+  "physical_acceptance": true,
+  "remaining_gates": [
+    "confirmed_negative_evaluation_evidence",
+    "objective_and_evaluation_contract",
+    "threshold_calibration_and_untouched_acceptance_support",
+    "explicit_full_training_authorization"
+  ],
+  "runtime_distribution": [
+    {
+      "contracts": 22539,
+      "crytic_compile": "0.3.11",
+      "runtime_role": "primary",
+      "slither_analyzer": "0.10.0"
+    },
+    {
+      "contracts": 1,
+      "crytic_compile": "0.3.11",
+      "runtime_role": "identity_bound_exception",
+      "slither_analyzer": "0.11.5"
+    }
+  ],
+  "schema": "sentinel-r4-guarded-token-physical-acceptance-v1",
+  "selector_distribution": {
+    "historical_linspace_v1": 7789,
+    "target_aware_guarded_v1": 14751
+  },
+  "status": "PASS",
+  "training_authorized": false
+}
