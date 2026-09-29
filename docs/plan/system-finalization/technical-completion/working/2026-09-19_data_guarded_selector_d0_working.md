@@ -13,7 +13,7 @@ The guarded-selector implementation was developed and D4-validated on `agent/dat
 
 From that merge onward, **canonical `main` is the continuation authority for D5 and later work**. The repository may retain `agent/data-target-aware-guarded-v1`, `technical-completion/data-target-aware-guarded-v1`, and `work/data-d0-selector-contract` as historical/alternate development lines; none should supersede `main` without a new explicit reconciliation.
 
-The original implementation branch was based directly on main `57f39d652cbec1092084b4efbf41bec6a117ba07`. D0-D5 are now complete on canonical main; D6 is the first uncompleted work package.
+The original implementation branch was based directly on main `57f39d652cbec1092084b4efbf41bec6a117ba07`. D0-D6 are complete on canonical main and R4-D-013 closes the DATA/representation workstream.
 
 ## 1. Question
 
