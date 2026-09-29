@@ -1,6 +1,6 @@
 # START HERE — AI Implementation Agent Instruction
 
-> **Historical bootstrap notice, current redirect reconciled 2026-09-29:** the Phase-0 assignment below is retained for provenance and is **not the current restart instruction**. R4 has passed historical G0–G7; repaired-v2 physical DATA and logical V3 remain accepted evidence; R4-D-011 accepts the exact protected-local V2.6 root/digest; R4-D-012 promotes `target_aware_guarded_v1` only for a fresh versioned token candidate. D0-D4 are complete; the protected-local D4 tranche passed 9/9 with zero failures, and D5 full guarded-token generation is next before separate D6 physical acceptance. Phase 8 remains `IN_PROGRESS`, G8 is open, and full training is unauthorized.
+> **Historical bootstrap notice, current redirect reconciled 2026-09-29:** the Phase-0 assignment below is retained for provenance and is **not the current restart instruction**. R4 has passed historical G0–G7; repaired-v2 physical DATA and logical V3 remain accepted evidence; R4-D-011 accepts the exact protected-local V2.6 graph parent; R4-D-012 promotes `target_aware_guarded_v1` for a fresh versioned token lineage. D0-D5 are complete; the full 22,540-identity guarded-token candidate exists and D6 independent physical acceptance review is next. Phase 8 remains `IN_PROGRESS`, G8 is open, and full training is unauthorized.
 
 ## Current restart — read this before the historical bootstrap
 
@@ -33,7 +33,7 @@ Current state that must not be lost:
 - R4-D-011 physically accepts only the exact protected-local root and digest `d9f925588913e66476cfbc097bace7daa7e673295fe2a243760313d0bef5ebdd`;
 - confirmed negatives remain zero; candidate #2 still needs genuinely independent verification;
 - threshold/calibration/untouched acceptance remain unsupported/empty;
-- R4-D-012 promotes guarded selection only for a fresh token candidate; that physical lineage is not yet built or accepted;
+- R4-D-012 promotes guarded selection only for a fresh token lineage; the full D5 candidate is now built but remains unaccepted pending D6;
 - no 100-epoch run is authorized.
 
 R4-B008 / R4-GAP-008 are closed only for the R4-D-011 root/digest. Preserve the accepted candidate and reports; do not regenerate them, treat a different digest as accepted, or proceed to training without the separate remaining gates and explicit authorization.
