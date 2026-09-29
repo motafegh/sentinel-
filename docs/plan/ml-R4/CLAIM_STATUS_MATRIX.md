@@ -1,10 +1,10 @@
 # R4 Claim Status Matrix
 
-This matrix describes the **current evidence-qualified claim boundary**, not the historical binary-label surface. R4-D-008 accepts repaired-v2 physical DATA as immutable reproducibility evidence; R4-D-009 accepts corrected logical V3 grouping/roles for current Phase-8 research. R4-D-010 prohibits using v9 for the new full training run, and R4-D-011 accepts the exact protected-local V10 V2.6 representation root with binding digest `d9f925588913e66476cfbc097bace7daa7e673295fe2a243760313d0bef5ebdd`. V2.6 Stages A-D and V4 pass for all 22,540 identities; all 355 current structural drifts are reconciled with zero unexplained drift. The hardened V3 research tranche remains durably snapshotted with `coherence=PASS` at commit `44fbb9c1d2033be8002fe404d650cf09f08b0f29`. None of these facts establishes general model discrimination, calibration, thresholds, training authorization, or production acceptance.
+This matrix describes the **current evidence-qualified claim boundary**, not the historical binary-label surface. R4-D-008 accepts repaired-v2 physical DATA as immutable reproducibility evidence; R4-D-009 accepts corrected logical V3 grouping/roles for current Phase-8 research. R4-D-010 prohibits using v9 for the new full training run; R4-D-011 accepts the exact protected-local V10 V2.6 graph/control root with binding digest `d9f925588913e66476cfbc097bace7daa7e673295fe2a243760313d0bef5ebdd`; and R4-D-013 accepts the exact guarded-token successor with binding digest `9885d7b88a46aff4102741d63eeaa0bd6968f0857f7bca6a389662bfaa158881`. V2.6 graph evidence and the guarded-token D5/D6 acceptance chain pass for all 22,540 identities. The hardened V3 research tranche remains durably snapshotted with `coherence=PASS` at commit `44fbb9c1d2033be8002fe404d650cf09f08b0f29`. None of these facts establishes general model discrimination, calibration, thresholds, training authorization, or production acceptance.
 
 | Index | Class | DATA vNext supervision | Current positive authority | Confirmed-negative support | Discrimination | Calibration / threshold | Current claim status | Key limitation |
 |---:|---|---|---|---|---|---|---|---|
-| 0 | CallToUnknown | ENABLED | STRONG: SolidiFI Unchecked-Send; SmartBugs unchecked_low_level_calls | NONE — candidate #1 `NOT_CONFIRMED`; candidate #2 primary supports a negative but independent verification is pending | UNSUPPORTED | UNSUPPORTED_EMPTY | TRAINING_ONLY | V10 V2.6 physical representations are accepted, but no confirmed-negative evaluation support or discrimination evidence exists |
+| 0 | CallToUnknown | ENABLED | STRONG: SolidiFI Unchecked-Send; SmartBugs unchecked_low_level_calls | NONE — candidate #1 `NOT_CONFIRMED`; candidate #2 primary supports a negative but independent verification is pending | UNSUPPORTED | UNSUPPORTED_EMPTY | TRAINING_ONLY | V10 V2.6 graphs and the guarded-token physical successor are accepted, but no confirmed-negative evaluation support or discrimination evidence exists |
 | 1 | DenialOfService | ENABLED | STRONG: SmartBugs denial_of_service | NONE — V3 pilot review ready | UNSUPPORTED | UNSUPPORTED_EMPTY | TRAINING_ONLY | DIVE DoS is masked; no confirmed negatives yet |
 | 2 | ExternalBug | ENABLED | STRONG: SolidiFI tx.origin; SmartBugs access_control | NONE — V3 pilot review ready | UNSUPPORTED | UNSUPPORTED_EMPTY | TRAINING_ONLY | DIVE Access Control is masked; class scope remains broader than any one source category |
 | 3 | GasException | SUPERVISION_DISABLED_PENDING_EVIDENCE | none | NONE | UNSUPPORTED | UNSUPPORTED_EMPTY | DISABLED_PENDING_EVIDENCE | No active approved class-specific positive authority |
@@ -29,7 +29,8 @@ Physical DATA:
 - the accepted extractor is `v2.6-r4-call-semantics-deterministic-cfg-mutators`, which adds only persistent-storage collection `push`/`pop` recognition while preserving call-node priority;
 - protected-local V2.6 Stages A-D pass for 22,540 identities, exact accepted-V9 token bytes, zero missing/extra/invalid artifacts, and the exact 22,539 ordinary primary + one declared runtime-exception split; binding digest `d9f925588913e66476cfbc097bace7daa7e673295fe2a243760313d0bef5ebdd`;
 - three fresh 355-identity generations and three byte-identical semantic-evidence reports support V4's 349 persistent-storage WRITE corrections and 6 exact index-equivalent graphs;
-- R4-D-011 physically accepts this exact V10 V2.6 root as immutable local evidence; training remains unauthorized and all model-quality, selector, objective, threshold/calibration, and production claims remain separate.
+- R4-D-011 physically accepts this exact V10 V2.6 graph/control root as immutable local evidence;
+- R4-D-013 physically accepts the exact guarded-token successor `r4-v10-v26-guarded-tokens-v1` with digest `9885d7b88a46aff4102741d63eeaa0bd6968f0857f7bca6a389662bfaa158881`, 14,751 guarded selections and 7,789 exact historical fallbacks; training remains unauthorized and all model-quality, objective, threshold/calibration, untouched-acceptance and production claims remain separate.
 
 Logical authority:
 
@@ -94,9 +95,9 @@ Durable CUDA result:
 - historical evidence report selector-promotion flag false; later R4-D-012 promotes only a new versioned candidate;
 - full-training authorization false.
 
-R4-D-012 promotes the selector only for construction/evaluation of a new versioned token lineage. It does not change the current R4-D-011 physical root or improve the model-quality claim boundary by itself. The positive-only CUDA result cannot establish false-positive discrimination.
+R4-D-012 promoted the selector for a new versioned token lineage. R4-D-013 now accepts that physical successor after full D5 generation and independent D6 review, while R4-D-011 remains the immutable graph/control parent. This closes the physical selector-lineage gap only; it does not improve the model-quality claim boundary. The positive-only CUDA result cannot establish false-positive discrimination.
 
-The full-population control-equivalence prerequisite passes: dynamic `historical_linspace_v1` reconstruction matches all 22,540 R4-D-011 `input_ids`, `attention_mask`, and selected-window-index payloads with zero failures. R4-D-012 reviewed this with the hardened CPU/CUDA evidence and authorizes a fresh guarded-token candidate. Physical acceptance and training remain separate.
+The full-population control-equivalence prerequisite passes: dynamic `historical_linspace_v1` reconstruction matches all 22,540 R4-D-011 `input_ids`, `attention_mask`, and selected-window-index payloads with zero failures. R4-D-013 subsequently accepts the guarded successor after D6 independently reproduced all 22,540 identities, the exact digest, selector counts, parent bindings, runtime split and nine deterministic probes. Training remains separate and unauthorized.
 
 ## Durable current evidence
 
