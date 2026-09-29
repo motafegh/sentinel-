@@ -36,7 +36,7 @@ flowchart LR
     D9 --> D11["R4-D-011 exact V10 V2.6 physical representation"]
     D11 --> D12["D-012 guarded-selector successor"]
     D12 --> D13["D-013 exact physical successor accepted"]
-    D12 --> FUT["Later repaired teacher retraining\nonly after explicit authorization"]
+    D13 --> FUT["Later repaired teacher retraining\nonly after explicit authorization"]
   end
 
   subgraph TRUST["Proof / protocol trust path"]
