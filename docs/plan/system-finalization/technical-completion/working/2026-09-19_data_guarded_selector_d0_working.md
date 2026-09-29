@@ -1,10 +1,17 @@
 # DATA D0 — guarded-selector source/evidence reconstruction
 
-**Date:** 2026-09-19
-**Branch:** `agent/data-target-aware-guarded-v1`
-**Base main:** `57f39d652cbec1092084b4efbf41bec6a117ba07`
-**Work package:** D0 — source/evidence reconstruction
+**Date:** 2026-09-19  
+**Last reconciled:** 2026-09-29  
+**Branch:** `agent/data-target-aware-guarded-v1`  
+**Base main:** `57f39d652cbec1092084b4efbf41bec6a117ba07`  
+**Work package:** D0-D4 guarded-token technical-completion continuation  
 **Status:** D0-D3 COMPLETE / D4 READY FOR PROTECTED-LOCAL VALIDATION / D5 BLOCKED
+
+### Continuation-branch checkpoint
+
+For this workstream, `agent/data-target-aware-guarded-v1` is the current continuation branch. The repository also retains `technical-completion/data-target-aware-guarded-v1` and `work/data-d0-selector-contract` as older/alternate guarded-selector development lines. They are **not** the current continuation authority and must not be used to advance DATA-plan state without an explicit comparison/reconciliation against this branch and the accepted R4-D-011/R4-D-012 authorities.
+
+The current branch is based directly on canonical `main` at `57f39d652cbec1092084b4efbf41bec6a117ba07`; D4 remains the first unexecuted work package.
 
 ## 1. Question
 
