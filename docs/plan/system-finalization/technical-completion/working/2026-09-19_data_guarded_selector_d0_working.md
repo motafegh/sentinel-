@@ -543,7 +543,33 @@ Reviewed result:
 
 The validator deliberately emitted `d5_authorized=false` because review is a separate governance step. This record performs that review: no D4 blocker remains, so D5 full protected-local generation is now authorized as the next DATA action. D6 remains the separate physical-acceptance gate.
 
-## 15. Current stop line
+## 15. D5 implementation design — 2026-09-29
+
+D5 must not be enabled by weakening the bounded D4 API. Preserve
+`build_guarded_token_candidate(..., identities=...)` as an explicitly bounded
+construction seam whose `identities=None` call continues to fail closed.
+
+Add a separate D5 full-population seam with these requirements:
+
+- enumerate the exact accepted R4-D-011 parent inventory only after validating
+  the accepted parent record/root;
+- require the enumerated population to equal the accepted parent contract count;
+- reuse the same already-D4-validated per-identity guarded builder;
+- preserve the immutable graph bytes and fresh guarded-token lineage rules;
+- emit a distinct full-candidate status and `full_population=true`;
+- bind every sorted identity record (source, contract id, selector decision,
+  selected indices, graph/token/sidecar SHA-256) into a deterministic candidate
+  binding digest;
+- keep `physical_acceptance=false` and `training_authorized=false`;
+- provide a protected-local driver with periodic progress output and a compact
+  D5 review report;
+- finish successful generation at `PASS_FULL_D5_REVIEW_REQUIRED`, with D6
+  still explicitly required before any physical-authority change.
+
+A partial/failed full build is not resumable authority. It remains an
+unaccepted attempt root; rerun from a fresh root after the cause is understood.
+
+## 16. Current stop line
 
 D5 has **not** been executed. No guarded full-population physical lineage is accepted yet, and training remains unauthorized.
 Therefore:
