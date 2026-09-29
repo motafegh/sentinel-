@@ -8,7 +8,7 @@
 
 ## 30-second summary
 
-SENTINEL still retains its historical ten-stage DATA lifecycle, but **current DATA/ML authority is the R4 evidence/semantic/representation chain**, not the old binary-label pipeline. Historical G0–G7 remain immutable reproducibility evidence. R4-D-008 accepts repaired-v2 physical DATA, R4-D-009 accepts logical V3 grouping/roles, R4-D-010 withdraws v9 from eligibility for a new full training run, R4-D-011 accepts the exact V10 V2.6 physical representation lineage, and R4-D-012 allows `target_aware_guarded_v1` only in a fresh successor candidate requiring separate physical acceptance.
+SENTINEL still retains its historical ten-stage DATA lifecycle, but **current DATA/ML authority is the R4 evidence/semantic/representation chain**, not the old binary-label pipeline. Historical G0–G7 remain immutable reproducibility evidence. R4-D-008 accepts repaired-v2 physical DATA, R4-D-009 accepts logical V3 grouping/roles, R4-D-010 withdraws v9 from eligibility for a new full training run, R4-D-011 accepts the exact V10 V2.6 physical representation lineage, and R4-D-012 allows `target_aware_guarded_v1` only in a fresh successor lineage, and R4-D-013 now accepts that exact physical successor.
 
 Full repaired training remains unauthorized. Historical source/label/export tooling is useful for lineage and mechanics but must not be mistaken for the current R4 build authority.
 
@@ -28,7 +28,7 @@ historical evidence + source evidence
 → logical V3 grouping / roles (D-009)
 → v9 withdrawn from new-full-training eligibility (D-010)
 → exact V10 V2.6 physical representation accepted (D-011)
-→ fresh guarded-selector successor required (D-012)
+→ guarded-selector successor policy (D-012)\n→ exact physical successor accepted (D-013)
 → later objective/evaluation/training work only if separately authorized
 ```
 
@@ -81,14 +81,14 @@ The old V2 leakage grouping was superseded after arbitrary Ethereum address coin
 
 Current logical identities are `r4-leakage-groups-v3`, `r4-vnext-roles-v3`, `sentinel-r4-vnext-v3`, and `r4-logical-lineage-v3`.
 
-### Current physical representation authority — R4-D-010 / D-011 / D-012
+### Current physical representation authority — R4-D-010 / D-011 / D-012 / D-013
 
 R4-GAP-008 showed that historical graph schema v9 materially conflated/omitted important call semantics. The resolution is versioned rather than patched in place:
 
 1. **R4-D-010:** v9 remains immutable historical/reproducibility evidence but is ineligible for the new full training run.
 2. **R4-D-011:** accepts only the exact 22,540-identity V10 V2.6 physical representation root produced by extractor `v2.6-r4-call-semantics-deterministic-cfg-mutators` and its recorded binding digest.
 3. **R4-D-012:** authorizes `target_aware_guarded_v1` only for a fresh versioned successor token lineage. The accepted D-011 root is not mutated in place.
-4. The successor still requires generation, binding, review, and separate physical acceptance before later objective/evaluation/training decisions.
+4. **R4-D-013:** accepts the exact full guarded-token successor after generation, binding and independent review; later objective/evaluation/training decisions remain separate.
 
 ### Current semantic supervision boundary
 
@@ -111,7 +111,7 @@ Two representation generations must be distinguished:
 |---|---|
 | historical v9 graph + `[4,512]` tokens | immutable G7/repaired-v2/Run12 compatibility and reproducibility evidence |
 | accepted V10 V2.6 graph lineage | current R4-D-011 physical representation authority for a possible future repaired run |
-| guarded-selector successor tokens | R4-D-012-required fresh candidate; not yet separately physically accepted |
+| guarded-selector successor tokens | accepted under R4-D-013; exact digest-bound physical successor; training still unauthorized |
 
 The semantic unit is `contract_id × class_index`, carrying explicit outcome/training/provenance state rather than only `0/1`. Current leakage-safe dataset role authority is logical V3, not the historical G6 `r4-vnext-roles-v1` partition.
 
@@ -149,7 +149,7 @@ python3 docs/handbook/tools/verify_handbook.py inventory
 python3 docs/plan/ml-R4/scripts/p6_validate_frozen_partitions.py
 ```
 
-The G6 validator proves historical partition compatibility only. Current V3/D-011/D-012 acceptance claims require their current R4 evidence/review records; do not interpret an old gate validator as proof of the latest lineage.
+The G6 validator proves historical partition compatibility only. Current V3/D-011/D-012/D-013 acceptance claims require their current R4 evidence/review records; do not interpret an old gate validator as proof of the latest lineage.
 
 ## Optional deep references
 
@@ -168,11 +168,11 @@ Know content hashes, multi-label/partial-label semantics, unknown-vs-negative st
 
 ### Source map and reading order
 
-For historical mechanics: `data_module/sentinel_data/cli.py` → preprocessing → historical representation/export. For current DATA authority: `PLAN_STATUS_MATRIX.md` → `data-vnext-policy-v1` → D-008 → D-009 → D-010 → D-011 → D-012, then the current `sentinel_data.vnext` / representation sources needed for the specific task.
+For historical mechanics: `data_module/sentinel_data/cli.py` → preprocessing → historical representation/export. For current DATA authority: `PLAN_STATUS_MATRIX.md` → `data-vnext-policy-v1` → D-008 → D-009 → D-010 → D-011 → D-012 → D-013, then the current `sentinel_data.vnext` / representation sources needed for the specific task.
 
 ### Execution trace and worked example
 
-A historical DIVE cell may preserve its original source assertion while remaining `target=null` under the repaired policy. A contract can belong to the accepted logical V3 grouping while its historical v9 representation remains only a reproduction root. For a possible future repaired run, the exact D-011 V10 graph bytes are the accepted physical graph lineage, and a new guarded-selector token candidate must be accepted separately before use.
+A historical DIVE cell may preserve its original source assertion while remaining `target=null` under the repaired policy. A contract can belong to the accepted logical V3 grouping while its historical v9 representation remains only a reproduction root. For a possible future repaired run, the exact D-011 V10 graph bytes are the accepted physical graph lineage, and the exact guarded-selector token successor is accepted separately under R4-D-013 before ML use.
 
 ### Implementation practice
 
