@@ -10,7 +10,7 @@
 
 SENTINEL now has repaired Phase-8 training **mechanics**, but it does not yet have authorization for the full repaired training run or a promoted repaired checkpoint. The existing four-eye architecture remains frozen. Current training code carries explicit vNext targets/masks/strength, group-aware sampling/binding, model-selection logic, checkpoint metadata, and Phase-8 configuration; however, the DATA/representation/evaluation gates still control whether that machinery may consume a candidate at full scale.
 
-The next eligible training lineage must use accepted logical V3 semantics/roles, the D-011 V10 V2.6 physical graph authority, and a separately accepted D-012 guarded-selector successor token lineage. Run12 weights/optimizer/threshold/calibration state remain historical only. Confirmed negatives remain zero, so ordinary binary threshold/calibration/false-positive claims are not currently supported.
+The next eligible training lineage must use accepted logical V3 semantics/roles, the D-011 V10 V2.6 physical graph/control authority, and the separately accepted D-013 guarded-token successor governed by D-012. Run12 weights/optimizer/threshold/calibration state remain historical only. Confirmed negatives remain zero, so ordinary binary threshold/calibration/false-positive claims are not currently supported.
 
 ## Just-enough mental model
 
@@ -19,7 +19,7 @@ accepted semantic policy + logical V3 role/group authority
         +
 accepted D-011 V10 graph lineage
         +
-D-012 guarded-selector successor (still needs physical acceptance)
+D-012 guarded-selector policy + D-013 accepted physical successor
         ↓
 exact run binding / Phase-8 settings
         ↓
@@ -72,9 +72,9 @@ The training mechanics do not choose their own DATA authority. Current R4 orderi
 1. D-009 logical V3 grouping/roles remain the accepted logical authority.
 2. D-010 makes v9 ineligible for a new full run.
 3. D-011 accepts the exact V10 V2.6 physical graph/control-token root.
-4. D-012 promotes `target_aware_guarded_v1` only for a **fresh successor candidate**.
-5. That successor still requires generation, binding, review, and physical acceptance.
-6. Only a later explicit decision may authorize the full repaired training run against the accepted successor.
+4. D-012 promotes `target_aware_guarded_v1` only for a **fresh successor lineage**.
+5. D-013 accepts the exact full guarded-token physical successor after D5/D6 generation and independent review.
+6. Only a later explicit decision may authorize the full repaired training run against that accepted successor.
 
 D-011 itself grants neither selector promotion nor training authority.
 
@@ -127,7 +127,7 @@ GasException and UnusedReturn remain output positions but supervision-disabled u
 - Using historical G6 role identity instead of accepted logical V3 can reintroduce superseded grouping assumptions.
 - Training on v9 for the new full run violates D-010.
 - Training directly on D-011 while claiming D-012 guarded selection has been applied violates the selector decision.
-- Launching the full run before successor physical acceptance/explicit authorization bypasses R4 gate authority.
+- Launching the full run merely because successor physical acceptance exists still bypasses R4 gate authority; objective/evaluation, bounded-pilot, and explicit launch decisions remain required.
 - Using positive-only model-selection data to claim F1/AUC/false-positive rate as if negatives were trusted is invalid.
 - Running threshold or temperature-calibration code does not create an authorized fitting population.
 - No untouched acceptance corpus exists for the repaired path today.
@@ -156,7 +156,7 @@ python3 docs/handbook/tools/verify_handbook.py static
 python3 docs/plan/ml-R4/scripts/p6_validate_frozen_partitions.py
 ```
 
-Historical G6 validation remains useful compatibility evidence. Current D-011/D-012 and any future successor/full-run authority require their own current R4 binding/acceptance records.
+Historical G6 validation remains useful compatibility evidence. Current D-011/D-012/D-013 and any future full-run authority require their own current R4 binding/acceptance records.
 
 ## Optional deep references
 
@@ -176,7 +176,7 @@ Know multi-label/partial-label optimization, masks, class imbalance, positive-on
 
 ### Source map and reading order
 
-Read the current R4 status/D-011/D-012 decisions first, then `ml/src/datasets/vnext_dataset.py`, `ml/src/training/vnext_*`, group sampler/parameter-group/config code, and only afterward the historical trainer/threshold/calibration utilities for compatibility context.
+Read the current R4 status/D-011/D-012/D-013 decisions first, then `ml/src/datasets/vnext_dataset.py`, `ml/src/training/vnext_*`, group sampler/parameter-group/config code, and only afterward the historical trainer/threshold/calibration utilities for compatibility context.
 
 ### Execution trace and worked example
 
