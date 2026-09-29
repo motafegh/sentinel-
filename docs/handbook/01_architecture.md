@@ -34,7 +34,8 @@ flowchart LR
     U["Solidity / source evidence"] --> D8["R4-D-008 repaired physical DATA"]
     D8 --> D9["R4-D-009 logical V3 grouping / roles"]
     D9 --> D11["R4-D-011 exact V10 V2.6 physical representation"]
-    D11 --> D12["D-012 guarded-selector successor"]\n    D12 --> D13["D-013 exact physical successor accepted"]
+    D11 --> D12["D-012 guarded-selector successor"]
+    D12 --> D13["D-013 exact physical successor accepted"]
     D12 --> FUT["Later repaired teacher retraining\nonly after explicit authorization"]
   end
 
@@ -99,7 +100,7 @@ flowchart LR
   D10 --> D11["D-011\nexact V10 V2.6 physical lineage accepted"]
   D11 --> D12["D-012\ntarget_aware_guarded_v1 only in a fresh successor"]
   D12 --> D13["D-013\naccepted guarded-token physical successor"]
-  PA --> OE["objective / evaluation design"]
+  D13 --> OE["objective / evaluation design"]
   OE --> T["later full training\nonly if explicitly authorized"]
 ```
 
