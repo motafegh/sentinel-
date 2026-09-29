@@ -10,7 +10,7 @@
 
 This is the handbook’s lookup layer. Current authority is executable source/config/tests + committed machine-readable policies/evidence, followed by the canonical handbook and active R4 decisions. Historical v1/G6/G7/Run12/V1-V2 artifacts remain important for reproduction but are not current authority for a new DATA/ML run or V3 trust claims. Technical guides/labs remain useful **supplementary learning guides**; some examples predate R4/V3 and must be checked against current canonical chapters/status.
 
-Current DATA/ML lookup must distinguish `data-vnext-policy-v1`, accepted logical V3 authority under D-009, accepted V10 V2.6 physical representation under D-011, and the still-pending D-012 guarded-token successor. Full repaired training remains unauthorized.
+Current DATA/ML lookup must distinguish `data-vnext-policy-v1`, accepted logical V3 authority under D-009, accepted V10 V2.6 physical representation under D-011, and the D-013 accepted guarded-token successor governed by D-012. Full repaired training remains unauthorized.
 
 ## Just-enough mental model
 
@@ -40,7 +40,7 @@ When two layers disagree, move upward in this hierarchy and inspect the exact cu
 | `data-vnext-policy-v1` | current repaired semantic supervision policy |
 | logical V3 | accepted D-009 leakage grouping/role/publication authority; address literals diagnostic-only |
 | D-011 | exact accepted V10 V2.6 physical representation identity for a possible future repaired run; not training authorization |
-| D-012 | guarded-selector decision: `target_aware_guarded_v1` only for a fresh successor requiring separate physical acceptance |
+| D-012 | guarded-selector policy: `target_aware_guarded_v1` only for a fresh successor lineage |\n| D-013 | exact guarded-token physical successor accepted; R4-D-011 remains immutable graph/control parent |
 | outcome state | evidence conclusion such as confirmed positive/negative, unknown, conflicting, not reviewed |
 | training strength | `STRONG`, `WEAK`, or `NONE`; separate from canonical truth |
 | dataset role | leakage-safe purpose such as train strong/weak/unlabeled, model selection, internal audit, excluded |
@@ -66,7 +66,7 @@ When two layers disagree, move upward in this hierarchy and inspect the exact cu
 | historical G6 role freeze | `docs/plan/ml-R4/manifests/p6_partition_manifest.json` |
 | current logical V3 authority | `docs/plan/ml-R4/adrs/ADR-R4-009-logical-v3-leakage-grouping-correction.md` + accepted V3 evidence/publication records |
 | current V10 physical authority | `docs/plan/ml-R4/adrs/ADR-R4-011-v10-v26-physical-representation-acceptance.md` |
-| guarded-token successor decision | `docs/plan/ml-R4/adrs/ADR-R4-012-target-aware-guarded-selector-promotion.md` |
+| guarded-token selector decision | `docs/plan/ml-R4/adrs/ADR-R4-012-target-aware-guarded-selector-promotion.md` |\n| guarded-token physical acceptance | `docs/plan/ml-R4/adrs/ADR-R4-013-guarded-token-physical-representation-acceptance.md` |
 | current DATA/ML restart state | `docs/plan/ml-R4/PLAN_STATUS_MATRIX.md` + September 2 run records |
 | historical ML dataset seam | `ml/src/datasets/sentinel_dataset.py::SentinelDataset` |
 | repaired ML dataset seam | `ml/src/datasets/vnext_dataset.py::VNextTrainingDataset` |
@@ -89,7 +89,7 @@ When two layers disagree, move upward in this hierarchy and inspect the exact cu
 | historical DATA acquisition/config | [`data_module/config.yaml`](../../data_module/config.yaml) |
 | R4 DATA semantics | [`data_vnext_policy_v1.json`](../plan/ml-R4/specs/data_vnext_policy_v1.json) |
 | historical G6 roles | [`p6_partition_manifest.json`](../plan/ml-R4/manifests/p6_partition_manifest.json) |
-| current logical/physical R4 state | [Current status](16_current_status.md) + D-009/D-011/D-012 ADR/evidence chain |
+| current logical/physical R4 state | [Current status](16_current_status.md) + D-009/D-011/D-012/D-013 ADR/evidence chain |
 | ML historical training/MLOps | [`ml/scripts`](../../ml/scripts) + [`mlops_config.json`](../../ml/mlops_config.json) |
 | ML repaired training mechanics | `ml/src/training/vnext_*` and Phase-8 settings/binding code |
 | AGENTS verdict/routing | [`agents/configs`](../../agents/configs) + executable routing/verdict source |
@@ -104,7 +104,7 @@ When two layers disagree, move upward in this hierarchy and inspect the exact cu
 1. **live structural/service facts** used by the validator (ports, LangGraph nodes, MCP tool surfaces, proof dimensions, tracked artifacts);
 2. **historical G7/source-discoverable compatibility anchors** such as the v9 schema/G6 role manifest/verified G7 commit.
 
-Those historical metadata fields remain intentionally validator-compatible until the P5 documentation-currentness work upgrades the validator to machine-check the later D-009/D-011/D-012 authority chain. They **do not override** [Current status](16_current_status.md), current R4 machine evidence, or the canonical architecture chapters.
+Those historical metadata fields remain intentionally validator-compatible until the P5 documentation-currentness work upgrades the validator to machine-check the later D-009/D-011/D-012/D-013 authority chain. They **do not override** [Current status](16_current_status.md), current R4 machine evidence, or the canonical architecture chapters.
 
 This distinction is important because the current accepted future-training physical authority is V10 V2.6 even though the historical `graph_schema.py` / G7 validator metadata still describe v9 compatibility.
 
@@ -123,7 +123,7 @@ Names only; inspect source for exact current defaults:
 
 | Classification | Examples | Current meaning |
 |---|---|---|
-| tracked current governance | current R4 status, policy, ADRs, V3/D-011/D-012 evidence/manifests/review records | current semantic/acceptance authority at their stated scope |
+| tracked current governance | current R4 status, policy, ADRs, V3/D-011/D-012/D-013 evidence/manifests/review records | current semantic/acceptance authority at their stated scope |
 | tracked historical/reproduction governance | Phase-3 ledger, G6 role/support/acceptance manifests, G7 export/binding records | immutable compatibility/history, not latest logical/physical authority |
 | tracked source/tests | DATA/ML/AGENTS/ZK/contracts source, V3 tests | implementation/verification source |
 | tracked retained proof artifacts | proxy/ONNX/settings/compiled/VK/generated verifier | present reproduction boundary; may require regeneration after repaired teacher selection |
@@ -209,11 +209,11 @@ Know repository navigation, semantic versioning, artifact provenance, partial-la
 
 ### Source map and reading order
 
-Resolve a term here, jump to the owning canonical chapter, then executable source/current R4 machine artifact. Use supplementary guides/labs only after current status is clear. For DATA/ML, do not stop at G6/G7 metadata when later D-009/D-011/D-012 authority exists.
+Resolve a term here, jump to the owning canonical chapter, then executable source/current R4 machine artifact. Use supplementary guides/labs only after current status is clear. For DATA/ML, do not stop at G6/G7 metadata when later D-009/D-011/D-012/D-013 authority exists.
 
 ### Execution trace and worked example
 
-For an on-chain audit, V3 context storage and read-only MCP observation are current protocol surfaces while V2 remains historical. For current DATA/ML planning, lookup starts at `data-vnext-policy-v1`, logical V3, D-011, and D-012—not at the historical G6 partition alone. For the live ML service, Run12 remains the historical operational model until an explicitly accepted/promoted repaired checkpoint replaces it.
+For an on-chain audit, V3 context storage and read-only MCP observation are current protocol surfaces while V2 remains historical. For current DATA/ML planning, lookup starts at `data-vnext-policy-v1`, logical V3, D-011, D-012, and D-013—not at the historical G6 partition alone. For the live ML service, Run12 remains the historical operational model until an explicitly accepted/promoted repaired checkpoint replaces it.
 
 ### Implementation practice
 
@@ -221,4 +221,4 @@ When introducing a public symbol/config/artifact/error, record its authority/cla
 
 ### Review and ownership check
 
-Can you locate the current DATA policy, logical V3 authority, D-011 physical acceptance, D-012 pending successor decision, Run12 runtime status, live audit-MCP tool surface, V3 submission method, and proxy proof scope without treating historical G6/G7 metadata as current semantic authority?
+Can you locate the current DATA policy, logical V3 authority, D-011 physical acceptance, D-012 selector decision, D-013 accepted successor, Run12 runtime status, live audit-MCP tool surface, V3 submission method, and proxy proof scope without treating historical G6/G7 metadata as current semantic authority?
