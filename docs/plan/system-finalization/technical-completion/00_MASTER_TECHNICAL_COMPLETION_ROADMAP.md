@@ -300,6 +300,6 @@ The technical-completion program is complete only when:
 
 ## 10. Immediate next action
 
-The guarded-token DATA workstream has completed D0-D5. D5 generated the full 22,540-identity candidate from source commit `733f0c73eb76ab107751c30345d9a169a0429fdd`, with 14,751 guarded selections, 7,789 historical fallbacks, and binding digest `9885d7b88a46aff4102741d63eeaa0bd6968f0857f7bca6a389662bfaa158881`. The next action is **D6 independent protected-local physical acceptance review** from `01_DATA_REPRESENTATION_COMPLETION_PLAN.md`.
+The guarded-token DATA workstream is complete through D6. R4-D-013 accepts the exact 22,540-identity `r4-v10-v26-guarded-tokens-v1` physical successor with binding digest `9885d7b88a46aff4102741d63eeaa0bd6968f0857f7bca6a389662bfaa158881`, while R4-D-011 remains the immutable V10 graph/control parent.
 
-Do **not** treat D5 generation as physical acceptance, begin repaired full training, fit thresholds/calibration, or rebind downstream ZKML first. R4-D-011 remains the accepted physical control until D6 makes an explicit accept/reject/revise decision.
+The next active workstream is **ML training/evaluation completion** in `02_ML_TRAINING_EVALUATION_COMPLETION_PLAN.md`, beginning with M0 current training-seam audit and the M1 supervision/evaluation evidence investigation. Do **not** launch the repaired full run merely because DATA is now accepted: confirmed-negative support, objective/evaluation authority, unsupported threshold/calibration/untouched roles, final ML binding/pilot evidence, and explicit full-training authorization remain unresolved.
