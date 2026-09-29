@@ -21,8 +21,8 @@ Current boundary:
 - R4-D-011 physically accepts only the exact V2.6 protected-local root and digest above; selector promotion and training remain separate and unauthorized;
 - confirmed-negative support remains zero; candidate #1 is `NOT_CONFIRMED`; candidate #2 primary review still requires genuinely independent agreement;
 - threshold fitting, calibration fitting, and untouched acceptance remain unsupported/empty;
-- R4-D-012 promotes `target_aware_guarded_v1` for a fresh versioned token candidate only; it does not mutate R4-D-011 or authorize training;
-- on the active technical-completion line, D0-D5 are complete; D5 generated 22,540/22,540 guarded-token identities (14,751 guarded / 7,789 historical fallback) with binding digest `9885d7b88a46aff4102741d63eeaa0bd6968f0857f7bca6a389662bfaa158881`; D6 independent physical acceptance review is next;
+- R4-D-012 promotes `target_aware_guarded_v1` for a fresh versioned token candidate only; R4-D-013 now accepts the exact guarded physical successor with 22,540 identities (14,751 guarded / 7,789 historical fallback) and digest `9885d7b88a46aff4102741d63eeaa0bd6968f0857f7bca6a389662bfaa158881`;
+- R4-D-011 remains immutable as the V10 graph/control parent; DATA D0-D6 are complete and the accepted guarded lineage is handed off to the ML technical-completion workstream;
 - full training remains unauthorized.
 
 For current work, read in this order:
@@ -32,16 +32,18 @@ For current work, read in this order:
 3. `runs/2026-09-02_PHASE8_v10_v26_physical_acceptance_and_no_launch.md`;
 4. `adrs/ADR-R4-011-v10-v26-physical-representation-acceptance.md`;
 5. `runs/2026-09-02_PHASE8_selector_promotion_review.md` and `adrs/ADR-R4-012-target-aware-guarded-selector-promotion.md`;
-6. `docs/plan/system-finalization/technical-completion/00_MASTER_TECHNICAL_COMPLETION_ROADMAP.md`;
-7. `docs/plan/system-finalization/technical-completion/01_DATA_REPRESENTATION_COMPLETION_PLAN.md` and its active dated working record;
-8. `DECISION_REGISTER.md`, `RISK_AND_BLOCKER_REGISTER.md`, `EVIDENCE_GAP_REGISTER.md`, and `CLAIM_STATUS_MATRIX.md`;
-9. the August 26-30 V2.5/V2.6 execution records only when historical staging/evidence context is needed.
+6. `runs/2026-09-29_PHASE8_guarded_token_physical_acceptance_and_no_launch.md` and `adrs/ADR-R4-013-guarded-token-physical-representation-acceptance.md`;
+7. `docs/plan/system-finalization/technical-completion/00_MASTER_TECHNICAL_COMPLETION_ROADMAP.md`;
+8. `docs/plan/system-finalization/technical-completion/02_ML_TRAINING_EVALUATION_COMPLETION_PLAN.md`;
+9. `DECISION_REGISTER.md`, `RISK_AND_BLOCKER_REGISTER.md`, `EVIDENCE_GAP_REGISTER.md`, and `CLAIM_STATUS_MATRIX.md`;
+10. `docs/plan/system-finalization/technical-completion/01_DATA_REPRESENTATION_COMPLETION_PLAN.md` only when DATA closure details are needed;
+11. the August 26-30 V2.5/V2.6 execution records only when historical staging/evidence context is needed.
 
 R4-B008 / R4-GAP-008 are closed only for the R4-D-011 root and digest. Preserve that accepted root and its evidence; any regenerated or changed root must fail closed and receive a new physical decision.
 
-The negative-evidence, selector-promotion, objective/evaluation, calibration, and training-authorization tracks remain separate later gates. Do not combine them with V10 physical-candidate construction.
+The selector physical-lineage track is closed by R4-D-013. Negative-evidence, objective/evaluation, calibration/untouched-acceptance, final ML binding/pilot, and training-authorization tracks remain separate later gates.
 
-The read-only full-population historical-control selector verification in `runs/2026-09-02_PHASE8_selector_control_equivalence_plan.md` passes 22,540/22,540 with zero mismatches. R4-D-012 now promotes `target_aware_guarded_v1` only for a fresh versioned token candidate; R4-D-011 remains unchanged, and physical guarded-token acceptance plus training authority remain separate.
+The read-only full-population historical-control selector verification in `runs/2026-09-02_PHASE8_selector_control_equivalence_plan.md` passes 22,540/22,540 with zero mismatches. R4-D-013 now supplies the separate guarded-token physical acceptance while R4-D-011 remains unchanged; training authority remains separate.
 
 ## What R4 is solving
 
