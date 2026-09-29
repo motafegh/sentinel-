@@ -3,7 +3,7 @@
 **Status:** ACTIVE — first critical workstream  
 **Parent:** `00_MASTER_TECHNICAL_COMPLETION_ROADMAP.md`  
 **Primary authority:** `docs/plan/ml-R4/` decisions/evidence, especially R4-D-011 and R4-D-012  
-**Current execution checkpoint:** D0-D3 complete; D4 protected-local validation next; D5 blocked pending D4  
+**Current execution checkpoint:** D0-D4 complete; D5 full protected-local candidate generation next; D6 remains pending  
 
 ## 1. Objective
 
@@ -140,7 +140,7 @@ Where practical, add property-style tests around index bounds, monotonic validit
 
 ## 8. Work package D4 — bounded candidate validation
 
-**State:** `READY_FOR_PROTECTED_LOCAL_VALIDATION` — not yet executed; D5 remains blocked
+**State:** `COMPLETE` — protected-local bounded validation reviewed PASS on 2026-09-29: 9/9 identities passed, zero failures, repeat-deterministic token artifacts/sidecars, immutable R4-D-011 graph bytes preserved, 6 guarded selections and 3 historical-control fallbacks
 
 Before full-population generation, run bounded tranches covering:
 
@@ -166,7 +166,7 @@ Compare candidate versus historical control on:
 
 ## 9. Work package D5 — full physical candidate
 
-**State:** `BLOCKED_ON_D4` — the bounded builder explicitly rejects implicit full-population execution
+**State:** `READY_FOR_PROTECTED_LOCAL_GENERATION` — D4 bounded validation passed and was reviewed; full-population generation is now the next authorized DATA action
 
 Generate the full protected-local 22,540-identity candidate only after D0–D4 pass.
 
