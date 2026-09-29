@@ -166,7 +166,7 @@ Compare candidate versus historical control on:
 
 ## 9. Work package D5 — full physical candidate
 
-**State:** `READY_FOR_PROTECTED_LOCAL_GENERATION` — D4 bounded validation passed and was reviewed; full-population generation is now the next authorized DATA action
+**State:** `COMPLETE` — protected-local D5 generation reviewed PASS on 2026-09-29: 22,540/22,540 identities written, 14,751 guarded selections, 7,789 historical fallbacks, binding digest `9885d7b88a46aff4102741d63eeaa0bd6968f0857f7bca6a389662bfaa158881`
 
 Generate the full protected-local 22,540-identity candidate only after D0–D4 pass.
 
@@ -187,7 +187,7 @@ Full generation must occur in a protected local artifact root; Git should contai
 
 ## 10. Work package D6 — physical acceptance review
 
-**State:** `NOT_STARTED`
+**State:** `READY_FOR_PROTECTED_LOCAL_ACCEPTANCE_REVIEW` — D5 generation passed review; independent full-population D6 validation/acceptance is now required
 
 The candidate is not authoritative merely because generation completed.
 
