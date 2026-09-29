@@ -5,7 +5,7 @@
 **Branch:** `agent/data-target-aware-guarded-v1`  
 **Base main:** `57f39d652cbec1092084b4efbf41bec6a117ba07`  
 **Work package:** D0-D4 guarded-token technical-completion continuation  
-**Status:** D0-D3 COMPLETE / D4 READY FOR PROTECTED-LOCAL VALIDATION / D5 BLOCKED
+**Status:** D0-D4 COMPLETE / D5 READY FOR PROTECTED-LOCAL GENERATION / D6 NOT STARTED
 
 ### Continuation-branch checkpoint
 
@@ -523,9 +523,27 @@ An optional extra stress probe is the 403-window sensitivity identity
 `dive/c74bbb7fbe8eda3e6d9404b08678e9eca476aa85831e7c23b578cfa089f77b8f`.
 It is useful for token-window scale stress but remains optional. The required D4 tranche already includes both the retained 62-window long train-batch case and the 353-window worst-case CUDA forward probe above.
 
-## 14. Current stop line
+## 14. D4 protected-local result — reviewed 2026-09-29
 
-D4 has **not** been executed against the protected local roots in this session.
+D4 was executed at source commit `4efc0676e6966d9581aa6a10f882125dda5063fc` against the immutable R4-D-011 parent and repaired preprocessing roots.
+
+Reviewed result:
+
+- status: `PASS_BOUNDED_D4_REVIEW_REQUIRED`;
+- 9 / 9 requested identities passed; zero identity failures and zero report failures;
+- both fresh repeats produced identical selector decisions, sidecars, tensor digests, and exact token-artifact bytes;
+- immutable R4-D-011 graph hashes matched in parent, repeat A, and repeat B for every identity;
+- frozen token contract remained `[4,512]` / `torch.int64`;
+- repeat A and repeat B each used `target_aware_guarded_v1` for 6 identities and `historical_linspace_v1` for 3 guarded fallbacks;
+- the 353-window worst-case CUDA forward-probe identity passed;
+- the declared Slither runtime-exception identity was resolved from the accepted parent and passed;
+- no physical acceptance or training authority follows from D4.
+
+The validator deliberately emitted `d5_authorized=false` because review is a separate governance step. This record performs that review: no D4 blocker remains, so D5 full protected-local generation is now authorized as the next DATA action. D6 remains the separate physical-acceptance gate.
+
+## 15. Current stop line
+
+D5 has **not** been executed. No guarded full-population physical lineage is accepted yet, and training remains unauthorized.
 Therefore:
 
 - no guarded physical candidate is accepted;
