@@ -179,6 +179,7 @@ def _validate_selector_decision(decision: dict[str, Any]) -> None:
     candidate_coverage = int(decision.get("candidate_target_coverage_tokens", -1))
     control_coverage = int(decision.get("control_target_coverage_tokens", -1))
     selected_coverage = int(decision.get("selected_target_coverage_tokens", -1))
+    total_windows = int(decision.get("pre_subsampling_window_count", -1))
 
     if requested != GUARDED_TOKEN_SELECTOR_VERSION:
         raise ValueError("requested selector identity changed")
@@ -191,6 +192,18 @@ def _validate_selector_decision(decision: dict[str, Any]) -> None:
         raise ValueError("selector indices are not lists")
     if selected_indices != sorted(set(selected_indices)):
         raise ValueError("selected indices are not sorted unique")
+    if total_windows < 1:
+        raise ValueError("pre-subsampling window count is invalid")
+    for values in (candidate_indices, control_indices, selected_indices):
+        if any(
+            not isinstance(index, int) or index < 0 or index >= total_windows
+            for index in values
+        ):
+            raise ValueError("selector index is outside the window population")
+        if len(values) > TOKEN_TENSOR_SHAPE[0]:
+            raise ValueError("selector emitted too many windows")
+    if total_windows > TOKEN_TENSOR_SHAPE[0] and len(selected_indices) != TOKEN_TENSOR_SHAPE[0]:
+        raise ValueError("over-cap selector did not emit the frozen window count")
     if selected_coverage < control_coverage:
         raise ValueError("selected target coverage regresses control")
 
@@ -309,9 +322,26 @@ def _validate_full_candidate(
             if not path.is_file():
                 raise FileNotFoundError(path)
 
+        parent_tokens = parent_dir / f"{contract_id}.tokens.pt"
+        parent_sidecar_path = parent_dir / f"{contract_id}.rep.json"
+        for path in (parent_tokens, parent_sidecar_path):
+            if not path.is_file():
+                raise FileNotFoundError(path)
+
         graph_sha = _sha256_file(candidate_graph)
-        if graph_sha != _sha256_file(parent_graph):
+        parent_graph_sha = _sha256_file(parent_graph)
+        parent_tokens_sha = _sha256_file(parent_tokens)
+        parent_sidecar_sha = _sha256_file(parent_sidecar_path)
+        if graph_sha != parent_graph_sha:
             raise ValueError(f"graph bytes changed for {source}/{contract_id}")
+
+        source_path = preprocessed_root / source / f"{contract_id}.sol"
+        if not source_path.is_file():
+            raise FileNotFoundError(source_path)
+        if _sha256_file(source_path) != contract_id:
+            raise ValueError(
+                f"repaired source identity drift: {source}/{contract_id}"
+            )
 
         sidecar = _load_json(candidate_sidecar)
         if sidecar.get("sha256") != contract_id or sidecar.get("source") != source:
@@ -369,10 +399,22 @@ def _validate_full_candidate(
             raise ValueError(f"graph_parent missing: {source}/{contract_id}")
         if graph_parent.get("decision_id") != "R4-D-011":
             raise ValueError(f"graph parent decision mismatch: {source}/{contract_id}")
+        if graph_parent.get("physical_root") != parent.physical_root:
+            raise ValueError(f"graph parent root mismatch: {source}/{contract_id}")
         if graph_parent.get("binding_digest_sha256") != parent.binding_digest_sha256:
             raise ValueError(f"graph parent digest mismatch: {source}/{contract_id}")
-        if graph_parent.get("graph_sha256") != graph_sha:
-            raise ValueError(f"graph parent hash mismatch: {source}/{contract_id}")
+        if graph_parent.get("graph_sha256") != parent_graph_sha:
+            raise ValueError(f"graph parent graph hash mismatch: {source}/{contract_id}")
+        if graph_parent.get("tokens_sha256") != parent_tokens_sha:
+            raise ValueError(f"graph parent token hash mismatch: {source}/{contract_id}")
+        if graph_parent.get("sidecar_sha256") != parent_sidecar_sha:
+            raise ValueError(f"graph parent sidecar hash mismatch: {source}/{contract_id}")
+
+        targets = sidecar.get("requested_contract_names")
+        if not isinstance(targets, list) or not targets:
+            raise ValueError(f"requested contract targets missing: {source}/{contract_id}")
+        if sidecar.get("actual_contract_names") != targets:
+            raise ValueError(f"requested/actual target mismatch: {source}/{contract_id}")
 
         graph = torch.load(candidate_graph, map_location="cpu", weights_only=False)
         if getattr(graph, "graph_schema_version", None) != V10_GRAPH_SCHEMA_VERSION:
@@ -419,6 +461,10 @@ def _validate_full_candidate(
         if not isinstance(token_decision, dict) or token_decision != sidecar_decision:
             raise ValueError(f"selector decision persistence mismatch: {source}/{contract_id}")
         _validate_selector_decision(token_decision)
+        if token_decision.get("requested_contract_names") != targets:
+            raise ValueError(
+                f"selector target binding mismatch: {source}/{contract_id}"
+            )
 
         selected_indices = token_decision["selected_indices"]
         if payload.get("selected_window_indices") != selected_indices:
