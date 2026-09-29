@@ -10,7 +10,7 @@
 
 Evaluation must follow evidence authority, not merely available scripts. R4 repaired DATA truth, leakage grouping/roles, and physical representation eligibility before any repaired full run. For the current repaired path, model-selection evidence remains **positive-only limited**, while threshold-fit, calibration-fit, and untouched-acceptance roles are deliberately unsupported/empty because no trustworthy confirmed-negative/unexposed corpus exists. AGENTS evaluation infrastructure remains useful, but model/release metrics must never treat unknown/masked cells as negatives or reuse historical Run12 roles/thresholds as if they were current R4 evidence.
 
-The accepted logical authority is V3 under D-009; the accepted physical graph authority for a possible future repaired run is D-011 V10 V2.6; D-012's guarded token successor still requires separate physical acceptance. Full repaired training remains unauthorized.
+The accepted logical authority is V3 under D-009; the accepted physical graph authority for a possible future repaired run is D-011 V10 V2.6; D-012's guarded token successor is now separately physically accepted under D-013. Full repaired training remains unauthorized.
 
 ## Just-enough mental model
 
@@ -19,7 +19,7 @@ R4 semantic policy + logical V3 role/group authority
       +
 accepted D-011 physical representation
       +
-pending D-012 guarded-token successor acceptance
+D-013 accepted guarded-token successor
       ↓
 later repaired training only if authorized
       ↓
@@ -44,7 +44,7 @@ The current DATA evaluation foundation is layered:
 - D-009 accepted logical V3 grouping/roles (`r4-vnext-roles-v3`);
 - D-010 withdrawal of v9 from new-full-training eligibility;
 - D-011 exact V10 V2.6 physical representation acceptance;
-- D-012 guarded-selector promotion only for a fresh successor candidate;
+- D-012 guarded-selector promotion only for a fresh successor lineage; D-013 accepts the exact physical successor;
 - explicit unsupported threshold/calibration/acceptance roles.
 
 Historical G6 `r4-vnext-roles-v1` and G7 artifacts remain reproducibility evidence, not the latest logical role authority.
@@ -126,7 +126,7 @@ GasException and UnusedReturn remain supervision-disabled under policy v1.
 - BCCC/tool silence is not class-specific confirmed-negative evidence.
 - AGENTS benchmark gates do not substitute for missing ML acceptance data.
 - V3 on-chain verification does not create vulnerability ground truth.
-- D-011 physical acceptance or D-012 selector promotion does not itself establish model quality.
+- D-011 graph acceptance, D-012 selector promotion, or D-013 guarded-token physical acceptance does not itself establish model quality.
 
 ## Common change recipe
 
@@ -172,7 +172,7 @@ Know confusion matrices, precision/recall/Fβ, calibration, partial/positive-unl
 
 ### Source map and reading order
 
-Start with current R4 status/policy, D-009 logical V3, D-011/D-012, and role support before reading ML/AGENTS metric utilities. Then inspect current Phase-8 selection mechanics, historical trainer/evaluation code, AGENTS metrics/gates/reliability, and later evaluation plans. Let evidence roles constrain which utilities are meaningful.
+Start with current R4 status/policy, D-009 logical V3, D-011/D-012/D-013, and role support before reading ML/AGENTS metric utilities. Then inspect current Phase-8 selection mechanics, historical trainer/evaluation code, AGENTS metrics/gates/reliability, and later evaluation plans. Let evidence roles constrain which utilities are meaningful.
 
 ### Execution trace and worked example
 
