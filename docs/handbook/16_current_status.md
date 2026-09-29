@@ -58,8 +58,10 @@ R4-GAP-008 v10 representation remediation
 versioned V2.6 protected-local candidate
   PHYSICALLY ACCEPTED / 22,540 / DIGEST d9f925...
         ↓
-R4-D-012 guarded-selector policy accepted\n  ↓\nR4-D-013 guarded-token physical successor accepted
-  NEW PHYSICAL TOKEN LINEAGE NOT YET BUILT
+R4-D-012 guarded-selector policy accepted
+        ↓
+R4-D-013 guarded-token physical successor
+  PHYSICALLY ACCEPTED / 22,540 / DIGEST 9885d7b8...
         ↓
 objective/evaluation design
         ↓
@@ -294,7 +296,7 @@ the current authority.
 | physical DATA root | R4-D-008 / repaired-v2; immutable reproduction evidence, not new-full-training eligible |
 | logical grouping/role authority | R4-D-009 / accepted V3 |
 | durable research evidence | coherent snapshot `44fbb9c1d...` under `docs/plan/ml-R4/evidence/2026-08-15_phase8_logical_v3/` |
-| current execution restart | `runs/2026-09-02_PHASE8_v10_v26_physical_acceptance_and_no_launch.md`; candidate #2 review is a separate pending-independent track |
+| current execution restart | R4-D-013 guarded-token physical acceptance is complete; continue from the technical-completion ML M0/M1 plan. Candidate #2 review remains a separate pending-independent track |
 | confirmed-negative review | R4-GAP-007 / candidate #1 `NOT_CONFIRMED` / candidate #2 primary-support only, independent pending |
 | physical representation for a future authorized run | R4-D-011 exact v10 / extractor `v2.6-r4-call-semantics-deterministic-cfg-mutators` / protected-local `representations-r4-v3-candidate`; digest `d9f925...`; physically accepted, not training-authorized |
 | selector / token physical lineage | R4-D-012 guarded policy promoted; R4-D-013 accepts the exact full guarded-token successor; R4-D-011 remains immutable graph/control parent |
@@ -365,7 +367,7 @@ Any future replacement/recomputed V3 report must still fail closed if acceptance
 For the current Phase-8 boundary:
 
 1. synchronize local `main`;
-2. read `PLAN_STATUS_MATRIX.md`, the R4-D-011 acceptance/no-launch record, ADR-R4-012, candidate #2 primary review, and the hardened snapshot closeout;
+2. read `PLAN_STATUS_MATRIX.md`, R4-D-011, R4-D-012, the R4-D-013 acceptance/no-launch record, the ML technical-completion plan, candidate #2 primary review, and the hardened snapshot closeout;
 3. preserve v9/repaired-v2 roots, accepted logical V3, the R4-D-011 V2.6 root, and the committed evidence snapshots;
 4. consume the accepted R4-D-013 guarded-token lineage only through the ML completion plan, preserving R4-D-011 as immutable graph/control parent;
 5. have a genuinely independent reviewer evaluate candidate #2 from the blind bundle; keep target `None` unless dual review agrees;
