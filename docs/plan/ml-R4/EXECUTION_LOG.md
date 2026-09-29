@@ -386,3 +386,40 @@ Append one entry for each work package.
 - **Training launched:** NO
 - **Decision:** repaired-v2 physical DATA acceptance stands; no rollback indicated. Full 100-epoch training remains NOT AUTHORIZED and G8 remains OPEN.
 - **Next permitted action:** evidence-honest objective/evaluation design plus versioned selector/grouping/compatibility diagnostics; any changed physical lineage must be rebuilt/rebound locally before training re-authorization.
+
+
+### R4-LOG-20260929-022 — Guarded-token technical-completion pre-D4 reconciliation
+
+- **Phase:** 8 / technical-completion DATA workstream
+- **Accepted authority:** R4-D-011 remains the immutable V10 V2.6 physical parent; R4-D-012 remains the selector authority for a fresh versioned candidate only
+- **Active continuation branch:** `agent/data-target-aware-guarded-v1`
+- **Base main:** `57f39d652cbec1092084b4efbf41bec6a117ba07`
+- **Completed branch work:** D0 exact selector/source reconstruction; D1 versioned interface/lineage design; D2 bounded guarded-token candidate implementation; D3 repository-safe unit/property validation and reproducibility hardening
+- **Latest substantive implementation head before documentation reconciliation:** `10c102c515c9458821123df49e17cf0d8ee0a746`
+- **Pre-reconciliation branch checkpoint:** `4fc5a928a6a017b72e08e8d3e9c32cbb1d59c8d4`
+- **Validation state:** Phase-8 repaired-data compilation/regression, logical-V3 snapshot verification, historical G6 validation, and Phase-8 vNext compatibility pass on the current implementation line. Remaining red repository-repair status is the inherited baseline whitespace diff gate; Phase-7 G7 CI separately lacks `torch` in its workflow environment.
+- **Implementation hardening:** guarded token files are byte-reproducible across fresh candidate roots; repaired source bytes are SHA-256 checked against contract identity before retokenization; candidate metadata binds selector/control identity, source/parent identity, and tokenizer/runtime identity.
+- **D4 state:** READY_FOR_PROTECTED_LOCAL_VALIDATION. The evidence-derived bounded tranche and validator are committed; D4 has not yet been executed against the protected local R4-D-011/preprocessed roots.
+- **D5/D6 state:** D5 full 22,540-identity generation remains blocked on reviewed D4 success; D6 physical acceptance has not started.
+- **Protected/local DATA changed:** NO by this reconciliation
+- **Training launched:** NO
+- **Training authority:** NOT AUTHORIZED
+- **Next permitted action:** execute the committed D4 bounded validator against the protected local roots, review its evidence, and only then decide whether D5 may begin.
+
+
+### R4-LOG-20260929-023 — Guarded-token D4 protected-local bounded validation reviewed PASS
+
+- **Phase:** 8 / technical-completion DATA D4
+- **Source commit executed:** `4efc0676e6966d9581aa6a10f882125dda5063fc`
+- **Accepted parent:** immutable R4-D-011 V10 V2.6 physical root
+- **Validator status:** `PASS_BOUNDED_D4_REVIEW_REQUIRED`
+- **Population:** 9 / 9 requested bounded identities passed; zero identity failures; zero report failures
+- **Selector decisions:** repeat A = 6 guarded / 3 historical-control fallback; repeat B = identical
+- **Reproducibility:** repeated tensor digests, sidecars, and exact serialized `.tokens.pt` bytes match
+- **Graph preservation:** parent/repeat-A/repeat-B graph SHA-256 identities match for every bounded case
+- **Frozen tensor contract:** `[4,512]`, `torch.int64`
+- **Stress/runtime coverage:** required 353-window worst-case CUDA probe passed; declared Slither runtime-exception identity was discovered from the accepted parent and passed
+- **Review decision:** D4 COMPLETE. The validator's emitted `d5_authorized=false` is intentionally pre-review; this explicit review clears D5 as the next bounded-by-governance DATA action.
+- **Physical acceptance:** NO — D6 remains required after full generation
+- **Training authorized:** NO
+- **Next permitted action:** integrate the validated implementation line to canonical `main`, then execute D5 full 22,540-identity protected-local guarded-token generation from that canonical source state.

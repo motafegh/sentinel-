@@ -300,4 +300,6 @@ The technical-completion program is complete only when:
 
 ## 10. Immediate next action
 
-Begin `01_DATA_REPRESENTATION_COMPLETION_PLAN.md` at its source-audit/implementation boundary for R4-D-012. Do **not** begin the repaired full training run, threshold/calibration fitting, or downstream ZKML rebinding first.
+The guarded-selector implementation line has completed DATA work packages D0-D4. The 2026-09-29 protected-local D4 review passed 9/9 bounded identities with zero failures and deterministic repeated token artifacts while preserving immutable R4-D-011 graph bytes. The next action is **D5 full protected-local guarded-token candidate generation** from `01_DATA_REPRESENTATION_COMPLETION_PLAN.md`.
+
+Do **not** restart D0-D4, treat the bounded D4 pass as physical acceptance, begin repaired full training, fit thresholds/calibration, or rebind downstream ZKML first. D6 physical acceptance remains separate after D5.

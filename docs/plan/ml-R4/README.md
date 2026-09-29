@@ -21,7 +21,8 @@ Current boundary:
 - R4-D-011 physically accepts only the exact V2.6 protected-local root and digest above; selector promotion and training remain separate and unauthorized;
 - confirmed-negative support remains zero; candidate #1 is `NOT_CONFIRMED`; candidate #2 primary review still requires genuinely independent agreement;
 - threshold fitting, calibration fitting, and untouched acceptance remain unsupported/empty;
-- the target-aware token selector remains promising but unpromoted;
+- R4-D-012 promotes `target_aware_guarded_v1` for a fresh versioned token candidate only; it does not mutate R4-D-011 or authorize training;
+- on the active technical-completion line, D0-D4 are complete; protected-local D4 passed 9/9 bounded identities with zero failures and deterministic repeats; D5 full-population guarded-token generation is the next DATA action, followed by separate D6 physical acceptance;
 - full training remains unauthorized.
 
 For current work, read in this order:
@@ -30,11 +31,11 @@ For current work, read in this order:
 2. `PLAN_STATUS_MATRIX.md`;
 3. `runs/2026-09-02_PHASE8_v10_v26_physical_acceptance_and_no_launch.md`;
 4. `adrs/ADR-R4-011-v10-v26-physical-representation-acceptance.md`;
-5. `runs/2026-08-30_PHASE8_v10_v25_full_population_structural_evidence_plan.md`;
-6. `runs/2026-08-27_PHASE8_v10_v25_current_restart_checkpoint.md` for historical staging context;
-7. `reviews/R4-GAP-008/2026-08-26_v10_v25_bounded_structural_closure.md`;
-8. `DECISION_REGISTER.md` and `adrs/ADR-R4-010-versioned-external-call-representation-correction.md`;
-9. `RISK_AND_BLOCKER_REGISTER.md`, `EVIDENCE_GAP_REGISTER.md`, and `CLAIM_STATUS_MATRIX.md`.
+5. `runs/2026-09-02_PHASE8_selector_promotion_review.md` and `adrs/ADR-R4-012-target-aware-guarded-selector-promotion.md`;
+6. `docs/plan/system-finalization/technical-completion/00_MASTER_TECHNICAL_COMPLETION_ROADMAP.md`;
+7. `docs/plan/system-finalization/technical-completion/01_DATA_REPRESENTATION_COMPLETION_PLAN.md` and its active dated working record;
+8. `DECISION_REGISTER.md`, `RISK_AND_BLOCKER_REGISTER.md`, `EVIDENCE_GAP_REGISTER.md`, and `CLAIM_STATUS_MATRIX.md`;
+9. the August 26-30 V2.5/V2.6 execution records only when historical staging/evidence context is needed.
 
 R4-B008 / R4-GAP-008 are closed only for the R4-D-011 root and digest. Preserve that accepted root and its evidence; any regenerated or changed root must fail closed and receive a new physical decision.
 

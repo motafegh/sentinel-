@@ -3,6 +3,7 @@
 **Status:** ACTIVE — first critical workstream  
 **Parent:** `00_MASTER_TECHNICAL_COMPLETION_ROADMAP.md`  
 **Primary authority:** `docs/plan/ml-R4/` decisions/evidence, especially R4-D-011 and R4-D-012  
+**Current execution checkpoint:** D0-D4 complete; D5 full protected-local candidate generation next; D6 remains pending  
 
 ## 1. Objective
 
@@ -51,7 +52,7 @@ If the exact research implementation of `target_aware_guarded_v1` exists outside
 
 ## 4. Work package D0 — source/evidence reconstruction
 
-**State:** `AUDITING`
+**State:** `COMPLETE` — exact selector/source contract reconstructed and recorded
 
 Tasks:
 
@@ -72,7 +73,7 @@ Tasks:
 
 ## 5. Work package D1 — selector interface and lineage design
 
-**State:** `NOT_STARTED`
+**State:** `COMPLETE` — fresh guarded selector/lineage interface defined
 
 Design requirements:
 
@@ -101,7 +102,7 @@ Candidate metadata fields should be evaluated, not blindly fixed, but must be su
 
 ## 6. Work package D2 — implementation
 
-**State:** `NOT_STARTED`
+**State:** `COMPLETE` — bounded guarded-token candidate path implemented; historical paths unchanged
 
 Implementation goals:
 
@@ -115,6 +116,8 @@ Implementation goals:
 8. Give the new token lineage a fresh version/name; do not reuse `accepted_v9_byte_copy` semantics.
 
 ## 7. Work package D3 — unit and property validation
+
+**State:** `COMPLETE` — substantive implementation hardened through `10c102c515c9458821123df49e17cf0d8ee0a746` and revalidated at branch checkpoint `4fc5a928a6a017b72e08e8d3e9c32cbb1d59c8d4`; repaired/Phase-8 regression, snapshot, and G6 checks pass, while inherited baseline `git diff --check` debt remains outside this tranche
 
 Required tests include:
 
@@ -136,6 +139,8 @@ Where practical, add property-style tests around index bounds, monotonic validit
 **Exit:** local unit/property suite passes and historical-control compatibility remains intact.
 
 ## 8. Work package D4 — bounded candidate validation
+
+**State:** `COMPLETE` — protected-local bounded validation reviewed PASS on 2026-09-29: 9/9 identities passed, zero failures, repeat-deterministic token artifacts/sidecars, immutable R4-D-011 graph bytes preserved, 6 guarded selections and 3 historical-control fallbacks
 
 Before full-population generation, run bounded tranches covering:
 
@@ -161,6 +166,8 @@ Compare candidate versus historical control on:
 
 ## 9. Work package D5 — full physical candidate
 
+**State:** `READY_FOR_PROTECTED_LOCAL_GENERATION` — D4 bounded validation passed and was reviewed; full-population generation is now the next authorized DATA action
+
 Generate the full protected-local 22,540-identity candidate only after D0–D4 pass.
 
 Required outputs:
@@ -179,6 +186,8 @@ Required outputs:
 Full generation must occur in a protected local artifact root; Git should contain the binding/evidence records, not unnecessary heavy artifacts.
 
 ## 10. Work package D6 — physical acceptance review
+
+**State:** `NOT_STARTED`
 
 The candidate is not authoritative merely because generation completed.
 

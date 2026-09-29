@@ -1,6 +1,6 @@
 # START HERE — AI Implementation Agent Instruction
 
-> **Historical bootstrap notice, current redirect updated 2026-09-02:** the Phase-0 assignment below is retained for provenance and is **not the current restart instruction**. R4 has passed historical G0–G7; repaired-v2 physical DATA and logical V3 remain accepted evidence; R4-D-010 required a versioned V10 physical lineage and R4-D-011 now accepts the exact protected-local V2.6 root/digest after complete 355-identity evidence and refreshed current-commit review. Phase 8 remains `IN_PROGRESS`, G8 is open, and full training is unauthorized.
+> **Historical bootstrap notice, current redirect reconciled 2026-09-29:** the Phase-0 assignment below is retained for provenance and is **not the current restart instruction**. R4 has passed historical G0–G7; repaired-v2 physical DATA and logical V3 remain accepted evidence; R4-D-011 accepts the exact protected-local V2.6 root/digest; R4-D-012 promotes `target_aware_guarded_v1` only for a fresh versioned token candidate. D0-D4 are complete; the protected-local D4 tranche passed 9/9 with zero failures, and D5 full guarded-token generation is next before separate D6 physical acceptance. Phase 8 remains `IN_PROGRESS`, G8 is open, and full training is unauthorized.
 
 ## Current restart — read this before the historical bootstrap
 
@@ -10,9 +10,11 @@ Current agents must read in this order:
 2. `PLAN_STATUS_MATRIX.md`;
 3. `runs/2026-09-02_PHASE8_v10_v26_physical_acceptance_and_no_launch.md`;
 4. `adrs/ADR-R4-011-v10-v26-physical-representation-acceptance.md`;
-5. `runs/2026-08-30_PHASE8_v10_v25_full_population_structural_evidence_plan.md`;
-6. `DECISION_REGISTER.md` and `adrs/ADR-R4-010-versioned-external-call-representation-correction.md`;
-7. `RISK_AND_BLOCKER_REGISTER.md`, `EVIDENCE_GAP_REGISTER.md`, and `CLAIM_STATUS_MATRIX.md`.
+5. `runs/2026-09-02_PHASE8_selector_promotion_review.md` and `adrs/ADR-R4-012-target-aware-guarded-selector-promotion.md`;
+6. `docs/plan/system-finalization/technical-completion/00_MASTER_TECHNICAL_COMPLETION_ROADMAP.md`;
+7. `docs/plan/system-finalization/technical-completion/01_DATA_REPRESENTATION_COMPLETION_PLAN.md` and its active dated working record;
+8. `DECISION_REGISTER.md`, `RISK_AND_BLOCKER_REGISTER.md`, `EVIDENCE_GAP_REGISTER.md`, and `CLAIM_STATUS_MATRIX.md`;
+9. older V2.5/V2.6 execution records only when historical staging/evidence context is needed.
 
 Current state that must not be lost:
 
