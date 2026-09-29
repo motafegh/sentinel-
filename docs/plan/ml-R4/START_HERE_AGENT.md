@@ -1,6 +1,6 @@
 # START HERE — AI Implementation Agent Instruction
 
-> **Historical bootstrap notice, current redirect reconciled 2026-09-29:** the Phase-0 assignment below is retained for provenance and is **not the current restart instruction**. R4 has passed historical G0–G7; repaired-v2 physical DATA and logical V3 remain accepted evidence; R4-D-011 accepts the exact protected-local V2.6 root/digest; R4-D-012 promotes `target_aware_guarded_v1` only for a fresh versioned token candidate. On the active technical-completion branch D0-D3 are complete and D4 protected-local bounded validation is next. Phase 8 remains `IN_PROGRESS`, G8 is open, and full training is unauthorized.
+> **Historical bootstrap notice, current redirect reconciled 2026-09-29:** the Phase-0 assignment below is retained for provenance and is **not the current restart instruction**. R4 has passed historical G0–G7; repaired-v2 physical DATA and logical V3 remain accepted evidence; R4-D-011 accepts the exact protected-local V2.6 root/digest; R4-D-012 promotes `target_aware_guarded_v1` only for a fresh versioned token candidate. D0-D4 are complete; the protected-local D4 tranche passed 9/9 with zero failures, and D5 full guarded-token generation is next before separate D6 physical acceptance. Phase 8 remains `IN_PROGRESS`, G8 is open, and full training is unauthorized.
 
 ## Current restart — read this before the historical bootstrap
 
