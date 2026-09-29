@@ -478,3 +478,24 @@ Append one entry for each work package.
 - **Decision boundary:** validator evidence cannot itself grant physical acceptance or training authority
 - **Execution state:** D6 validator implemented; protected-local D6 run NOT YET EXECUTED
 - **Next action:** compile/preflight the validator from canonical main, then execute D6 against the reviewed D5 candidate using a fresh validation work root.
+
+
+### R4-LOG-20260929-028 — Guarded-token D6 accepted as R4-D-013
+
+- **Phase:** 8 / technical-completion DATA D6 closure
+- **D6 source commit:** `405b58e19210e6ff796aa943f8699b788d5229c1`
+- **Tracked worktree at review:** CLEAN
+- **D5 generation report SHA-256:** `e3202b77b4cb2557bcc47d19287a7c72ce248e1119f8b7d49521bce90d82f589`
+- **D6 validation report SHA-256:** `8468a2b840131363444532ac4264ca048a2a39247b35d6552eea28f695b17289`
+- **Population:** 22,540 / 22,540 independently checked
+- **Accepted guarded binding digest:** `9885d7b88a46aff4102741d63eeaa0bd6968f0857f7bca6a389662bfaa158881`
+- **Selector distribution:** 14,751 guarded / 7,789 historical fallback
+- **Runtime distribution:** 22,539 Slither 0.10.0 primary + 1 Slither 0.11.5 identity-bound exception
+- **Deterministic probes:** 9 / 9 regenerated twice and byte-equal to the D5 full candidate
+- **Decision:** R4-D-013 ACCEPTED; exact guarded-token physical successor is immutable current token authority for later repaired ML integration
+- **R4-D-011:** remains immutable graph/control parent and rollback authority
+- **R4-B006:** CLOSED
+- **DATA technical-completion state:** ACCEPTED / COMPLETE
+- **G8:** OPEN
+- **Training authorized:** NO
+- **Next action:** ML technical-completion M0 current training-seam audit plus M1 supervision/evaluation evidence investigation; do not launch full training.
