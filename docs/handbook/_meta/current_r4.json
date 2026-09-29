@@ -35,14 +35,29 @@
     "evidence_path": "docs/plan/ml-R4/evidence/2026-08-15_phase8_logical_v3/bounded_window_selector_v1.summary.json",
     "decision_id": "R4-D-012",
     "strategy": "target_aware_guarded_v1",
-    "scope": "new versioned token/representation candidate",
+    "scope": "accepted versioned token/representation successor",
     "records_analyzed": 1018,
     "over_four_window_records": 737,
     "improved_records": 476,
     "control_fallback_records": 261,
     "regressed_records": 0,
     "r4_d011_remains_immutable": true,
-    "fresh_physical_acceptance_required": true,
+    "fresh_physical_acceptance_required": false,
+    "training_authorized": false,
+    "physical_acceptance_decision_id": "R4-D-013"
+  },
+  "guarded_token_physical": {
+    "evidence_path": "docs/plan/ml-R4/evidence/2026-09-29_guarded_token_physical_acceptance/acceptance.json",
+    "decision_id": "R4-D-013",
+    "status": "PASS",
+    "decision": "ACCEPTED_IMMUTABLE_LOCAL_GUARDED_TOKEN_REPRESENTATION",
+    "representation_lineage": "r4-v10-v26-guarded-tokens-v1",
+    "contracts": 22540,
+    "binding_digest_sha256": "9885d7b88a46aff4102741d63eeaa0bd6968f0857f7bca6a389662bfaa158881",
+    "guarded_contracts": 14751,
+    "control_fallback_contracts": 7789,
+    "graph_parent_decision_id": "R4-D-011",
+    "graph_parent_binding_digest_sha256": "d9f925588913e66476cfbc097bace7daa7e673295fe2a243760313d0bef5ebdd",
     "training_authorized": false
   }
 }
