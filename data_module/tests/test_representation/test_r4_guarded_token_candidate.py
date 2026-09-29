@@ -22,6 +22,7 @@ from sentinel_data.representation.r4_guarded_token_candidate import (
     GuardedTokenCandidateError,
     TargetEvidenceError,
     build_guarded_token_candidate,
+    build_guarded_token_full_candidate,
     _build_guarded_token_identity,
     load_accepted_v10_parent,
 )
@@ -430,6 +431,54 @@ def test_bounded_candidate_manifest_binds_fresh_lineage_and_stop_lines(
     )
     assert persisted == manifest
 
+
+
+def test_full_candidate_derives_exact_parent_population_and_binds_manifest(
+    tmp_path: Path,
+    monkeypatch,
+):
+    fixture = _fixture(tmp_path, source_text=_source_with_target(long=True))
+    monkeypatch.setattr(
+        guarded_candidate,
+        "_source_commit",
+        lambda _repo_root: "d" * 40,
+    )
+    monkeypatch.setattr(
+        guarded_candidate,
+        "_load_canonical_tokenizer",
+        lambda: CharTokenizer(),
+    )
+    progress = []
+    output_root = _output_root(tmp_path, "full-manifest")
+
+    manifest = build_guarded_token_full_candidate(
+        acceptance_path=fixture["repo_root"] / "acceptance.json",
+        repo_root=fixture["repo_root"],
+        preprocessed_root=fixture["preprocessed_root"],
+        parent_root=fixture["parent_root"],
+        output_root=output_root,
+        progress_callback=lambda index, total, result: progress.append(
+            (index, total, result.contract_id)
+        ),
+    )
+
+    assert manifest["status"] == "FULL_GUARDED_TOKEN_CANDIDATE"
+    assert manifest["physical_acceptance"] is False
+    assert manifest["training_authorized"] is False
+    assert manifest["source_commit"] == "d" * 40
+    assert manifest["full_population"] is True
+    assert manifest["contracts_requested"] == 1
+    assert manifest["contracts_written"] == 1
+    assert manifest["parent"]["contracts"] == 1
+    assert len(manifest["binding_digest_sha256"]) == 64
+    assert progress == [(1, 1, fixture["contract_id"])]
+
+    persisted = json.loads(
+        (output_root / "guarded_candidate_manifest.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    assert persisted == manifest
 
 def test_batch_builder_rejects_misnamed_root_without_creating_it(
     tmp_path: Path,
