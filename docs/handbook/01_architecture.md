@@ -11,7 +11,7 @@
 SENTINEL has five main source modules and three architectural tracks that must not be collapsed into one pipeline:
 
 1. **Current off-chain audit runtime** — the gateway runs a 14-node LangGraph and currently consumes the historical Run12 ML runtime.
-2. **Current R4 DATA/ML repair lifecycle** — accepted repaired DATA, logical V3 grouping/roles, and the exact R4-D-011 V10 V2.6 physical representation are preparing a trustworthy future-training boundary. R4-D-012 permits guarded selection only in a fresh successor candidate; full repaired training remains unauthorized.
+2. **Current R4 DATA/ML repair lifecycle** — accepted repaired DATA, logical V3 grouping/roles, and the exact R4-D-011 V10 V2.6 physical representation are preparing a trustworthy future-training boundary. R4-D-012 permits guarded selection only in a fresh successor lineage; R4-D-013 now accepts that exact physical successor. Full repaired training remains unauthorized.
 3. **Proof / on-chain trust path** — the retained 128→10 proxy proof and the V3 EIP-712 policy/context attestation are separate trust claims. Signing/broadcast remains outside the live analysis MCP, which is read-only.
 
 The canonical architecture views below own those questions. Other handbook pages explain their mechanics but should not redefine the topology.
@@ -34,7 +34,7 @@ flowchart LR
     U["Solidity / source evidence"] --> D8["R4-D-008 repaired physical DATA"]
     D8 --> D9["R4-D-009 logical V3 grouping / roles"]
     D9 --> D11["R4-D-011 exact V10 V2.6 physical representation"]
-    D11 --> D12["Fresh guarded-selector successor\nrequired by R4-D-012 — pending acceptance"]
+    D11 --> D12["D-012 guarded-selector successor"]\n    D12 --> D13["D-013 exact physical successor accepted"]
     D12 --> FUT["Later repaired teacher retraining\nonly after explicit authorization"]
   end
 
@@ -98,7 +98,7 @@ flowchart LR
   D9 --> D10["D-010\nv9 withdrawn from new-full-training eligibility"]
   D10 --> D11["D-011\nexact V10 V2.6 physical lineage accepted"]
   D11 --> D12["D-012\ntarget_aware_guarded_v1 only in a fresh successor"]
-  D12 --> PA["separate successor generation + binding + physical acceptance"]
+  D12 --> D13["D-013\naccepted guarded-token physical successor"]
   PA --> OE["objective / evaluation design"]
   OE --> T["later full training\nonly if explicitly authorized"]
 ```
@@ -139,7 +139,7 @@ Neither claim proves Solidity compilation, teacher execution, LangGraph routing,
 
 | Module | Current responsibility | Important current state |
 |---|---|---|
-| [`data_module`](../../data_module) | acquisition/preprocessing, evidence/semantic artifacts, grouping/roles, representations, DATA vNext/R4 implementation | D-008 physical DATA accepted; D-009 logical V3 accepted; D-011 V10 V2.6 accepted; D-012 successor token lineage pending separate acceptance |
+| [`data_module`](../../data_module) | acquisition/preprocessing, evidence/semantic artifacts, grouping/roles, representations, DATA vNext/R4 implementation | D-008 physical DATA accepted; D-009 logical V3 accepted; D-011 V10 V2.6 graph/control parent accepted; D-012 selector policy promoted; D-013 guarded-token physical successor accepted |
 | [`ml`](../../ml) | four-eye teacher architecture, Run12 serving compatibility, Phase-8 repaired-training mechanics/evaluation utilities | Run12 remains historical operational baseline; no repaired teacher promoted; full training unauthorized |
 | [`agents`](../../agents) | gateway, LangGraph orchestration, tool evidence, RAG, MCP services, feedback observation | 14-node graph; live audit MCP read-only; V3 auto-promotion unavailable |
 | [`zkml`](../../zkml) | retained proxy distillation/ONNX/EZKL proof boundary | fixed proxy proof scope only; `check_mode="UNSAFE"` remains a production-assurance limitation |
@@ -165,7 +165,7 @@ Gateway/graph reports, RAG indexes, caches, databases, proof workspaces, and pro
 Principal compatibility boundaries:
 
 1. **Historical representation compatibility:** v9 graph `x[N,12]`, `[4,512]` token windows, locked ten-class order; retained for historical reproduction/Run12 compatibility.
-2. **Current R4 physical representation authority:** exact D-011 V10 V2.6 graph lineage; fresh guarded-selector successor token lineage still pending separate physical acceptance.
+2. **Current R4 physical representation authority:** exact D-011 V10 V2.6 graph/control parent plus the separately accepted D-013 guarded-token successor.
 3. **Current R4 semantic layer:** `data-vnext-policy-v1` plus accepted logical V3 grouping/role authority; historical binary v1 is compatibility history, not new truth.
 4. **Current runtime ML → AGENTS:** ten Run12 probabilities/tiers/eye signals, model identity, hotspots.
 5. **ML → ZKML seam:** fusion embedding `[128]`.
@@ -185,7 +185,7 @@ See [Cross-module contracts](11_cross_module_contracts.md) for the exact compati
 - The audit MCP must not be treated as a signer/broadcaster.
 - Run12 predictions/thresholds remain historical-baseline behavior until repaired retraining occurs.
 - R4-D-011 physical acceptance does not authorize repaired full training.
-- R4-D-012's guarded selector still requires a fresh physically accepted successor lineage.
+- R4-D-012's guarded selector is now physically realized by the exact R4-D-013 successor; this does not authorize full training.
 - Confirmed negatives remain zero; candidate #2 still requires genuinely independent agreement.
 - Threshold/calibration/untouched-acceptance support remains unavailable.
 - `check_mode="UNSAFE"` and signer/owner governance remain production-assurance limitations.
@@ -230,7 +230,7 @@ Know process boundaries, versioned artifacts, dataset leakage roles, HTTP/MCP, g
 
 ### Source map and reading order
 
-For runtime topology: `agents/src/api/gateway.py::create_app` → `agents/src/orchestration/graph.py::build_graph` → live MCP handlers. For the current R4 lifecycle: `PLAN_STATUS_MATRIX.md` → D-011 acceptance → D-012 selector decision. For proof/on-chain trust: proxy/settings → `agents/src/security/policy_signer.py` → `contracts/src/AuditRegistry.sol::submitAuditV3` → read-only audit handlers.
+For runtime topology: `agents/src/api/gateway.py::create_app` → `agents/src/orchestration/graph.py::build_graph` → live MCP handlers. For the current R4 lifecycle: `PLAN_STATUS_MATRIX.md` → D-011 graph/control acceptance → D-012 selector decision → D-013 guarded-token physical acceptance. For proof/on-chain trust: proxy/settings → `agents/src/security/policy_signer.py` → `contracts/src/AuditRegistry.sol::submitAuditV3` → read-only audit handlers.
 
 ### Execution trace and worked example
 
