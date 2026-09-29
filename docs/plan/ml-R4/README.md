@@ -22,7 +22,7 @@ Current boundary:
 - confirmed-negative support remains zero; candidate #1 is `NOT_CONFIRMED`; candidate #2 primary review still requires genuinely independent agreement;
 - threshold fitting, calibration fitting, and untouched acceptance remain unsupported/empty;
 - R4-D-012 promotes `target_aware_guarded_v1` for a fresh versioned token candidate only; it does not mutate R4-D-011 or authorize training;
-- on the active technical-completion line, D0-D4 are complete; protected-local D4 passed 9/9 bounded identities with zero failures and deterministic repeats; D5 full-population guarded-token generation is the next DATA action, followed by separate D6 physical acceptance;
+- on the active technical-completion line, D0-D5 are complete; D5 generated 22,540/22,540 guarded-token identities (14,751 guarded / 7,789 historical fallback) with binding digest `9885d7b88a46aff4102741d63eeaa0bd6968f0857f7bca6a389662bfaa158881`; D6 independent physical acceptance review is next;
 - full training remains unauthorized.
 
 For current work, read in this order:
