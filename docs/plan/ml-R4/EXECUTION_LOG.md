@@ -529,3 +529,19 @@ Append one entry for each work package.
 - **Full training:** HOLD
 - **Recommended M2 contract:** positive-only BCE retained only as a bounded control/pilot objective; positive NLL remains a positive-fit diagnostic; no negative supervision, PU, threshold/calibration or promotion authority
 - **Next action:** M2 versioned objective/evaluation decision
+
+
+### R4-LOG-20261001-031 — ML M3 guarded integration repository-safe checkpoint
+
+- **Workstream:** technical-completion ML M3
+- **Authorities:** R4-D-009 logical V3 + R4-D-011 graph parent + R4-D-013 guarded physical lineage + R4-D-014 bounded objective/evaluation
+- **Implementation:** separate guarded dataset adapter, current-V3 population validation, D9/D11/D13/D14 run binding, explicit V10 frozen-model factory, fail-closed integration tests
+- **Historical path:** G7/v9 dataset/runner/model factory preserved for reproduction
+- **Phase-8 guarded compatibility CI:** PASS
+- **Repository-repair substantive checks:** compile PASS; regression suite PASS; logical-V3 snapshot PASS; historical G6 PASS
+- **Known unrelated/inherited CI debt:** repository-wide whitespace/diff gate remains red
+- **Training executed:** NO
+- **Optimizer steps executed:** 0
+- **M3 state:** implementation complete; protected-local no-step preflight/review required before M3 closure
+- **M4 execution:** NOT YET AUTHORIZED
+- **Full training:** NOT AUTHORIZED
