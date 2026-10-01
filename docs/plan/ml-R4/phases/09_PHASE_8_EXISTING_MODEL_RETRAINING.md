@@ -9,14 +9,17 @@ Produce a reproducible checkpoint of the existing frozen architecture **only aft
 
 Phase 8 is not permission to train merely because executable training code exists. The current work is still upstream of full training.
 
-## Current authority — 2026-09-02
+## Current authority — 2026-10-01
 
 Historical G0–G7 remain passed and immutable. Later accepted decisions refine the Phase-8 execution boundary:
 
 - **R4-D-008:** repaired-v2 physical DATA is accepted immutable reproducibility evidence, but the full run remained withheld because supervision/evaluation and selector adequacy were unresolved;
 - **R4-D-009:** corrected logical V3 grouping/roles/publication is accepted current logical authority; hardened V3 evidence is the accepted pre-pilot research baseline;
 - **R4-D-010:** graph schema v9 remains historical/reproducibility evidence but is **not eligible for the new full training run**. A separately versioned, physically accepted V10 representation lineage is required first.
-- **R4-D-011:** the exact protected-local V2.6 root with digest `d9f925588913e66476cfbc097bace7daa7e673295fe2a243760313d0bef5ebdd` is physically accepted; no selector or training authority follows from that decision.
+- **R4-D-011:** the exact protected-local V2.6 graph/control root with digest `d9f925588913e66476cfbc097bace7daa7e673295fe2a243760313d0bef5ebdd` is physically accepted;
+- **R4-D-012:** promotes `target_aware_guarded_v1` only for a fresh token lineage;
+- **R4-D-013:** accepts the exact 22,540-identity guarded-token successor with digest `9885d7b88a46aff4102741d63eeaa0bd6968f0857f7bca6a389662bfaa158881`, while R4-D-011 remains immutable graph/control parent;
+- **R4-D-014:** accepts `masked_positive_bce_control_v1` only for M3 integration and a later bounded M4 pilot after preflight. It does not authorize the full 100-epoch run, negative supervision, PU/nnPU, thresholds, calibration, untouched acceptance, or promotion.
 
 Current V10 state:
 
@@ -40,10 +43,11 @@ Current supervision/evaluation limitations:
 - `UNTOUCHED_ACCEPTANCE = UNSUPPORTED_EMPTY_FROZEN`;
 - no current class has discrimination/specificity/FPR/calibration/production-quality authority.
 
-Current selector state:
+Current selector/physical state:
 
-- R4-D-012 promotes `target_aware_guarded_v1` for construction/evaluation of a new versioned candidate after hardened CPU/CUDA evidence and 22,540/22,540 control equivalence;
-- the guarded-token physical lineage is not yet built or accepted, and R4-D-011 remains the current immutable physical authority.
+- R4-D-012 promotes `target_aware_guarded_v1` after hardened CPU/CUDA evidence and 22,540/22,540 control equivalence;
+- R4-D-013 separately accepts the full guarded-token physical successor: 14,751 guarded selections + 7,789 exact historical fallbacks over all 22,540 identities;
+- R4-D-011 remains immutable as the V10 graph/control parent.
 
 Therefore the 100-epoch/full-horizon training run remains explicitly unauthorized.
 
@@ -69,9 +73,9 @@ Completed sequence:
 
 A passing bounded probe, Stage A, binder, or transition audit alone does not grant physical acceptance; R4-D-011 grants it only to the recorded root and digest.
 
-### B. Complete the evidence-honest evaluation/objective decision
+### B. Evidence-honest evaluation/objective decision — COMPLETE under R4-D-014
 
-R4-GAP-007 remains separate from V10 construction.
+R4-GAP-007 remains open independently.
 
 - Do not infer target `0` from unlabeled/source/tool absence.
 - Do not self-verify candidate #2.
@@ -79,17 +83,17 @@ R4-GAP-007 remains separate from V10 construction.
 - Positive–Unlabeled (PU) learning remains a design candidate only, not implementation authority.
 - Do not invent threshold/calibration populations that do not exist.
 
-The eventual training objective and model-selection interpretation must be explicitly versioned once evidence supports them.
+R4-D-014 now versions the current limited contract: masked positive BCE is a bounded control objective, MODEL_SELECTION is positive-fit diagnostic only, PU/negative supervision are unauthorized, and the full horizon remains on HOLD.
 
-### C. Build and accept the promoted-selector physical lineage separately
+### C. Promoted-selector physical lineage — COMPLETE under R4-D-013
 
-R4-D-012 promotes the guarded target-aware selector only for a fresh versioned physical candidate. It must not be silently coupled to or written into R4-D-011.
+The guarded candidate was generated, independently validated, bound and accepted without mutating R4-D-011. R4-D-013 is the exact token/representation authority for later repaired ML integration.
 
-Generate, bind, and compare the new guarded-token candidate, then record a separate physical acceptance or rejection. The completed 22,540/22,540 control-equivalence proof and promotion decision do not accept nonexistent token artifacts.
+### D. Current integration/pilot boundary
 
-### D. Re-authorize training explicitly
+M3 is integrating the exact accepted lineage into a new fail-closed training seam. R4-D-014 permits a later **bounded M4 pilot only after M3 preflight/review**. Full training still requires a separate later decision.
 
-Only after the above gates are resolved may Phase 8 freeze:
+The eventual full-run contract must freeze:
 
 - exact physically accepted V10 candidate binding/digest;
 - exact logical V3 role/publication authority;
@@ -169,15 +173,10 @@ A repository-ready training path, micro-smoke, positive-fit checkpoint, V10 cand
 
 Current restart authority:
 
-`runs/2026-08-27_PHASE8_v10_v25_current_restart_checkpoint.md`
-
-Current V10 full-candidate protocol:
-
-`runs/2026-08-26_PHASE8_v10_v25_full_candidate_staging.md`
-
-Bounded V2.5 closure:
-
-`reviews/R4-GAP-008/2026-08-26_v10_v25_bounded_structural_closure.md`
+- `runs/2026-09-29_PHASE8_guarded_token_physical_acceptance_and_no_launch.md` / ADR-R4-013;
+- `runs/2026-10-01_PHASE8_objective_evaluation_decision_and_pilot_boundary.md` / ADR-R4-014;
+- `docs/plan/system-finalization/technical-completion/02_ML_TRAINING_EVALUATION_COMPLETION_PLAN.md`;
+- M3 working record `docs/plan/system-finalization/technical-completion/working/2026-10-01_ml_m3_guarded_lineage_integration.md`.
 
 Separate negative-evidence track:
 
