@@ -41,3 +41,45 @@ The new seam consists of:
 ## Stop line
 
 M3 may build and test the integration seam. It may not launch the M4 pilot or the full training run.
+
+
+## Implementation checkpoint — repository-safe complete
+
+Implemented on canonical `main`:
+
+- `ml/src/datasets/vnext_logical_v3_guarded_dataset.py`
+  composes R4-D-009 logical authority with the exact R4-D-013 physical
+  guarded root instead of rewriting the V3 publication;
+- full D13 acceptance checks bind exact population, selector distribution,
+  D11 parent, candidate manifest, source commit and active artifact hashes;
+- `ml/src/training/vnext_guarded_run_control.py` derives current V3
+  population authority from the accepted logical-V3 record and enforces a
+  bounded horizon below 100 epochs;
+- `ml/src/training/vnext_guarded_binding.py` binds D9 + D11 + D13 + D14,
+  frozen V10 architecture, GraphCodeBERT revision, optimizer/scheduler/runtime
+  identity and explicit no-training/no-PU/no-threshold limits;
+- `build_phase8_v10_model()` constructs the frozen four-eye architecture with
+  graph schema V10 while the historical factory remains unchanged;
+- `ml/tests/test_vnext_phase8_guarded.py` proves accepted-lineage loading,
+  mutation rejection, V3 population derivation, bounded-horizon enforcement
+  and complete guarded run binding;
+- `p8_preflight_guarded_training_m3.py` performs the protected-local M3 proof
+  without any optimizer step.
+
+Repository-safe verification:
+
+- Phase-8 guarded compatibility compile/tests: PASS;
+- repaired/Phase-8 repository compile: PASS;
+- repaired/research regression suite: PASS;
+- committed logical-V3 snapshot verification: PASS;
+- frozen historical G6 verification: PASS;
+- repository-repair workflow remains red only at inherited repository-wide
+  `git diff --check` whitespace debt.
+
+### Remaining M3 gate
+
+Run the protected-local no-step preflight against the actual accepted V3 overlay
+and R4-D-013 physical root. A passing script intentionally reports
+`PASS_M3_GUARDED_INTEGRATION_REVIEW_REQUIRED` with
+`m4_execution_authorized=false`. M3 closes and M4 becomes ready only after
+that report is reviewed.
