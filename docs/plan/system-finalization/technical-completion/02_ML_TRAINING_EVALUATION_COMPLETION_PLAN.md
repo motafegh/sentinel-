@@ -131,9 +131,9 @@ For every unsupported role, keep it unsupported. Do not reuse a role merely beca
 
 ## 6. Work package M2 — versioned objective/evaluation decision
 
-**State:** `NOT_STARTED`
+**State:** `COMPLETE` — R4-D-014 accepts `masked_positive_bce_control_v1` for bounded control/pilot use only, rejects current PU/negative authority, fixes positive-only evaluation interpretation, and keeps full training on HOLD
 
-The decision must specify:
+The decision specifies:
 
 - optimizer-authorized cell types;
 - role eligibility;
@@ -149,6 +149,8 @@ The decision must specify:
 If this changes R4 semantic policy, record it through the existing decision/ADR system.
 
 ## 7. Work package M3 — final training-lineage integration
+
+**State:** `READY` — DATA is accepted under R4-D-013 and M2 is accepted under R4-D-014.
 
 After DATA acceptance and M2:
 
