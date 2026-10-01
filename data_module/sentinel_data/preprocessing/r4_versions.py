@@ -28,9 +28,11 @@ V10_REPRESENTATION_EXTRACTOR_VERSION = (
 )
 V10_REPRESENTATION_ROOT_NAME = "representations-r4-v3-candidate"
 
-# R4-D-012 guarded-token successor. These identifiers authorize only a fresh
-# candidate lineage descended from the immutable R4-D-011 graph parent. They do
-# not grant physical acceptance or training authority.
+# R4-D-012 introduced the guarded-token successor as a fresh lineage descended
+# from immutable R4-D-011 graph bytes. R4-D-013 later accepts the exact
+# protected-local guarded physical lineage. These version identifiers still do
+# not grant ML execution authority; R4-D-014 separately governs bounded pilot
+# objective/evaluation use and full training remains unauthorized.
 HISTORICAL_TOKEN_SELECTOR_VERSION = "historical_linspace_v1"
 GUARDED_TOKEN_SELECTOR_VERSION = "target_aware_guarded_v1"
 GUARDED_TOKEN_SELECTOR_SCHEMA_VERSION = "r4-token-selector-decision-v1"
