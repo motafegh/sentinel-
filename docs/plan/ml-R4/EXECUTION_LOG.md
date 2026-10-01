@@ -499,3 +499,18 @@ Append one entry for each work package.
 - **G8:** OPEN
 - **Training authorized:** NO
 - **Next action:** ML technical-completion M0 current training-seam audit plus M1 supervision/evaluation evidence investigation; do not launch full training.
+
+
+### R4-LOG-20261001-029 — ML M0 training-seam audit complete
+
+- **Workstream:** technical-completion ML M0
+- **Authority:** R4-D-013 accepted guarded-token physical lineage; R4-D-011 immutable V10 graph/control parent
+- **Finding:** canonical `vnext_runner.py` remains G7/v9-bound via `VNextTrainingDataset`, `CANONICAL_G7_BINDING_DIGEST`, and `build_run_binding()`
+- **Dormant successor seam:** logical-V3/V10 dataset and binding code exist but predate R4-D-013 and require the old V10 root/acceptance contract
+- **Model seam:** GNN supports explicit V10 schema, but the current Phase-8 factory defaults to v9 because `graph_schema_version` is not bound in `FROZEN_ARCHITECTURE`
+- **Supervision/roles:** positive-only target checks, masks, TRAIN/MODEL_SELECTION separation, group balancing, and INTERNAL_AUDIT exclusion are intact
+- **Selection:** best-positive-NLL is a limited positive-fit diagnostic only; no discrimination/threshold/calibration claim
+- **Resume:** checkpoint/run binding is fail-closed and restores full optimizer/scheduler/RNG state
+- **Inference seam:** Phase-8 checkpoint format is not directly consumable by the historical Predictor, and live sliding-window inference still uses historical linspace selection
+- **Disposition:** M0 COMPLETE; do not retrofit or launch yet. Exact R4-D-013 runner/dataset/model/inference integration is reserved for M3 after M2 objective/evaluation authority
+- **Next active work:** M1 supervision/evaluation evidence investigation
