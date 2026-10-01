@@ -316,24 +316,27 @@ def test_guarded_population_validation_uses_logical_v3_acceptance(tmp_path: Path
         },
     }) + "\n")
 
-    class DS:
-        pass
+    class TrainDS:
+        def __len__(self):
+            return 4
 
-    train = DS()
+    class SelectionDS:
+        def __len__(self):
+            return 1
+
+    train = TrainDS()
     train.frozen_role_counts = {"TRAIN_STRONG": 3, "TRAIN_WEAK": 2}
     train.role_counts = {"TRAIN_STRONG": 2, "TRAIN_WEAK": 2}
     train.frozen_group_count = 4
     train.group_count = 4
     train.skipped_no_signal_counts = {"TRAIN_STRONG": 1}
-    train.__class__.__len__ = lambda self: 4
 
-    selection = DS()
+    selection = SelectionDS()
     selection.frozen_role_counts = {"MODEL_SELECTION": 2}
     selection.role_counts = {"MODEL_SELECTION": 1}
     selection.frozen_group_count = 2
     selection.group_count = 1
     selection.skipped_no_signal_counts = {"MODEL_SELECTION": 1}
-    selection.__class__.__len__ = lambda self: 1
 
     validate_guarded_phase8_populations(train, selection, logical_acceptance_path=acceptance)
 
