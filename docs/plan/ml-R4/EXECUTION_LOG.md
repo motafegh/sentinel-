@@ -514,3 +514,18 @@ Append one entry for each work package.
 - **Inference seam:** Phase-8 checkpoint format is not directly consumable by the historical Predictor, and live sliding-window inference still uses historical linspace selection
 - **Disposition:** M0 COMPLETE; do not retrofit or launch yet. Exact R4-D-013 runner/dataset/model/inference integration is reserved for M3 after M2 objective/evaluation authority
 - **Next active work:** M1 supervision/evaluation evidence investigation
+
+
+### R4-LOG-20261001-030 — ML M1 supervision/evaluation investigation complete
+
+- **Workstream:** technical-completion ML M1
+- **Confirmed negatives:** zero; R4-GAP-007 remains open
+- **Candidate #1:** `NOT_CONFIRMED`
+- **Candidate #2:** primary supports class-specific `CallToUnknown` negative; independent agreeing review still required; target remains `None`
+- **Positive-only finding:** masked BCE can establish positive fit only; it supplies no direct penalty on unknown cells and cannot establish discrimination, FPR/specificity, threshold, calibration or production quality
+- **PU research:** SCAR is incompatible with the source/class-conditioned labeling process; SAR/nnPU would require an explicit defensible labeling propensity, per-class prior/identifiability assumptions and evaluation capable of detecting misspecification. None is accepted today.
+- **PU decision recommendation:** do not authorize PU/nnPU now
+- **Evaluation roles:** MODEL_SELECTION/INTERNAL_AUDIT remain positive-only limited; discrimination, THRESHOLD_FIT, CALIBRATION_FIT and UNTOUCHED_ACCEPTANCE remain unsupported
+- **Full training:** HOLD
+- **Recommended M2 contract:** positive-only BCE retained only as a bounded control/pilot objective; positive NLL remains a positive-fit diagnostic; no negative supervision, PU, threshold/calibration or promotion authority
+- **Next action:** M2 versioned objective/evaluation decision
