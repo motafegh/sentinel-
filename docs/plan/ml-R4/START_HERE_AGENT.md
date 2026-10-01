@@ -1,6 +1,6 @@
 # START HERE — AI Implementation Agent Instruction
 
-> **Historical bootstrap notice, current redirect reconciled 2026-09-29:** the Phase-0 assignment below is retained for provenance and is **not the current restart instruction**. R4 has passed historical G0–G7; repaired-v2 physical DATA and logical V3 remain accepted evidence; R4-D-011 accepts the exact protected-local V2.6 graph/control parent; R4-D-012 promotes `target_aware_guarded_v1`; and R4-D-013 accepts the exact full guarded-token physical successor. DATA D0-D6 are complete. Phase 8 remains `IN_PROGRESS`, G8 is open, full training is unauthorized, and the current technical-completion boundary is ML M0/M1.
+> **Historical bootstrap notice, current redirect reconciled 2026-10-01:** the Phase-0 assignment below is retained for provenance and is **not the current restart instruction**. R4 has passed historical G0–G7; DATA D0-D6 are complete; R4-D-011 is the immutable V10 graph/control parent; R4-D-013 accepts the exact guarded-token physical successor; and R4-D-014 fixes the bounded positive-only control/evaluation contract. ML M0-M2 are complete and M3 guarded-lineage integration is active. Phase 8 remains `IN_PROGRESS`, G8 is open, and full training is unauthorized.
 
 ## Current restart — read this before the historical bootstrap
 
@@ -12,11 +12,12 @@ Current agents must read in this order:
 4. `adrs/ADR-R4-011-v10-v26-physical-representation-acceptance.md`;
 5. `runs/2026-09-02_PHASE8_selector_promotion_review.md` and `adrs/ADR-R4-012-target-aware-guarded-selector-promotion.md`;
 6. `runs/2026-09-29_PHASE8_guarded_token_physical_acceptance_and_no_launch.md` and `adrs/ADR-R4-013-guarded-token-physical-representation-acceptance.md`;
-7. `docs/plan/system-finalization/technical-completion/00_MASTER_TECHNICAL_COMPLETION_ROADMAP.md`;
-8. `docs/plan/system-finalization/technical-completion/02_ML_TRAINING_EVALUATION_COMPLETION_PLAN.md`;
-9. `DECISION_REGISTER.md`, `RISK_AND_BLOCKER_REGISTER.md`, `EVIDENCE_GAP_REGISTER.md`, and `CLAIM_STATUS_MATRIX.md`;
-10. the accepted DATA plan/working record only when physical-lineage closure details are needed;
-11. older V2.5/V2.6 execution records only when historical staging/evidence context is needed.
+7. `runs/2026-10-01_PHASE8_objective_evaluation_decision_and_pilot_boundary.md` and `adrs/ADR-R4-014-phase8-positive-only-control-and-evaluation-hold.md`;
+8. `docs/plan/system-finalization/technical-completion/00_MASTER_TECHNICAL_COMPLETION_ROADMAP.md`;
+9. `docs/plan/system-finalization/technical-completion/02_ML_TRAINING_EVALUATION_COMPLETION_PLAN.md` and `working/2026-10-01_ml_m3_guarded_lineage_integration.md`;
+10. `DECISION_REGISTER.md`, `RISK_AND_BLOCKER_REGISTER.md`, `EVIDENCE_GAP_REGISTER.md`, and `CLAIM_STATUS_MATRIX.md`;
+11. the accepted DATA plan/working record only when physical-lineage closure details are needed;
+12. older V2.5/V2.6 execution records only when historical staging/evidence context is needed.
 
 Current state that must not be lost:
 
@@ -36,6 +37,8 @@ Current state that must not be lost:
 - confirmed negatives remain zero; candidate #2 still needs genuinely independent verification;
 - threshold/calibration/untouched acceptance remain unsupported/empty;
 - R4-D-013 accepts the exact full guarded-token successor with digest `9885d7b88a46aff4102741d63eeaa0bd6968f0857f7bca6a389662bfaa158881`; R4-D-011 remains immutable as graph/control parent;
+- R4-D-014 authorizes only M3 integration and a later bounded M4 pilot after preflight using `masked_positive_bce_control_v1`; PU/negative optimizer authority and model-quality promotion remain false;
+- M3 code is repository-safe and fail-closed; the protected-local no-step M3 preflight is the current next action;
 - no 100-epoch run is authorized.
 
 R4-B008 / R4-GAP-008 are closed only for the R4-D-011 root/digest. Preserve the accepted candidate and reports; do not regenerate them, treat a different digest as accepted, or proceed to training without the separate remaining gates and explicit authorization.
