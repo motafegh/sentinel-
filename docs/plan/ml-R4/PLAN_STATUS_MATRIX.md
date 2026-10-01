@@ -12,7 +12,7 @@
 | 5 | `phases/06_PHASE_5_DATA_VNEXT_POLICY_AND_DESIGN.md` | PASSED | G4 | G5 | `data-vnext-policy-v1`; eight classes enabled, GasException/UnusedReturn disabled; no blanket negatives; G5 PASS |
 | 6 | `phases/07_PHASE_6_PARTITIONS_AND_ACCEPTANCE_FREEZE.md` | PASSED | G5 | G6 | Historical `r4-vnext-roles-v1` frozen; threshold/calibration/untouched acceptance unsupported/empty; G6 PASS |
 | 7 | `phases/08_PHASE_7_DATA_VNEXT_IMPLEMENTATION.md` | PASSED | G6 | G7 | Historical `sentinel-r4-vnext-v1` / 21,657 representations / 64,971 files passed G7; immutable historical evidence |
-| 8 | `phases/09_PHASE_8_EXISTING_MODEL_RETRAINING.md` | IN_PROGRESS | G7 | G8 | Repaired-v2 physical DATA, logical V3, exact V10 V2.6 graphs, and the R4-D-013 guarded-token successor are accepted evidence. Selector physical-lineage work is closed; negative-evidence, objective/evaluation, final ML binding, and launch authority remain separate. Full training is unauthorized. |
+| 8 | `phases/09_PHASE_8_EXISTING_MODEL_RETRAINING.md` | IN_PROGRESS | G7 | G8 | Repaired-v2 physical DATA, logical V3, R4-D-011 V10 graphs, and R4-D-013 guarded tokens are accepted. R4-D-014 fixes an evidence-limited positive-only control/evaluation contract and authorizes M3 integration plus later bounded M4 pilot only. R4-GAP-007 remains open; full training is unauthorized. |
 | 9 | `phases/10_PHASE_9_EVALUATION_CALIBRATION_AND_POLICY.md` | WAITING | G8 | G9 | Current threshold/calibration support remains unavailable |
 | 10 | `phases/11_PHASE_10_ACCEPTANCE_PROMOTION_AND_ROLLBACK.md` | WAITING | G9 | G10 | Untouched acceptance remains unsupported/empty/frozen |
 
@@ -32,7 +32,8 @@
 | Historical V10 V2.5 full-candidate gate | BLOCKED AT STAGE E / PRESERVED | Protected-local Stages A-D passed, but Stage E found 311 raw non-parse-only drifts and left 298 outside the approved bounded evidence classes. This historical failure motivated V2.6 and is not current physical authority. |
 | V10 V2.6 physical representation | ACCEPTED / IMMUTABLE LOCAL | R4-D-011 accepts the exact 22,540-identity root and digest `d9f925588913e66476cfbc097bace7daa7e673295fe2a243760313d0bef5ebdd`. V4 re-proves all 355 current drifts as 349 WRITE corrections plus 6 index-equivalent graphs with zero unexplained drift. Runtime split is 22,539 Slither-0.10 + one Slither-0.11.5 exception; all tokens are byte-identical to accepted V9. |
 | Guarded-token physical successor | ACCEPTED / IMMUTABLE LOCAL | R4-D-013 accepts `r4-v10-v26-guarded-tokens-v1` for all 22,540 identities with digest `9885d7b8...`: 14,751 guarded selections and 7,789 exact historical fallbacks. R4-D-011 remains the immutable V10 graph/control parent. |
-| Full training / G8 | HOLD | The physical DATA/representation lineage is now accepted through R4-D-013, but confirmed negatives remain zero; threshold/calibration/untouched acceptance remain unsupported; objective/evaluation design, final ML binding, bounded pilot review, and explicit launch authority remain unresolved. |
+| Objective/evaluation boundary | ACCEPTED / LIMITED | R4-D-014 retains masked positive BCE only as a bounded control, interprets MODEL_SELECTION as positive-fit diagnostics only, rejects current PU/negative authority, and keeps threshold/calibration/untouched/promotion unsupported. |
+| Full training / G8 | HOLD | Physical DATA and the bounded objective/evaluation contract are accepted, but R4-GAP-007 remains open, M3 exact ML binding and M4 pilot evidence remain incomplete, and no explicit full-training authorization exists. |
 
 ## Corrected outcome-population terminology
 
