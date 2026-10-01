@@ -1,0 +1,84 @@
+{
+  "schema": "sentinel-r4-phase8-objective-evaluation-decision-v1",
+  "decision_id": "R4-D-014",
+  "status": "PASS",
+  "decision": "ACCEPT_BOUNDED_POSITIVE_ONLY_CONTROL_HOLD_FULL_TRAINING",
+  "date": "2026-10-01",
+  "scope": "Phase-8 objective, evaluation interpretation, M3 integration and M4 bounded-pilot boundary",
+  "accepted_physical_input": {
+    "logical_dataset_version": "sentinel-r4-vnext-v3",
+    "logical_partition_version": "r4-vnext-roles-v3",
+    "graph_parent_decision_id": "R4-D-011",
+    "graph_parent_binding_digest_sha256": "d9f925588913e66476cfbc097bace7daa7e673295fe2a243760313d0bef5ebdd",
+    "token_decision_id": "R4-D-013",
+    "token_lineage": "r4-v10-v26-guarded-tokens-v1",
+    "token_binding_digest_sha256": "9885d7b88a46aff4102741d63eeaa0bd6968f0857f7bca6a389662bfaa158881",
+    "selector_policy": "target_aware_guarded_v1",
+    "token_shape": [4, 512]
+  },
+  "objective": {
+    "objective_id": "masked_positive_bce_control_v1",
+    "optimizer_authorized_roles": ["TRAIN_STRONG", "TRAIN_WEAK"],
+    "optimizer_authorized_target_values": [1.0],
+    "unknown_cells": "MASKED_NO_OPTIMIZER_AUTHORITY",
+    "confirmed_negative_optimizer_authority": false,
+    "pu_optimizer_authority": false,
+    "weak_positive_weight": 0.25,
+    "main_loss": "masked_bce_positive_loss",
+    "auxiliary_eye_loss": "masked_bce_positive_loss",
+    "aux_loss_weight": 0.3,
+    "aux_loss_warmup_epochs": 8,
+    "phase2_aux_loss_weight": 0.2,
+    "jk_entropy_reg_lambda": 0.005,
+    "label_smoothing": 0.0,
+    "legacy_label_sampler": false
+  },
+  "evaluation": {
+    "model_selection_role": "MODEL_SELECTION",
+    "model_selection_interpretation": "POSITIVE_FIT_DIAGNOSTIC_ONLY",
+    "allowed_positive_diagnostics": [
+      "positive_nll",
+      "mean_positive_probability",
+      "positive_recall_at_fixed_threshold"
+    ],
+    "fixed_diagnostic_threshold": 0.5,
+    "fixed_threshold_is_decision_threshold": false,
+    "internal_audit": "POSITIVE_ONLY_OBSERVATIONAL_NOT_CHECKPOINT_SELECTION",
+    "discrimination_metrics_authorized": false,
+    "threshold_fit_authorized": false,
+    "calibration_fit_authorized": false,
+    "untouched_acceptance_authorized": false,
+    "production_promotion_authorized": false
+  },
+  "pilot_boundary": {
+    "m3_lineage_integration_authorized": true,
+    "m4_bounded_pilot_authorized_after_preflight": true,
+    "pilot_horizon_must_be_fixed_before_execution": true,
+    "pilot_must_be_materially_below_full_100_epoch_horizon": true,
+    "pilot_checkpoint_quality_claim": false,
+    "full_training_authorized": false
+  },
+  "evidence_state": {
+    "confirmed_negative_cells": 0,
+    "r4_gap_007_open": true,
+    "candidate_1": "NOT_CONFIRMED",
+    "candidate_2": "PRIMARY_SUPPORTS_NEGATIVE_INDEPENDENT_REVIEW_PENDING",
+    "pu_assumptions_accepted": false
+  },
+  "architecture": {
+    "name": "four_eye_v8",
+    "model_version": "v8.1",
+    "frozen": true,
+    "graph_schema_version": "v10",
+    "graphcodebert_revision": "2b0488a7bb0eefc7041f1bb2cad1ab26b0da269d"
+  },
+  "remaining_gates": [
+    "M3 exact R4-D-013 training-lineage integration",
+    "M4 bounded preflight and pilot evidence",
+    "R4-GAP-007 independent negative-evidence continuation",
+    "explicit later full-training authorization",
+    "later discrimination/threshold/calibration/untouched evidence if claimed"
+  ],
+  "g8_passed": false,
+  "full_training_authorized": false
+}
