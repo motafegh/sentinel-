@@ -43,9 +43,12 @@ jobs:
             /ml/src/training/
             /ml/tests/test_vnext_phase8_compat.py
             /ml/tests/test_vnext_phase8_runner.py
+            /ml/tests/test_vnext_phase8_guarded.py
             /data_module/sentinel_data/vnext/
             /data_module/sentinel_data/export/
+            /data_module/sentinel_data/preprocessing/r4_versions.py
             /data_module/sentinel_data/representation/graph_schema.py
+            /data_module/sentinel_data/representation/graph_schema_versions.py
             /data_module/data/exports/sentinel-r4-vnext-v1/
             /docs/plan/ml-R4/
 
@@ -61,6 +64,9 @@ jobs:
         run: |
           python -m py_compile \
             ml/src/datasets/vnext_dataset.py \
+            ml/src/datasets/vnext_repaired_dataset.py \
+            ml/src/datasets/vnext_logical_v3_dataset.py \
+            ml/src/datasets/vnext_logical_v3_guarded_dataset.py \
             ml/src/training/vnext_losses.py \
             ml/src/training/group_sampler.py \
             ml/src/training/vnext_phase8_config.py \
@@ -70,10 +76,14 @@ jobs:
             ml/src/training/vnext_epoch.py \
             ml/src/training/vnext_checkpoint.py \
             ml/src/training/vnext_run_control.py \
+            ml/src/training/vnext_guarded_run_control.py \
+            ml/src/training/vnext_guarded_binding.py \
             ml/src/training/vnext_run_io.py \
             ml/src/training/vnext_runner.py \
             ml/tests/test_vnext_phase8_compat.py \
             ml/tests/test_vnext_phase8_runner.py \
+            ml/tests/test_vnext_phase8_guarded.py \
+            ml/tests/test_vnext_phase8_guarded.py \
             docs/plan/ml-R4/scripts/p8_run_micro_smoke.py \
             docs/plan/ml-R4/scripts/p8_run_training.py
           bash -n docs/plan/ml-R4/scripts/p8_run_micro_smoke.sh
