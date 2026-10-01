@@ -62,7 +62,7 @@ At minimum:
 
 ## 4. Work package M0 — current training-seam audit
 
-**State:** `AUDITING`
+**State:** `COMPLETE` — source audit closed 2026-10-01; canonical runner remains G7/v9-bound, R4-D-013 integration requirements are explicitly mapped for M3, and role/loss/checkpoint boundaries are verified fail-closed
 
 Before changing objective or launching a run:
 
