@@ -1,6 +1,6 @@
 # ML Training / Evaluation Completion Plan
 
-**Status:** ACTIVE — R4-D-013 physical lineage accepted; M0/M1 evidence/design work is now the active boundary  
+**Status:** ACTIVE — M0/M1/M2 complete; R4-D-014 accepted; M3 guarded-lineage integration is the active boundary  
 **Parent:** `00_MASTER_TECHNICAL_COMPLETION_ROADMAP.md`  
 **Primary authority:** R4 Phase 8–10 governance under `docs/plan/ml-R4/`  
 
@@ -150,7 +150,7 @@ If this changes R4 semantic policy, record it through the existing decision/ADR 
 
 ## 7. Work package M3 — final training-lineage integration
 
-**State:** `READY` — DATA is accepted under R4-D-013 and M2 is accepted under R4-D-014.
+**State:** `IN_PROGRESS` — fail-closed D9/D11/D13/D14 dataset, population, run-binding and explicit V10 model seams implemented; repository-safe compatibility CI passes; protected-local no-step M3 preflight is the remaining acceptance check.
 
 After DATA acceptance and M2:
 
