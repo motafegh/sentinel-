@@ -123,6 +123,8 @@ def _write_guarded_rep(root: Path, cid: str, *, effective_selector: str) -> dict
 
 def _fixture(tmp_path: Path, monkeypatch):
     monkeypatch.setattr(guarded_dataset, "EXPECTED_GUARDED_CONTRACTS", 2)
+    monkeypatch.setattr(guarded_dataset, "EXPECTED_GUARDED_SELECTIONS", 1)
+    monkeypatch.setattr(guarded_dataset, "EXPECTED_CONTROL_FALLBACKS", 1)
     repo_root = tmp_path / "repo"
     overlay = repo_root / "overlay"
     overlay.mkdir(parents=True)
@@ -198,11 +200,24 @@ def _fixture(tmp_path: Path, monkeypatch):
         "physical_acceptance": False,
         "training_authorized": False,
         "source_commit": "c" * 40,
+        "contracts_requested": 2,
         "contracts_written": 2,
+        "effective_selector_counts": {
+            HISTORICAL_TOKEN_SELECTOR_VERSION: 1,
+            GUARDED_TOKEN_SELECTOR_VERSION: 1,
+        },
+        "guarded_contracts": 1,
+        "control_fallback_contracts": 1,
         "binding_digest_sha256": R4_D013_BINDING_DIGEST,
         "representation_lineage": GUARDED_TOKEN_LINEAGE_VERSION,
         "selector_policy": GUARDED_TOKEN_SELECTOR_VERSION,
         "control_selector": HISTORICAL_TOKEN_SELECTOR_VERSION,
+        "parent": {
+            "decision_id": "R4-D-011",
+            "physical_root": "data_module/data/parent-v10",
+            "binding_digest_sha256": R4_D011_BINDING_DIGEST,
+            "contracts": 2,
+        },
         "records": records,
     }
     candidate_manifest_path = physical_root / "guarded_candidate_manifest.json"
@@ -217,6 +232,12 @@ def _fixture(tmp_path: Path, monkeypatch):
         "decision": "ACCEPTED_IMMUTABLE_LOCAL_GUARDED_TOKEN_REPRESENTATION",
         "physical_acceptance": True,
         "training_authorized": False,
+        "g8_passed": False,
+        "selector_distribution": {
+            HISTORICAL_TOKEN_SELECTOR_VERSION: 1,
+            GUARDED_TOKEN_SELECTOR_VERSION: 1,
+        },
+        "evidence": {"generation_source_commit": "c" * 40},
         "accepted_lineage": {
             "binding_digest_sha256": R4_D013_BINDING_DIGEST,
             "candidate_manifest_sha256": _sha(candidate_manifest_path),
@@ -230,6 +251,7 @@ def _fixture(tmp_path: Path, monkeypatch):
             "token_shape": [4, 512],
             "graph_parent_decision_id": "R4-D-011",
             "graph_parent_binding_digest_sha256": R4_D011_BINDING_DIGEST,
+            "graph_parent_physical_root": "data_module/data/parent-v10",
             "physical_root": relative_root,
         },
     }, sort_keys=True) + "\n")
