@@ -33,6 +33,8 @@ R4_D013_BINDING_DIGEST = "9885d7b88a46aff4102741d63eeaa0bd6968f0857f7bca6a389662
 R4_D011_DECISION_ID = "R4-D-011"
 R4_D011_BINDING_DIGEST = "d9f925588913e66476cfbc097bace7daa7e673295fe2a243760313d0bef5ebdd"
 EXPECTED_GUARDED_CONTRACTS = 22540
+EXPECTED_GUARDED_SELECTIONS = 14751
+EXPECTED_CONTROL_FALLBACKS = 7789
 
 
 def _load_json(path: Path) -> dict:
@@ -88,6 +90,19 @@ def validate_guarded_physical_acceptance(
         raise ValueError("guarded physical acceptance decision mismatch")
     if acceptance.get("training_authorized") is not False:
         raise ValueError("R4-D-013 must not grant full training authority")
+    if acceptance.get("g8_passed") is not False:
+        raise ValueError("R4-D-013 must retain G8 hold")
+
+    selector_distribution = acceptance.get("selector_distribution") or {}
+    expected_distribution = {
+        HISTORICAL_TOKEN_SELECTOR_VERSION: EXPECTED_CONTROL_FALLBACKS,
+        GUARDED_TOKEN_SELECTOR_VERSION: EXPECTED_GUARDED_SELECTIONS,
+    }
+    if selector_distribution != expected_distribution:
+        raise ValueError(
+            "R4-D-013 selector distribution mismatch: "
+            f"{selector_distribution} != {expected_distribution}"
+        )
 
     lineage = acceptance.get("accepted_lineage") or {}
     digest = str(lineage.get("binding_digest_sha256") or "")
@@ -141,8 +156,16 @@ def validate_guarded_physical_acceptance(
         raise ValueError("candidate manifest must remain pre-acceptance historical evidence")
     if candidate.get("training_authorized") is not False:
         raise ValueError("candidate manifest must not claim training authority")
+    if int(candidate.get("contracts_requested", -1)) != EXPECTED_GUARDED_CONTRACTS:
+        raise ValueError("guarded candidate requested population mismatch")
     if int(candidate.get("contracts_written", -1)) != EXPECTED_GUARDED_CONTRACTS:
         raise ValueError("guarded candidate written population mismatch")
+    if candidate.get("effective_selector_counts") != expected_distribution:
+        raise ValueError("guarded candidate selector distribution mismatch")
+    if int(candidate.get("guarded_contracts", -1)) != EXPECTED_GUARDED_SELECTIONS:
+        raise ValueError("guarded candidate guarded-selector count mismatch")
+    if int(candidate.get("control_fallback_contracts", -1)) != EXPECTED_CONTROL_FALLBACKS:
+        raise ValueError("guarded candidate fallback count mismatch")
     if candidate.get("binding_digest_sha256") != digest:
         raise ValueError("guarded candidate/acceptance binding digest mismatch")
     if candidate.get("representation_lineage") != GUARDED_TOKEN_LINEAGE_VERSION:
@@ -151,6 +174,20 @@ def validate_guarded_physical_acceptance(
         raise ValueError("guarded candidate selector mismatch")
     if candidate.get("control_selector") != HISTORICAL_TOKEN_SELECTOR_VERSION:
         raise ValueError("guarded candidate control selector mismatch")
+
+    parent = candidate.get("parent") or {}
+    if parent.get("decision_id") != R4_D011_DECISION_ID:
+        raise ValueError("guarded candidate graph-parent decision mismatch")
+    if parent.get("binding_digest_sha256") != R4_D011_BINDING_DIGEST:
+        raise ValueError("guarded candidate graph-parent digest mismatch")
+    if int(parent.get("contracts", -1)) != EXPECTED_GUARDED_CONTRACTS:
+        raise ValueError("guarded candidate graph-parent population mismatch")
+    if parent.get("physical_root") != lineage.get("graph_parent_physical_root"):
+        raise ValueError("guarded candidate graph-parent root mismatch")
+
+    evidence = acceptance.get("evidence") or {}
+    if candidate.get("source_commit") != evidence.get("generation_source_commit"):
+        raise ValueError("guarded candidate generation source commit mismatch")
 
     records = candidate.get("records") or []
     if len(records) != EXPECTED_GUARDED_CONTRACTS:
@@ -291,6 +328,9 @@ __all__ = [
     "R4_D013_ACCEPTANCE_SCHEMA",
     "R4_D013_BINDING_DIGEST",
     "R4_D013_DECISION_ID",
+    "EXPECTED_GUARDED_CONTRACTS",
+    "EXPECTED_GUARDED_SELECTIONS",
+    "EXPECTED_CONTROL_FALLBACKS",
     "validate_guarded_physical_acceptance",
     "validate_logical_v3_acceptance",
     "vnext_collate_fn",
