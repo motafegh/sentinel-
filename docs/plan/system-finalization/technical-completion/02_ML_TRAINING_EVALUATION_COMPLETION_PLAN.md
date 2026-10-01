@@ -77,7 +77,7 @@ Before changing objective or launching a run:
 
 ## 5. Work package M1 — supervision/evaluation evidence investigation
 
-**State:** `INVESTIGATING`
+**State:** `COMPLETE_WITH_R4_GAP_007_OPEN` — positive-only limits quantified; PU/nnPU not justified under current labeling-mechanism/class-prior evidence; supported/unsupported evaluation roles mapped; M2 recommendation ready
 
 This is the central unresolved ML design responsibility.
 
