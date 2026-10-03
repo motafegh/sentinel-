@@ -12,6 +12,25 @@ R4_D014_DECISION_ID = "R4-D-014"
 R4_D014_OBJECTIVE_ID = "masked_positive_bce_control_v1"
 R4_D014_EXECUTION_SCOPE = "bounded_pilot_only"
 FULL_PHASE8_HORIZON_EPOCHS = Phase8Settings().epochs
+M4B_RECOVERY_EPOCHS = 2
+M4C_PILOT_EPOCHS = 8
+_ALLOWED_GUARDED_HORIZONS = frozenset({M4B_RECOVERY_EPOCHS, M4C_PILOT_EPOCHS})
+
+
+def validate_guarded_pilot_settings(settings: Phase8Settings) -> None:
+    """Fail closed outside the explicitly governed M4-B/M4-C horizons."""
+    if int(settings.epochs) not in _ALLOWED_GUARDED_HORIZONS:
+        raise ValueError(
+            "guarded Phase-8 runner permits only governed M4 horizons "
+            f"{sorted(_ALLOWED_GUARDED_HORIZONS)}; got {settings.epochs}"
+        )
+    if int(settings.batch_size) != 8:
+        raise ValueError("guarded M4 runner requires batch_size=8")
+    if int(settings.gradient_accumulation_steps) != 8:
+        raise ValueError(
+            "guarded M4 runner requires gradient_accumulation_steps=8"
+        )
+
 
 
 def _load_logical_acceptance(path: Path) -> dict[str, Any]:
@@ -107,9 +126,12 @@ def guarded_optimizer_binding_config(
 
 __all__ = [
     "FULL_PHASE8_HORIZON_EPOCHS",
+    "M4B_RECOVERY_EPOCHS",
+    "M4C_PILOT_EPOCHS",
     "R4_D014_DECISION_ID",
     "R4_D014_EXECUTION_SCOPE",
     "R4_D014_OBJECTIVE_ID",
     "guarded_optimizer_binding_config",
+    "validate_guarded_pilot_settings",
     "validate_guarded_phase8_populations",
 ]
