@@ -76,7 +76,7 @@ For the exact current DATA/ML restart boundary, read in order:
 5. `docs/plan/ml-R4/runs/2026-09-29_PHASE8_guarded_token_physical_acceptance_and_no_launch.md` and ADR-R4-013 for current physical token authority;
 6. `docs/plan/ml-R4/runs/2026-10-01_PHASE8_objective_evaluation_decision_and_pilot_boundary.md` and ADR-R4-014 for current ML objective/evaluation authority;
 7. `docs/plan/system-finalization/technical-completion/00_MASTER_TECHNICAL_COMPLETION_ROADMAP.md`;
-8. `docs/plan/system-finalization/technical-completion/02_ML_TRAINING_EVALUATION_COMPLETION_PLAN.md` and the M3 working record for the current execution checkpoint;
+8. `docs/plan/system-finalization/technical-completion/02_ML_TRAINING_EVALUATION_COMPLETION_PLAN.md` and the M4 working record for the current execution checkpoint;
 9. `docs/plan/ml-R4/DECISION_REGISTER.md`, `RISK_AND_BLOCKER_REGISTER.md`, and `CLAIM_STATUS_MATRIX.md` for current decision/risk/claim state;
 10. `docs/plan/system-finalization/technical-completion/01_DATA_REPRESENTATION_COMPLETION_PLAN.md` only when DATA closure details are needed;
 11. `docs/plan/ml-R4/runs/2026-08-30_PHASE8_v10_v25_full_population_structural_evidence_plan.md` only for historical V2.5/V2.6 staging context;
@@ -84,7 +84,7 @@ For the exact current DATA/ML restart boundary, read in order:
 13. `docs/plan/ml-R4/reviews/R4-GAP-008/2026-08-26_v10_v25_bounded_structural_closure.md` and ADR-R4-010 when representation-remediation rationale is needed;
 14. `docs/plan/ml-R4/runs/2026-08-16_PHASE8_v3_hardened_evidence_snapshot_closeout.md` and the candidate #2 review only when their separate logical/negative-evidence tracks are needed.
 
-The August 21 V10 implementation records, the August 23 parse-only plan, and the August 23 structural-drift handoff are historical execution records and must not be used as the current restart boundary when they describe blockers already closed. Candidate #1 is durably closed `NOT_CONFIRMED`; do not repeat it. Candidate #2 primary review supports a class-specific negative, but the primary reviewer must not self-verify it. Selector physical acceptance is closed by R4-D-013 and the current objective/evaluation boundary is fixed by R4-D-014. M3 integration is active; do not confuse bounded-pilot authority with full-training authority. Do not infer negatives, silently promote the selector, fit unsupported threshold/calibration roles, reuse Run12 state, overwrite protected V10 history/reference roots, or launch full training.
+The August 21 V10 implementation records, the August 23 parse-only plan, and the August 23 structural-drift handoff are historical execution records and must not be used as the current restart boundary when they describe blockers already closed. Candidate #1 is durably closed `NOT_CONFIRMED`; do not repeat it. Candidate #2 primary review supports a class-specific negative, but the primary reviewer must not self-verify it. Selector physical acceptance is closed by R4-D-013, the current objective/evaluation boundary is fixed by R4-D-014, and M3 exact guarded integration is closed after protected-local no-step review. M4 bounded-pilot work is active; do not confuse bounded-pilot authority with full-training authority. Do not infer negatives, silently promote the selector, fit unsupported threshold/calibration roles, reuse Run12 state, overwrite protected V10 history/reference roots, or launch full training.
 
 ## Approval model
 
