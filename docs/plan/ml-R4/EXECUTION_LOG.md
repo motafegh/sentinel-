@@ -602,3 +602,21 @@ Append one entry for each work package.
 - **M4-C:** NOT AUTHORIZED
 - **Full training:** NOT AUTHORIZED
 - **Next action:** M4-B checkpoint/resume/recovery proof, repository-safe first then protected-local bounded execution.
+
+
+### R4-LOG-20261003-033 — M4-B guarded recovery stack implemented
+
+- **Workstream:** technical-completion ML M4-B
+- **Entry authority:** reviewed M4-A PASS
+- **Runner:** `ml/src/training/vnext_guarded_runner.py`
+- **Recovery driver:** `docs/plan/ml-R4/scripts/p8_recover_guarded_training_m4b.py`
+- **Historical full runner changed:** NO
+- **Permitted guarded horizons:** exactly 2 epochs (M4-B) or 8 epochs (M4-C); 100 epochs rejected
+- **Checkpoint contract:** complete guarded run binding + model + optimizer + scheduler + Python/NumPy/Torch/CUDA RNG state
+- **Recovery contract:** exact `latest.pt`; exact manifest/index/run-binding match; next-epoch resume; deterministic group sampler
+- **Failure contract:** atomic promotion test proves simulated replace failure leaves no final or temporary checkpoint
+- **Binding drift:** guarded lineage/config payload mismatch fails closed
+- **Protected-local M4-B executed:** NO
+- **M4-C authorized:** NO
+- **Full training authorized:** NO
+- **Next action:** repository-safe compatibility verification, then protected-local 2-epoch pause/resume recovery proof.
