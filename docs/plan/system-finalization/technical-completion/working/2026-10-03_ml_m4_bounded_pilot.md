@@ -270,3 +270,42 @@ Implemented on canonical `main`:
 Repository-safe compatibility CI must pass before protected-local M4-B
 execution. A successful protected-local report must still be explicitly
 reviewed before M4-C becomes executable. Full training remains unauthorized.
+
+
+## M4-B first protected-local recovery attempt — RNG restore failure
+
+The first protected-local M4-B recovery attempt used source commit
+`acd217c375e6065c3e44249b1cad91aa06bc8aee`.
+
+Observed behavior:
+
+- epoch 1 completed successfully;
+- the durable `latest.pt` checkpoint was written;
+- controlled pause/restart reached guarded model reconstruction;
+- resume then failed before epoch 2 with
+  `TypeError: RNG state must be a torch.ByteTensor`;
+- no M4-B PASS report was written;
+- M4-C and full training remain unauthorized.
+
+Root cause:
+
+- the runner loaded `latest.pt` with `map_location=cuda`;
+- PyTorch therefore remapped serialized CPU/CUDA RNG-state tensors to the
+  CUDA device together with model/optimizer tensors;
+- `restore_rng_state()` passed the remapped `torch_cpu` state directly to
+  `torch.set_rng_state()`, which requires a CPU uint8 tensor.
+
+Repair:
+
+- normalize serialized RNG tensors back to CPU before RNG restoration;
+- fail closed if the serialized RNG object is not a tensor or not
+  `torch.uint8`;
+- apply the repair centrally in `vnext_checkpoint.py`, so the historical
+  durable runner benefits from the same correction without changing its
+  lineage semantics;
+- add repository-safe regression coverage for the device/type normalization
+  contract.
+
+The failed `...-2026-10-03-a` run root is preserved as failure evidence and
+must not be reused or promoted. The corrected protected-local rerun must use a
+fresh `...-b` root/report after repository-safe verification.
