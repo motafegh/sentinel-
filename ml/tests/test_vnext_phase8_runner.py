@@ -8,12 +8,18 @@ import pytest
 import torch
 from torch.optim import AdamW
 
+import ml.src.training.vnext_checkpoint as checkpoint_mod
 from ml.src.training.vnext_checkpoint import (
     assert_checkpoint_binding,
     atomic_torch_save,
     build_checkpoint_payload,
     load_checkpoint,
     restore_checkpoint,
+)
+from ml.src.training.vnext_guarded_runner import (
+    M4B_RECOVERY_EPOCHS,
+    M4C_PILOT_EPOCHS,
+    _validate_guarded_settings,
 )
 from ml.src.training.vnext_phase8_config import Phase8Settings
 from ml.src.training.vnext_run_control import (
@@ -224,3 +230,93 @@ def test_resume_reconciles_checkpoint_index_after_latest_crash_window(tmp_path: 
     assert index["latest"]["epoch"] == 10
     assert index["best_positive_nll"]["epoch"] == 10
     assert [item["epoch"] for item in index["milestones"]] == [10]
+
+
+
+def test_guarded_runner_allows_only_governed_m4_horizons():
+    _validate_guarded_settings(Phase8Settings(epochs=M4B_RECOVERY_EPOCHS))
+    _validate_guarded_settings(Phase8Settings(epochs=M4C_PILOT_EPOCHS))
+    for epochs in (1, 3, 99, 100):
+        with pytest.raises(ValueError, match="governed M4 horizons"):
+            _validate_guarded_settings(Phase8Settings(epochs=epochs))
+
+
+def test_atomic_checkpoint_failed_promotion_leaves_no_partial_file(
+    tmp_path: Path,
+    monkeypatch,
+):
+    settings = Phase8Settings(epochs=2)
+    model, optimizer, scheduler, _ = _toy_stack(settings)
+    payload = build_checkpoint_payload(
+        kind="latest",
+        epoch=1,
+        global_optimizer_step=1,
+        run_binding=_binding(),
+        settings=settings,
+        model=model,
+        optimizer=optimizer,
+        scheduler=scheduler,
+        best_positive_nll=None,
+        best_positive_nll_epoch=None,
+        epoch_event={"epoch": 1},
+        selection_records=[],
+    )
+    path = tmp_path / "latest.pt"
+
+    def fail_replace(src, dst):
+        raise OSError("simulated promotion failure")
+
+    monkeypatch.setattr(checkpoint_mod.os, "replace", fail_replace)
+    with pytest.raises(OSError, match="simulated promotion failure"):
+        checkpoint_mod.atomic_torch_save(payload, path)
+
+    assert not path.exists()
+    assert not path.with_name("latest.pt.tmp").exists()
+
+
+def test_group_sampler_resume_epoch_reconstruction_is_identical():
+    from ml.src.training.group_sampler import DeterministicGroupSampler
+
+    groups = {"a": (0, 1), "b": (2,), "c": (3, 4, 5)}
+    before = DeterministicGroupSampler(groups, seed=20260813)
+    resumed = DeterministicGroupSampler(groups, seed=20260813)
+    before.set_epoch(2)
+    resumed.set_epoch(2)
+    assert list(before) == list(resumed)
+
+
+def test_guarded_shaped_checkpoint_binding_rejects_changed_lineage(tmp_path: Path):
+    settings = Phase8Settings(epochs=2)
+    model, optimizer, scheduler, _ = _toy_stack(settings)
+    guarded = {
+        "schema": "sentinel-r4-phase8-guarded-run-binding-v1",
+        "binding_digest_sha256": "a" * 64,
+        "scope": "bounded_pilot_only",
+        "data": {
+            "graph_parent": {"decision_id": "R4-D-011"},
+            "guarded_tokens": {"decision_id": "R4-D-013"},
+        },
+        "objective_evaluation": {"decision_id": "R4-D-014"},
+    }
+    payload = build_checkpoint_payload(
+        kind="latest",
+        epoch=1,
+        global_optimizer_step=1,
+        run_binding=guarded,
+        settings=settings,
+        model=model,
+        optimizer=optimizer,
+        scheduler=scheduler,
+        best_positive_nll=0.8,
+        best_positive_nll_epoch=1,
+        epoch_event={"epoch": 1},
+        selection_records=[],
+    )
+    path = tmp_path / "latest.pt"
+    atomic_torch_save(payload, path)
+    checkpoint = load_checkpoint(path, map_location="cpu")
+
+    changed = dict(guarded)
+    changed["binding_digest_sha256"] = "b" * 64
+    with pytest.raises(ValueError, match="resume binding mismatch"):
+        assert_checkpoint_binding(checkpoint, changed)
