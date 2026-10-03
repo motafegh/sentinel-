@@ -35,10 +35,22 @@ MODEL_SELECTION_ROLES = frozenset({"MODEL_SELECTION"})
 _ALLOWED_PHASE8_ROLES = TRAIN_ROLES | MODEL_SELECTION_ROLES
 _STRENGTH_CODE = {"NONE": 0, "WEAK": 1, "STRONG": 2}
 _EXCLUDE_KEYS = [
+    # Provenance/debug metadata must never participate in PyG batching. V10
+    # file-union graphs carry some keys (notably contract_names) that are
+    # intentionally absent from single-contract graphs; batching those fields
+    # would make otherwise valid mixed batches fail before the model sees the
+    # structural tensors.
     "contract_hash",
     "contract_path",
     "contract_name",
+    "contract_names",
     "node_metadata",
+    "graph_schema_version",
+    "representation_extractor_version",
+    "unclassified_call_ir",
+    "classified_call_ir_counts",
+    "emitted_call_edge_counts",
+    "call_mapping_errors",
     "num_edges",
     "num_nodes",
     "y",
