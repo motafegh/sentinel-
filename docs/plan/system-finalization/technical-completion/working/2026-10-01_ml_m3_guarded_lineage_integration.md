@@ -2,7 +2,7 @@
 
 **Date:** 2026-10-01  
 **Authorities:** R4-D-009 logical V3; R4-D-011 graph parent; R4-D-013 guarded-token physical acceptance; R4-D-014 bounded positive-only objective/evaluation boundary  
-**State:** IN PROGRESS
+**State:** COMPLETE — protected-local no-step preflight reviewed PASS
 
 ## Design
 
@@ -76,10 +76,41 @@ Repository-safe verification:
 - repository-repair workflow remains red only at inherited repository-wide
   `git diff --check` whitespace debt.
 
-### Remaining M3 gate
+### Protected-local M3 closure
 
-Run the protected-local no-step preflight against the actual accepted V3 overlay
-and R4-D-013 physical root. A passing script intentionally reports
-`PASS_M3_GUARDED_INTEGRATION_REVIEW_REQUIRED` with
-`m4_execution_authorized=false`. M3 closes and M4 becomes ready only after
-that report is reviewed.
+Executed from source commit
+`ce4c496eff24feae5efba479f0a69a369ac23701` against the actual accepted
+logical-V3 overlay and exact R4-D-013 protected-local root.
+
+Reviewed report:
+
+- status: `PASS_M3_GUARDED_INTEGRATION_REVIEW_REQUIRED`;
+- report SHA-256:
+  `83dd558d552b238c8f5c767a00911c0763de15b609095c4d462e9a8159e87d7e`;
+- guarded run-binding digest:
+  `5d2b913ecdd807cbf505a4a70b30e0ba4db6e28447d3e24a6122ad24fcfcf852`;
+- train population: 945 frozen / 932 active contracts, 932 active groups;
+- active train roles: 331 TRAIN_STRONG / 601 TRAIN_WEAK;
+- selection population: 73 frozen / 71 active contracts, 71 active groups;
+- V10 graph schema confirmed with 17/17 expected edge types;
+- token tensor shape confirmed as `[4,512]`;
+- bounded contract constructed as 2 epochs / 117 loader batches per epoch /
+  15 planned optimizer steps per epoch;
+- **optimizer steps executed: 0**;
+- `full_training_authorized=false`;
+- `g8_passed=false`;
+- `m4_execution_authorized=false` in the diagnostic report, as designed.
+
+The diagnostic's false M4 flag is pre-review evidence, not a denial after
+review. This review closes M3. R4-D-014 already authorizes a separately fixed
+bounded M4 pilot after successful M3 preflight; that pilot remains distinct from
+full-training authority.
+
+## M3 disposition
+
+M3 is COMPLETE. The historical G7/v9 runner remains untouched for reproduction.
+The exact R4-D-009 + D-011 + D-013 + D-014 guarded seam is repository-safe and
+protected-local validated. M4 is now the next work package.
+
+No full-horizon training, threshold/calibration fitting, promotion, inference
+replacement or ZKML rebinding is authorized.
