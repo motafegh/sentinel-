@@ -580,3 +580,25 @@ Append one entry for each work package.
 - **Repair:** exclude V10 provenance/debug metadata from PyG graph batching and add mixed file-union/single-contract regression coverage
 - **M4-A state:** RETRY_REQUIRED after repository-safe verification
 - **Full training:** NOT AUTHORIZED
+
+
+### R4-LOG-20261003-032 — M4-A guarded CUDA mechanics smoke reviewed PASS
+
+- **Workstream:** technical-completion ML M4-A
+- **Successful source commit:** `cbc50e913458ce4df48888cb838d1655e53a47b8`
+- **Protected-local report:** `data_module/data/r4-m4a-guarded-smoke-2026-10-03-b.json`
+- **Report SHA-256:** `3e6fee24e565b4647cb2ce0252d34f4d2fd3a3e890a448e25750194809cf4f6c`
+- **Tracked worktree at evidence binding:** CLEAN
+- **Authorities:** R4-D-009 + R4-D-011 + R4-D-013 + R4-D-014
+- **Execution:** 8 micro-batches / 1 optimizer step / scheduler 0→1 / 1 MODEL_SELECTION batch
+- **Losses:** finite total/main/aux/phase2
+- **Historical state reuse:** NO
+- **Durable checkpoint written:** NO
+- **CUDA:** RTX 3070 Laptop GPU; peak allocated ~5573.48 MiB; peak reserved 5770 MiB
+- **Selection interpretation:** positive-fit diagnostic only
+- **First-attempt repair:** V10 provenance-only graph metadata excluded from PyG batching; protected artifacts unchanged; mixed-V10 regression coverage added
+- **New risk:** R4-R026 — frozen fusion cap 2048 observed truncating dense-fusion participation for a 2759-node graph; sparse GNN still consumes full graph
+- **Decision:** M4-A PASS
+- **M4-C:** NOT AUTHORIZED
+- **Full training:** NOT AUTHORIZED
+- **Next action:** M4-B checkpoint/resume/recovery proof, repository-safe first then protected-local bounded execution.
