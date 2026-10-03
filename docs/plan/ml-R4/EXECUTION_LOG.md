@@ -565,3 +565,18 @@ Append one entry for each work package.
 - **M3:** COMPLETE
 - **M4:** READY for separately fixed bounded pilot engineering/review under R4-D-014
 - **G8/full training:** HOLD / NOT AUTHORIZED
+
+
+### R4-LOG-20261003-032 — M4-A first protected-local smoke exposed V10 collate seam
+
+- **Workstream:** technical-completion ML M4-A
+- **Execution source:** `5ce5adc4ec77046af18812199d8ad8b9dbf865f9`
+- **Observed failure:** PyG `Batch.from_data_list` raised `KeyError: 'contract_names'` on the first real guarded training batch
+- **Failure stage:** data collation, before model forward/backward completion
+- **Optimizer steps completed:** 0
+- **Checkpoint/report promoted:** NO
+- **Root cause:** V10 file-union graphs carry provenance field `contract_names`; single-contract graphs do not; historical collate exclusions did not yet include this V10-only metadata
+- **Authority impact:** none — R4-D-011/R4-D-013 artifacts remain immutable and byte-unchanged
+- **Repair:** exclude V10 provenance/debug metadata from PyG graph batching and add mixed file-union/single-contract regression coverage
+- **M4-A state:** RETRY_REQUIRED after repository-safe verification
+- **Full training:** NOT AUTHORIZED
