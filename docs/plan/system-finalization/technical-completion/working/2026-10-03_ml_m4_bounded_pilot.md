@@ -128,6 +128,25 @@ A passing M4 does **not** automatically authorize M5. Any full-horizon launch
 requires a separate explicit governance decision after reviewing M4 evidence
 and all still-open blockers, including R4-GAP-007.
 
+## M4-A implementation checkpoint
+
+Implemented on canonical `main`:
+
+- `docs/plan/ml-R4/scripts/p8_smoke_guarded_training_m4a.py`;
+- exact real guarded populations and D9/D11/D13/D14 run binding;
+- exactly 8 train micro-batches under accumulation=8;
+- exactly one optimizer/scheduler step;
+- exactly one MODEL_SELECTION batch;
+- BF16 CUDA autocast required;
+- finite loss/gradient checks inherited from `train_masked_epoch`;
+- CUDA peak allocation/reservation telemetry;
+- no checkpoint load and no durable checkpoint write;
+- output status `PASS_M4A_GUARDED_CUDA_SMOKE_REVIEW_REQUIRED`;
+- all later execution flags remain false pending review.
+
+The Phase-8 compatibility workflow compiles the M4-A driver. Protected-local
+execution remains the next action after repository-safe verification.
+
 ## Current stop line
 
 Implement and repository-test M4-A only. Do not execute the 8-epoch pilot yet.
