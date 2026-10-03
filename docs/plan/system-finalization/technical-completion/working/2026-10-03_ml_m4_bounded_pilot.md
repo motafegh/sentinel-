@@ -237,3 +237,36 @@ Repair:
 This is an ML batching-boundary repair only. R4-D-011/R4-D-013 protected-local
 artifacts remain immutable and byte-unchanged. M4-A remains unpassed until the
 repaired source is repository-verified and the protected-local smoke is rerun.
+
+
+## M4-B implementation checkpoint — repository-safe code complete
+
+Implemented on canonical `main`:
+
+- `ml/src/training/vnext_guarded_runner.py` — separate durable guarded runner;
+- historical `vnext_runner.py` remains untouched for G7/v9 reproduction;
+- guarded runner permits only two governed horizons:
+  - 2 epochs for M4-B recovery proof;
+  - 8 epochs for M4-C bounded dynamics;
+- exact D9/D11/D13/D14 binding, V10 model, logical-V3 populations and guarded
+  artifacts are reconstructed on every fresh/resume invocation;
+- checkpoint payload embeds the complete guarded binding;
+- resume requires exact `latest.pt`, exact run manifest/index binding, full
+  model/optimizer/scheduler/RNG restoration, and resumes at the next epoch;
+- invocation-level controlled pause is available only before the final epoch
+  so M4-B can prove durable restart without changing the immutable horizon;
+- bounded manifests explicitly retain
+  `full_training_authorized=false` and `g8_passed=false`;
+- repository-safe tests cover governed horizon rejection, changed guarded
+  lineage rejection, deterministic sampler epoch reconstruction, full
+  checkpoint/RNG roundtrip, and simulated atomic promotion failure with no
+  partial checkpoint left behind;
+- `p8_recover_guarded_training_m4b.py` performs the protected-local proof:
+  epoch 1 → durable pause → binding-drift rejection probe → exact resume →
+  epoch 2 completion.
+
+### M4-B stop line
+
+Repository-safe compatibility CI must pass before protected-local M4-B
+execution. A successful protected-local report must still be explicitly
+reviewed before M4-C becomes executable. Full training remains unauthorized.
