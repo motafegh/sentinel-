@@ -152,3 +152,42 @@ execution remains the next action after repository-safe verification.
 Implement and repository-test M4-A only. Do not execute the 8-epoch pilot yet.
 Do not add a generic full-training switch. Do not weaken
 `full_training_authorized=false`.
+
+
+## M4-A first protected-local execution — failed before optimization
+
+The first protected-local M4-A execution from source commit
+`5ce5adc4ec77046af18812199d8ad8b9dbf865f9` reached the real guarded
+TRAIN population and V10 model construction, then failed while PyG collated the
+first training batch:
+
+`KeyError: 'contract_names'`.
+
+No optimizer step completed and no durable checkpoint/report was promoted.
+
+Root cause:
+
+- accepted V10 file-union graphs intentionally carry
+  `graph.contract_names`;
+- accepted single-contract graphs intentionally do not;
+- the historical shared collate exclusion list already excluded
+  `contract_name` and `node_metadata`, but not the newer V10 provenance
+  fields;
+- PyG therefore treated `contract_names` as batchable graph data and required
+  it on every graph in a mixed batch;
+- the model does not consume `contract_names` or the other V10
+  extraction/provenance metadata.
+
+Repair:
+
+- extend the collate provenance exclusion contract to include V10-only
+  non-model metadata, including `contract_names`,
+  `graph_schema_version`, extractor identity and call-audit metadata;
+- preserve structural/model tensors `x`, `edge_index`, `edge_attr` and
+  ordinary PyG batch assignment unchanged;
+- add a regression test that batches one file-union V10 graph with one
+  single-contract V10 graph.
+
+This is an ML batching-boundary repair only. R4-D-011/R4-D-013 protected-local
+artifacts remain immutable and byte-unchanged. M4-A remains unpassed until the
+repaired source is repository-verified and the protected-local smoke is rerun.
