@@ -3,7 +3,7 @@
 **Date:** 2026-10-03  
 **Authorities:** R4-D-009 logical V3; R4-D-011 graph parent; R4-D-013 guarded-token physical acceptance; R4-D-014 bounded positive-only objective/evaluation boundary  
 **Entry:** M3 protected-local no-step preflight reviewed PASS  
-**State:** IN PROGRESS — contract fixed; M4-A mechanics smoke next
+**State:** IN PROGRESS — M4-A reviewed PASS; M4-B checkpoint/resume/recovery proof next
 
 ## Purpose
 
@@ -147,10 +147,56 @@ Implemented on canonical `main`:
 The Phase-8 compatibility workflow compiles the M4-A driver. Protected-local
 execution remains the next action after repository-safe verification.
 
+## M4-A reviewed closure — 2026-10-03
+
+The repaired protected-local rerun from source commit
+`cbc50e913458ce4df48888cb838d1655e53a47b8` passed with report status
+`PASS_M4A_GUARDED_CUDA_SMOKE_REVIEW_REQUIRED`.
+
+Bound local report:
+
+- path:
+  `data_module/data/r4-m4a-guarded-smoke-2026-10-03-b.json`;
+- SHA-256:
+  `3e6fee24e565b4647cb2ce0252d34f4d2fd3a3e890a448e25750194809cf4f6c`;
+- tracked worktree at evidence binding: clean.
+
+Observed mechanics:
+
+- exactly 8 train micro-batches;
+- exactly 1 optimizer step;
+- scheduler advanced 0 → 1;
+- BF16 CUDA execution on NVIDIA GeForce RTX 3070 Laptop GPU;
+- finite total/main/aux/phase2 losses;
+- one MODEL_SELECTION batch with 8 positive metric cells;
+- no historical checkpoint loaded;
+- no durable checkpoint written;
+- full-training, M4-B and M4-C authority flags remained false;
+- peak CUDA allocation approximately 5.57 GiB.
+
+The first attempt's `contract_names` PyG batching failure was repaired at the
+ML collate boundary without changing protected graph/token bytes. The successful
+rerun exercises that repaired source.
+
+### New bounded-pilot observation: fusion node truncation
+
+The successful smoke encountered a 2,759-node graph while frozen
+`fusion_max_nodes=2048`. The GNN still consumes the full sparse graph, but the
+dense cross-attention fusion projection intentionally drops nodes above the
+2,048-node cap.
+
+This does not invalidate M4-A mechanics because the cap is part of the frozen
+`four_eye_v8/v8.1` architecture, but it is now explicit M4 evidence and must
+remain visible during M4-C interpretation. It is not evidence of full-graph
+fusion coverage or model quality.
+
+**M4-A decision:** PASS.
+
 ## Current stop line
 
-Implement and repository-test M4-A only. Do not execute the 8-epoch pilot yet.
-Do not add a generic full-training switch. Do not weaken
+Proceed to M4-B repository-safe checkpoint/resume/recovery proof, then its
+protected-local bounded recovery execution. Do not execute M4-C yet. Do not add
+a generic full-training switch. Do not weaken
 `full_training_authorized=false`.
 
 
