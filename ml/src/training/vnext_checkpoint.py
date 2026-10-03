@@ -52,6 +52,23 @@ def capture_rng_state() -> dict[str, Any]:
     }
 
 
+def _rng_byte_tensor_on_cpu(value: Any, *, name: str) -> torch.Tensor:
+    """Normalize a serialized RNG tensor without weakening its type contract.
+
+    torch.load(..., map_location="cuda") legitimately remaps RNG-state tensors
+    together with model/optimizer tensors. PyTorch RNG restore APIs, however,
+    require CPU uint8 tensors. Normalize device only and fail closed on type or
+    dtype drift.
+    """
+    if not isinstance(value, torch.Tensor):
+        raise TypeError(f"{name} RNG state must be a torch.Tensor")
+    if value.dtype != torch.uint8:
+        raise TypeError(
+            f"{name} RNG state must use torch.uint8, got {value.dtype}"
+        )
+    return value.detach().cpu()
+
+
 def restore_rng_state(state: Mapping[str, Any]) -> None:
     """Restore RNG streams saved by :func:`capture_rng_state`."""
     required = {"python", "numpy", "torch_cpu", "torch_cuda_all"}
@@ -61,7 +78,9 @@ def restore_rng_state(state: Mapping[str, Any]) -> None:
 
     random.setstate(state["python"])
     np.random.set_state(state["numpy"])
-    torch.set_rng_state(state["torch_cpu"])
+    torch.set_rng_state(
+        _rng_byte_tensor_on_cpu(state["torch_cpu"], name="torch_cpu")
+    )
 
     cuda_states = state["torch_cuda_all"]
     if cuda_states is not None:
@@ -74,7 +93,11 @@ def restore_rng_state(state: Mapping[str, Any]) -> None:
                 "checkpoint CUDA RNG device count mismatch: "
                 f"{len(cuda_states)} != {torch.cuda.device_count()}"
             )
-        torch.cuda.set_rng_state_all(cuda_states)
+        normalized_cuda_states = [
+            _rng_byte_tensor_on_cpu(value, name=f"torch_cuda_all[{index}]")
+            for index, value in enumerate(cuda_states)
+        ]
+        torch.cuda.set_rng_state_all(normalized_cuda_states)
 
 
 def _settings_payload(settings: Any) -> dict[str, Any]:
@@ -250,5 +273,6 @@ __all__ = [
     "load_checkpoint",
     "restore_checkpoint",
     "restore_rng_state",
+    "_rng_byte_tensor_on_cpu",
     "sha256_file",
 ]
