@@ -31,8 +31,11 @@ from ml.src.training.vnext_epoch import (
 )
 from ml.src.training.vnext_guarded_binding import build_guarded_run_binding
 from ml.src.training.vnext_guarded_run_control import (
+    M4B_RECOVERY_EPOCHS,
+    M4C_PILOT_EPOCHS,
     guarded_optimizer_binding_config,
     validate_guarded_phase8_populations,
+    validate_guarded_pilot_settings,
 )
 from ml.src.training.vnext_model_factory import build_phase8_v10_model
 from ml.src.training.vnext_param_groups import build_parameter_groups
@@ -59,28 +62,11 @@ from ml.src.training.vnext_run_io import (
     validate_run_manifest,
 )
 
-M4B_RECOVERY_EPOCHS = 2
-M4C_PILOT_EPOCHS = 8
-_ALLOWED_GUARDED_HORIZONS = frozenset({M4B_RECOVERY_EPOCHS, M4C_PILOT_EPOCHS})
-
-
 def _finite(value: Any, name: str) -> float:
     numeric = float(value)
     if not math.isfinite(numeric):
         raise RuntimeError(f"{name} is not finite: {numeric}")
     return numeric
-
-
-def _validate_guarded_settings(settings: Phase8Settings) -> None:
-    if int(settings.epochs) not in _ALLOWED_GUARDED_HORIZONS:
-        raise ValueError(
-            "guarded Phase-8 runner permits only governed M4 horizons "
-            f"{sorted(_ALLOWED_GUARDED_HORIZONS)}; got {settings.epochs}"
-        )
-    if int(settings.batch_size) != 8:
-        raise ValueError("guarded M4 runner requires batch_size=8")
-    if int(settings.gradient_accumulation_steps) != 8:
-        raise ValueError("guarded M4 runner requires gradient_accumulation_steps=8")
 
 
 def _resolve_guarded_output_root(
@@ -169,7 +155,7 @@ def run_guarded_phase8_bounded(
     M4-B recovery proof. It does not alter the immutable run binding or horizon.
     """
 
-    _validate_guarded_settings(settings)
+    validate_guarded_pilot_settings(settings)
     if not torch.cuda.is_available():
         raise RuntimeError("guarded M4 execution requires CUDA")
     if not torch.cuda.is_bf16_supported():
