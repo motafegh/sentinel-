@@ -545,3 +545,23 @@ Append one entry for each work package.
 - **M3 state:** implementation complete; protected-local no-step preflight/review required before M3 closure
 - **M4 execution:** NOT YET AUTHORIZED
 - **Full training:** NOT AUTHORIZED
+
+
+### R4-LOG-20261003-032 — ML M3 protected-local guarded preflight reviewed PASS
+
+- **Workstream:** technical-completion ML M3 closure
+- **Source commit:** `ce4c496eff24feae5efba479f0a69a369ac23701`
+- **Report:** `data_module/data/r4-m3-guarded-preflight-2026-10-03-a.json`
+- **Report SHA-256:** `83dd558d552b238c8f5c767a00911c0763de15b609095c4d462e9a8159e87d7e`
+- **Status:** `PASS_M3_GUARDED_INTEGRATION_REVIEW_REQUIRED`
+- **Run-binding digest:** `5d2b913ecdd807cbf505a4a70b30e0ba4db6e28447d3e24a6122ad24fcfcf852`
+- **Authorities bound:** R4-D-009 logical V3 + R4-D-011 graph parent + R4-D-013 guarded tokens + R4-D-014 bounded objective/evaluation
+- **Active training population:** 932 contracts / 932 groups; 331 TRAIN_STRONG + 601 TRAIN_WEAK
+- **Active selection population:** 71 contracts / 71 groups
+- **Payload/model proof:** graph schema V10; 17/17 edge types; token shape [4,512]
+- **Bounded preflight contract:** 2 epochs; 117 loader batches/epoch; 15 planned optimizer steps/epoch; 30 planned total
+- **Optimizer steps executed:** 0
+- **Training executed:** NO
+- **M3:** COMPLETE
+- **M4:** READY for separately fixed bounded pilot engineering/review under R4-D-014
+- **G8/full training:** HOLD / NOT AUTHORIZED
