@@ -620,3 +620,20 @@ Append one entry for each work package.
 - **M4-C authorized:** NO
 - **Full training authorized:** NO
 - **Next action:** repository-safe compatibility verification, then protected-local 2-epoch pause/resume recovery proof.
+
+
+### R4-LOG-20261003-034 — M4-B first recovery attempt exposed RNG device-restore defect
+
+- **Workstream:** technical-completion ML M4-B
+- **Source commit:** `acd217c375e6065c3e44249b1cad91aa06bc8aee`
+- **Protected-local run root:** `data_module/data/r4-m4b-guarded-recovery-2026-10-03-a`
+- **Epoch 1:** completed and durable `latest.pt` written
+- **Resume:** FAILED before epoch 2
+- **Failure:** `TypeError: RNG state must be a torch.ByteTensor`
+- **Root cause:** `torch.load(..., map_location=cuda)` remapped saved RNG ByteTensors to CUDA, while PyTorch RNG restore APIs require CPU uint8 tensors
+- **Repair:** normalize RNG tensors to CPU while preserving strict uint8/type validation in `vnext_checkpoint.py`
+- **Protected DATA/representation artifacts changed:** NO
+- **PASS report written:** NO
+- **Failed run reuse:** PROHIBITED; use fresh `-b` attempt
+- **M4-C authorized:** NO
+- **Full training authorized:** NO
