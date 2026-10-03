@@ -320,3 +320,26 @@ def test_guarded_shaped_checkpoint_binding_rejects_changed_lineage(tmp_path: Pat
     changed["binding_digest_sha256"] = "b" * 64
     with pytest.raises(ValueError, match="resume binding mismatch"):
         assert_checkpoint_binding(checkpoint, changed)
+
+
+
+def test_rng_state_normalization_requires_uint8_cpu_tensor():
+    state = torch.get_rng_state().clone()
+    normalized = checkpoint_mod._rng_byte_tensor_on_cpu(
+        state,
+        name="torch_cpu",
+    )
+    assert normalized.device.type == "cpu"
+    assert normalized.dtype == torch.uint8
+    assert torch.equal(normalized, state)
+
+    with pytest.raises(TypeError, match="torch.Tensor"):
+        checkpoint_mod._rng_byte_tensor_on_cpu(
+            b"not-a-tensor",
+            name="torch_cpu",
+        )
+    with pytest.raises(TypeError, match="torch.uint8"):
+        checkpoint_mod._rng_byte_tensor_on_cpu(
+            torch.ones(4, dtype=torch.float32),
+            name="torch_cpu",
+        )
