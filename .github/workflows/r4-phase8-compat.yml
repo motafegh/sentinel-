@@ -87,6 +87,7 @@ jobs:
             docs/plan/ml-R4/scripts/p8_run_micro_smoke.py \
             docs/plan/ml-R4/scripts/p8_run_training.py \
             docs/plan/ml-R4/scripts/p8_preflight_guarded_training_m3.py
+            docs/plan/ml-R4/scripts/p8_smoke_guarded_training_m4a.py
           bash -n docs/plan/ml-R4/scripts/p8_run_micro_smoke.sh
           bash -n docs/plan/ml-R4/scripts/p8_run_training.sh
 
