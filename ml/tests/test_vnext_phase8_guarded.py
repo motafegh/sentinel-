@@ -15,6 +15,7 @@ from ml.src.datasets.vnext_logical_v3_guarded_dataset import (
     LogicalV3GuardedTrainingDataset,
     R4_D011_BINDING_DIGEST,
     R4_D013_BINDING_DIGEST,
+    vnext_collate_fn,
 )
 from ml.src.training.vnext_guarded_run_control import (
     R4_D014_OBJECTIVE_ID,
@@ -119,6 +120,58 @@ def _write_guarded_rep(root: Path, cid: str, *, effective_selector: str) -> dict
         "tokens_sha256": _sha(token_path),
         "sidecar_sha256": _sha(sidecar_path),
     }
+
+
+def test_guarded_collate_ignores_optional_v10_provenance_metadata():
+    """Mixed file-union/single-contract V10 graphs must batch by model tensors only."""
+
+    def graph(*, union: bool) -> Data:
+        value = Data(
+            x=torch.zeros((2, 12), dtype=torch.float32),
+            edge_index=torch.tensor([[0], [1]], dtype=torch.long),
+            edge_attr=torch.tensor([0], dtype=torch.long),
+        )
+        value.contract_name = "FILE_UNION:A|B" if union else "A"
+        if union:
+            value.contract_names = ["A", "B"]
+        value.graph_schema_version = "v10"
+        value.representation_extractor_version = V10_REPRESENTATION_EXTRACTOR_VERSION
+        value.unclassified_call_ir = []
+        value.classified_call_ir_counts = {"HIGH_LEVEL_CALL": 0}
+        value.emitted_call_edge_counts = {"HIGH_LEVEL_CALL": 0}
+        value.call_mapping_errors = []
+        return value
+
+    tokens = {
+        "input_ids": torch.zeros((4, 512), dtype=torch.long),
+        "attention_mask": torch.ones((4, 512), dtype=torch.long),
+    }
+    supervision = {
+        "targets": torch.tensor([1.0] + [float("nan")] * 9),
+        "effective_loss_mask": torch.tensor([True] + [False] * 9),
+        "outcome_metric_mask": torch.tensor([False] * 10),
+        "strength_codes": torch.tensor([2] + [0] * 9, dtype=torch.uint8),
+    }
+    batch = [
+        (graph(union=True), tokens, supervision, "a" * 64, "TRAIN_STRONG", "g1"),
+        (graph(union=False), tokens, supervision, "b" * 64, "TRAIN_STRONG", "g2"),
+    ]
+
+    graph_batch, token_batch, supervision_batch, contract_ids, roles, group_ids = (
+        vnext_collate_fn(batch)
+    )
+
+    assert graph_batch.num_graphs == 2
+    assert graph_batch.x.shape == (4, 12)
+    assert graph_batch.edge_index.shape == (2, 2)
+    assert graph_batch.edge_attr.shape == (2,)
+    assert not hasattr(graph_batch, "contract_names")
+    assert not hasattr(graph_batch, "graph_schema_version")
+    assert token_batch["input_ids"].shape == (2, 4, 512)
+    assert supervision_batch["targets"].shape == (2, 10)
+    assert contract_ids == ["a" * 64, "b" * 64]
+    assert roles == ["TRAIN_STRONG", "TRAIN_STRONG"]
+    assert group_ids == ["g1", "g2"]
 
 
 def _fixture(tmp_path: Path, monkeypatch):
