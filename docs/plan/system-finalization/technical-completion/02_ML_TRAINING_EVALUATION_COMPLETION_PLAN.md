@@ -150,7 +150,7 @@ If this changes R4 semantic policy, record it through the existing decision/ADR 
 
 ## 7. Work package M3 — final training-lineage integration
 
-**State:** `IN_PROGRESS` — fail-closed D9/D11/D13/D14 dataset, population, run-binding and explicit V10 model seams implemented; repository-safe compatibility CI passes; protected-local no-step M3 preflight is the remaining acceptance check.
+**State:** `COMPLETE` — repository-safe guarded seam plus protected-local no-step preflight reviewed PASS; exact D9/D11/D13/D14 binding digest `5d2b913ecdd807cbf505a4a70b30e0ba4db6e28447d3e24a6122ad24fcfcf852`; zero optimizer steps executed.
 
 After DATA acceptance and M2:
 
@@ -170,6 +170,8 @@ After DATA acceptance and M2:
 5. Ensure checkpoint metadata is sufficient for inference and downstream distillation lineage checks.
 
 ## 8. Work package M4 — preflight and bounded pilot
+
+**State:** `READY_FOR_BOUNDED_PILOT_DESIGN_AND_IMPLEMENTATION` — M3 is closed; R4-D-014 authorizes only a separately fixed bounded pilot, never the full horizon.
 
 Before a long run:
 
