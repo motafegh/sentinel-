@@ -16,10 +16,10 @@ from ml.src.training.vnext_checkpoint import (
     load_checkpoint,
     restore_checkpoint,
 )
-from ml.src.training.vnext_guarded_runner import (
+from ml.src.training.vnext_guarded_run_control import (
     M4B_RECOVERY_EPOCHS,
     M4C_PILOT_EPOCHS,
-    _validate_guarded_settings,
+    validate_guarded_pilot_settings,
 )
 from ml.src.training.vnext_phase8_config import Phase8Settings
 from ml.src.training.vnext_run_control import (
@@ -234,11 +234,11 @@ def test_resume_reconciles_checkpoint_index_after_latest_crash_window(tmp_path: 
 
 
 def test_guarded_runner_allows_only_governed_m4_horizons():
-    _validate_guarded_settings(Phase8Settings(epochs=M4B_RECOVERY_EPOCHS))
-    _validate_guarded_settings(Phase8Settings(epochs=M4C_PILOT_EPOCHS))
+    validate_guarded_pilot_settings(Phase8Settings(epochs=M4B_RECOVERY_EPOCHS))
+    validate_guarded_pilot_settings(Phase8Settings(epochs=M4C_PILOT_EPOCHS))
     for epochs in (1, 3, 99, 100):
         with pytest.raises(ValueError, match="governed M4 horizons"):
-            _validate_guarded_settings(Phase8Settings(epochs=epochs))
+            validate_guarded_pilot_settings(Phase8Settings(epochs=epochs))
 
 
 def test_atomic_checkpoint_failed_promotion_leaves_no_partial_file(
