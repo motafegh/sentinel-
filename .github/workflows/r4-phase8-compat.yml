@@ -78,16 +78,17 @@ jobs:
             ml/src/training/vnext_run_control.py \
             ml/src/training/vnext_guarded_run_control.py \
             ml/src/training/vnext_guarded_binding.py \
+            ml/src/training/vnext_guarded_runner.py \
             ml/src/training/vnext_run_io.py \
             ml/src/training/vnext_runner.py \
             ml/tests/test_vnext_phase8_compat.py \
             ml/tests/test_vnext_phase8_runner.py \
             ml/tests/test_vnext_phase8_guarded.py \
-            ml/tests/test_vnext_phase8_guarded.py \
             docs/plan/ml-R4/scripts/p8_run_micro_smoke.py \
             docs/plan/ml-R4/scripts/p8_run_training.py \
-            docs/plan/ml-R4/scripts/p8_preflight_guarded_training_m3.py
-            docs/plan/ml-R4/scripts/p8_smoke_guarded_training_m4a.py
+            docs/plan/ml-R4/scripts/p8_preflight_guarded_training_m3.py \
+            docs/plan/ml-R4/scripts/p8_smoke_guarded_training_m4a.py \
+            docs/plan/ml-R4/scripts/p8_recover_guarded_training_m4b.py
           bash -n docs/plan/ml-R4/scripts/p8_run_micro_smoke.sh
           bash -n docs/plan/ml-R4/scripts/p8_run_training.sh
 
@@ -97,4 +98,5 @@ jobs:
         run: |
           python -m pytest -q -c /dev/null \
             ml/tests/test_vnext_phase8_compat.py \
-            ml/tests/test_vnext_phase8_runner.py
+            ml/tests/test_vnext_phase8_runner.py \
+            ml/tests/test_vnext_phase8_guarded.py
