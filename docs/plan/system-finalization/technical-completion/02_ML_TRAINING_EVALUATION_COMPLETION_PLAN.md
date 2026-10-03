@@ -171,7 +171,7 @@ After DATA acceptance and M2:
 
 ## 8. Work package M4 — preflight and bounded pilot
 
-**State:** `READY_FOR_BOUNDED_PILOT_DESIGN_AND_IMPLEMENTATION` — M3 is closed; R4-D-014 authorizes only a separately fixed bounded pilot, never the full horizon.
+**State:** `IN_PROGRESS_M4B` — M3 is closed and M4-A protected-local CUDA mechanics smoke reviewed PASS; M4-B checkpoint/resume/recovery proof is the active boundary. R4-D-014 authorizes only this bounded pilot program, never the full horizon.
 
 Before a long run:
 
