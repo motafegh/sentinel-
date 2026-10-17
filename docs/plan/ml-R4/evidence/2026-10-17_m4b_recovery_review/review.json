@@ -1,0 +1,69 @@
+{
+  "schema": "sentinel-r4-phase8-m4b-recovery-review-v1",
+  "status": "PASS_M4B_RECOVERY_M4C_EXECUTION_AUTHORIZED",
+  "review_date": "2026-10-17",
+  "authorities": {
+    "logical": "R4-D-009",
+    "graph_parent": "R4-D-011",
+    "guarded_tokens": "R4-D-013",
+    "objective_evaluation": "R4-D-014"
+  },
+  "protected_local_evidence": {
+    "report_path": "data_module/data/r4-m4b-guarded-recovery-2026-10-03-b.json",
+    "report_sha256": "2d218324a1c74dc1b6747dd77ce7c751789a213bafca24a255db11a48294ab38",
+    "source_commit": "ce6a2e5d85b6ae1c14080ff48d8c3c33c9c75b0d",
+    "run_binding_digest_sha256": "07037c62e0279f81959599b764e4dd2b4044100c51f4c256af78a35c2227d5f1",
+    "recovery_horizon_epochs": 2,
+    "pause": {
+      "completed_epoch": 1,
+      "next_epoch": 2,
+      "global_optimizer_steps": 15,
+      "latest_checkpoint_sha256": "56a0ea198fce459c7b0a613f04bceb9c7b5cb5ef4da458400fc7c584d10089e5"
+    },
+    "resume": {
+      "completed_epoch": 2,
+      "global_optimizer_steps": 30,
+      "binding_unchanged": true,
+      "final_checkpoint_sha256": "4f115c565e27dc86d6f446a12e991be20b0650608f37c2ea08f76bbff9262086",
+      "latest_checkpoint_sha256": "71a13988383e58e22ac366264167bcde97234b1ef840a7b094e24c1043dfad61",
+      "best_positive_nll_checkpoint_sha256": "756fd2f6401721fc0347bc6fa85df70fe6035a704dd136b62644cab452c957a1",
+      "milestone_epoch_1_sha256": "dfa2c9dbffd744c5fdd287cc14a69948373e10a36e796c00430c1b514d0d9e69"
+    },
+    "binding_drift_rejected": true,
+    "deterministic_sampler_recovery": {
+      "epoch": 2,
+      "indices": 932,
+      "repeat_identical": true,
+      "sequence_sha256": "b7e47b26a9b1ac3a19be4b3601043fdfe31af37f7e1af6061e1f62d0fa7046ce"
+    },
+    "historical_checkpoint_loaded": false,
+    "runtime_seconds": 139.3036017939994
+  },
+  "repository_verification": {
+    "focused_tests_passed": 17,
+    "focused_tests_failed": 0,
+    "m4c_driver_compile_passed": true,
+    "m4c_compatibility_workflow_run_id": 39048606424,
+    "m4c_compatibility_workflow_passed": true
+  },
+  "review": {
+    "checkpoint_save_resume_contract": "PASS",
+    "changed_binding_rejection": "PASS",
+    "model_optimizer_scheduler_rng_restore": "PASS",
+    "exact_next_epoch_step_resume": "PASS",
+    "deterministic_sampler_recovery": "PASS",
+    "atomic_checkpoint_failure_contract": "PASS_REPOSITORY_TEST",
+    "historical_runner_preserved": "PASS",
+    "m4b_decision": "PASS"
+  },
+  "next_boundary": {
+    "m4c_execution_authorized": true,
+    "m4c_fixed_epochs": 8,
+    "m4c_expected_optimizer_steps_per_epoch": 15,
+    "m4c_expected_global_optimizer_steps": 120,
+    "m4d_review_required_after_m4c": true,
+    "m5_execution_authorized": false,
+    "full_training_authorized": false,
+    "g8_passed": false
+  }
+}
