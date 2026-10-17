@@ -1,6 +1,6 @@
 # ML Training / Evaluation Completion Plan
 
-**Status:** ACTIVE — M0/M1/M2 complete; R4-D-014 accepted; M3 guarded-lineage integration is the active boundary  
+**Status:** ACTIVE — M0-M4 complete; R4-D-015 accepts the bounded pilot and keeps M5/full training on HOLD; R4-GAP-007 independent evaluation evidence is the active boundary  
 **Parent:** `00_MASTER_TECHNICAL_COMPLETION_ROADMAP.md`  
 **Primary authority:** R4 Phase 8–10 governance under `docs/plan/ml-R4/`  
 
@@ -29,7 +29,7 @@ Accepted physical input boundary:
 
 - R4-D-013 accepts `r4-v10-v26-guarded-tokens-v1` with binding digest `9885d7b88a46aff4102741d63eeaa0bd6968f0857f7bca6a389662bfaa158881`;
 - R4-D-011 remains the immutable V10 graph/control parent;
-- physical DATA/representation completion no longer blocks M0/M1, but it does not itself authorize optimization.
+- physical DATA/representation completion no longer blocks ML execution, but it does not itself authorize full training.
 
 Current evidence limitation:
 
@@ -37,7 +37,8 @@ Current evidence limitation:
 - candidate #2 has only primary-review support and requires genuinely independent agreement before authoritative negative truth can change;
 - accepted negatives, if any, are evaluation-only unless a later policy explicitly grants optimizer authority;
 - threshold-fit, calibration-fit and untouched-acceptance roles remain unsupported/empty;
-- G8 is open and full training is unauthorized;
+- R4-D-015 confirms that M4 bounded mechanics/recovery/dynamics pass but does not establish discrimination or false-positive behavior;
+- G8 is open and M5/full training is unauthorized;
 - Run12 weights, optimizer state, thresholds and calibration are historical operational state and must not seed repaired Phase-8 truth.
 
 ## 3. Primary source owners to audit
@@ -62,7 +63,7 @@ At minimum:
 
 ## 4. Work package M0 — current training-seam audit
 
-**State:** `COMPLETE` — source audit closed 2026-10-01; canonical runner remains G7/v9-bound, R4-D-013 integration requirements are explicitly mapped for M3, and role/loss/checkpoint boundaries are verified fail-closed
+**State:** `COMPLETE` — source audit closed 2026-10-01; canonical historical runner remains G7/v9-bound, R4-D-013 integration requirements were mapped for M3, and role/loss/checkpoint boundaries were verified fail-closed
 
 Before changing objective or launching a run:
 
@@ -77,7 +78,7 @@ Before changing objective or launching a run:
 
 ## 5. Work package M1 — supervision/evaluation evidence investigation
 
-**State:** `COMPLETE_WITH_R4_GAP_007_OPEN` — positive-only limits quantified; PU/nnPU not justified under current labeling-mechanism/class-prior evidence; supported/unsupported evaluation roles mapped; M2 recommendation ready
+**State:** `COMPLETE_WITH_R4_GAP_007_OPEN` — positive-only limits quantified; PU/nnPU not justified under current labeling-mechanism/class-prior evidence; supported/unsupported evaluation roles mapped; R4-GAP-007 remains the active evidence continuation
 
 This is the central unresolved ML design responsibility.
 
@@ -87,7 +88,7 @@ Investigate separately:
 
 - preserve candidate #1 as `NOT_CONFIRMED`;
 - do not let the primary reviewer self-verify candidate #2;
-- if independent review is available, process it through the existing R4 evidence protocol;
+- process candidate #2 through genuinely independent review from the committed blind bundle;
 - any accepted negative remains evaluation-only until a separate optimizer-authority decision exists;
 - do not manufacture additional negatives from absence, tool silence, old all-zero labels, model confidence, or unlabeled data.
 
@@ -100,6 +101,8 @@ Quantify what the existing positive-only BCE regime can and cannot establish:
 - collapse/saturation modes;
 - class imbalance and weak-positive effects;
 - whether selection by positive NLL/probability alone can choose a useful checkpoint without discrimination evidence.
+
+M4-C now supplies bounded evidence that positive fit can become near-saturated by epoch 8. That strengthens the need for negative-side observability; it does not establish classifier quality.
 
 ### M1-C — candidate alternative objectives
 
@@ -171,30 +174,31 @@ After DATA acceptance and M2:
 
 ## 8. Work package M4 — preflight and bounded pilot
 
-**State:** `IN_PROGRESS_M4B` — M3 is closed and M4-A protected-local CUDA mechanics smoke reviewed PASS; M4-B checkpoint/resume/recovery proof is the active boundary. R4-D-014 authorizes only this bounded pilot program, never the full horizon.
+**State:** `COMPLETE` — R4-D-015 accepts M4-A/B/C bounded mechanics, recovery and positive-fit dynamics evidence. M4-C completed 8 epochs / 120 optimizer steps under the exact guarded binding; no full-training authority follows.
 
-Before a long run:
+Completed evidence includes:
 
 - CPU/static contract tests;
 - dataset-role/count assertions;
 - deterministic sampler checks;
-- one/few-batch forward/backward smoke;
-- BF16 parity contract;
-- gradient finiteness;
-- optimizer-step accounting;
-- checkpoint save/resume equivalence;
-- selection-metric generation;
-- GPU memory peak and runtime measurement;
-- failure/restart behavior;
+- one-step BF16 CUDA forward/backward smoke;
+- gradient finiteness and optimizer-step accounting;
+- checkpoint save/resume/RNG recovery proof;
+- fail-closed changed-binding rejection;
+- positive-only selection-metric generation;
+- GPU memory/runtime measurement;
+- bounded eight-epoch dynamics pilot;
 - no Run12 weight/state contamination.
 
-If the objective itself is new, run a bounded pilot long enough to expose obvious collapse/saturation before authorizing the expensive horizon.
+M4-C reached strong positive fit (`positive_nll≈0.00109`, mean positive probability `≈0.9989`) without negative-side observability. That is accepted as bounded dynamics evidence only.
 
-**Exit:** explicit launch/no-launch record.
+**Exit:** R4-D-015 / `PASS_BOUNDED_PILOT_FULL_TRAINING_STILL_HELD`.
 
 ## 9. Work package M5 — repaired training execution
 
-Only after explicit launch authority:
+**State:** `BLOCKED / NOT AUTHORIZED` — R4-D-015 keeps the full horizon on HOLD. R4-GAP-007 confirmed-negative evidence remains zero, R4-D-014 remains the bounded objective/evaluation authority, and G8 remains open.
+
+Only after a new explicit launch authority:
 
 - run from fresh initialization under the frozen architecture unless a later decision says otherwise;
 - retain deterministic seeds and exact environment/runtime identities;
@@ -204,13 +208,20 @@ Only after explicit launch authority:
 - do not tune on internal-audit/acceptance roles;
 - do not change thresholds/calibration during the training run unless the accepted design explicitly includes a separate eligible fitting role.
 
-The nominal 100-epoch setting is a configuration value, not an obligation to complete 100 epochs if the accepted stopping/selection policy chooses otherwise.
+The nominal 100-epoch setting is a configuration value, not current authority. Do not start M5 merely because M4 passed.
+
+### Re-entry condition for M5 review
+
+1. Continue R4-GAP-007 from the committed hardened queue, beginning with genuinely independent verification of candidate #2.
+2. Record any newly accepted negative as evaluation-only unless a separate decision grants optimizer authority.
+3. Reassess objective/evaluation/full-training authority explicitly after new evidence exists.
+4. Do not infer that one or a few negatives automatically support stable FPR estimation, threshold fitting or calibration.
 
 ## 10. Work package M6 — checkpoint selection and evidence-qualified evaluation
 
-Evaluate only with eligible populations.
+Evaluate only with eligible populations and only after an authorized candidate exists.
 
-Potential evidence categories, depending on what M1/M2 establish:
+Potential evidence categories, depending on what later evidence establishes:
 
 - positive NLL/probability/recall diagnostics;
 - class-specific positive coverage;
@@ -258,33 +269,13 @@ Inference receives a candidate only after M7 authorizes it.
 
 Required handoff:
 
-- checkpoint SHA-256/path/version;
-- architecture/config metadata;
-- class schema/order;
-- graph/token/preprocessing lineage;
-- raw-score semantics;
-- approved threshold/tier artifact if any;
-- calibration artifact if any;
-- model hash/provenance requirements;
-- unsupported/restricted classes;
-- rollback identity.
+- exact operational checkpoint identity and digest;
+- architecture/config/version;
+- DATA/representation lineage;
+- class-support matrix;
+- threshold/calibration artifact identities where supported;
+- verdict/policy restrictions;
+- rollback checkpoint;
+- downstream ZKML consequence.
 
-## 13. Stop/fail conditions
-
-Stop and investigate if:
-
-- guarded-token physical lineage is not accepted;
-- role leakage appears;
-- target zero enters optimization without explicit authority;
-- unlabeled cells are silently treated as negatives;
-- objective assumptions cannot be defended;
-- thresholds/calibration are fitted on reused/ineligible populations;
-- checkpoint metadata cannot bind its training lineage;
-- Run12 state contaminates repaired training;
-- non-finite gradients/loss recur unexplained;
-- selection metric rewards a degenerate solution with no independent way to detect it;
-- proposed promotion exceeds available evidence.
-
-## 14. Completion criteria
-
-ML is complete only when SENTINEL reaches an explicit, reproducible terminal model decision and the operational checkpoint status is unambiguous. “Training finished” alone is not completion, and lack of sufficient evidence is allowed to end in `HOLD`, `RESEARCH_ONLY`, or `REJECTED` rather than a forced promotion.
+Until that handoff exists, Run12 remains the operational baseline and M4 checkpoints remain bounded research evidence only.
