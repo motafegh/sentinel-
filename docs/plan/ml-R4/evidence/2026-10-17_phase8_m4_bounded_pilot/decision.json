@@ -1,0 +1,91 @@
+{
+  "schema": "sentinel-r4-phase8-m4d-bounded-pilot-decision-v1",
+  "decision_id": "R4-D-015",
+  "status": "PASS",
+  "decision": "PASS_BOUNDED_PILOT_FULL_TRAINING_STILL_HELD",
+  "date": "2026-10-17",
+  "authorities": {
+    "logical_data": "R4-D-009",
+    "graph_parent": "R4-D-011",
+    "guarded_tokens": "R4-D-013",
+    "objective_evaluation": "R4-D-014"
+  },
+  "m4": {
+    "m4a": {
+      "status": "PASS",
+      "report_sha256": "3e6fee24e565b4647cb2ce0252d34f4d2fd3a3e890a448e25750194809cf4f6c"
+    },
+    "m4b": {
+      "status": "PASS",
+      "report_sha256": "2d218324a1c74dc1b6747dd77ce7c751789a213bafca24a255db11a48294ab38",
+      "run_binding_digest_sha256": "07037c62e0279f81959599b764e4dd2b4044100c51f4c256af78a35c2227d5f1"
+    },
+    "m4c": {
+      "status": "PASS",
+      "report_path": "data_module/data/r4-m4c-guarded-pilot-2026-10-17-a.json",
+      "report_sha256": "7293cf921e9cc5a09626a164f539cef1e800db860b47f10a5946d82be6d6409f",
+      "source_commit": "a39ef444c9a0204bdccf0ef978a91fa6a16f8075",
+      "run_binding_digest_sha256": "c3caec1feb1862b9db18df111b1a266a1c842daf77b6842b3cac08489f796731",
+      "epochs": 8,
+      "optimizer_steps_per_epoch": 15,
+      "executed_optimizer_steps": 120,
+      "runtime_seconds": 568.8996203229981,
+      "cuda_peak_allocated_mb": 6209.51,
+      "best_positive_nll": {
+        "epoch": 8,
+        "value": 0.001088443212211132,
+        "scope": "positive_fit_diagnostic_only"
+      },
+      "positive_fit_summary": {
+        "positive_nll_first": 0.38743388652801514,
+        "positive_nll_last": 0.001088443212211132,
+        "mean_positive_probability_first": 0.6831893920898438,
+        "mean_positive_probability_last": 0.9989205002784729,
+        "positive_recall_first": 0.98591548204422,
+        "positive_recall_last": 1.0
+      },
+      "checkpoint_sha256": {
+        "best_positive_nll": "f1d7a6d43f4a5f43a83abf343a372efc553e7d08c6b865d31e88d26adadeb854",
+        "final": "2dbc9c765f7fce28bc2b2a4d756fd602a7396712d349aae0ccf5650df7bc9ba6",
+        "latest": "7363104706f6a35ab53c2a2a3aa5d5c055199df3eda13a57e7f8d0f59c1b3a5e",
+        "epoch_004_milestone": "3f71b0ae6c2ff14062b85afd017140381eaa30b928d7ef64b9c06885f413ce8b"
+      }
+    }
+  },
+  "bounded_pilot_findings": {
+    "optimization_mechanics_stable": true,
+    "checkpoint_recovery_proven": true,
+    "positive_fit_improved": true,
+    "non_finite_or_runaway_failure_observed": false,
+    "historical_checkpoint_loaded": false,
+    "threshold_tuning_performed": false,
+    "calibration_fit_performed": false,
+    "untouched_acceptance_used": false,
+    "discrimination_established": false,
+    "false_positive_behavior_established": false,
+    "classifier_quality_established": false
+  },
+  "known_limitations": {
+    "fusion_max_nodes": 2048,
+    "observed_graph_nodes_above_fusion_cap": 2759,
+    "interpretation": "The sparse GNN processes the full graph, while dense cross-attention fusion remains capped at 2048 nodes. M4 does not establish full-node fusion coverage."
+  },
+  "blocking_evidence": {
+    "gap": "R4-GAP-007",
+    "confirmed_negative_cells": 0,
+    "candidate_1": "NOT_CONFIRMED",
+    "candidate_2": "PRIMARY_SUPPORT_ONLY_INDEPENDENT_VERIFICATION_PENDING",
+    "threshold_calibration_untouched_support": "UNSUPPORTED_EMPTY",
+    "reason_for_hold": "Positive-only fit cannot establish discrimination, false-positive behavior, threshold quality, calibration, or production model quality."
+  },
+  "full_training_authorized": false,
+  "m5_execution_authorized": false,
+  "g8_passed": false,
+  "production_promotion_authorized": false,
+  "inference_promotion_authorized": false,
+  "zkml_promotion_authorized": false,
+  "next_boundary": {
+    "primary": "Continue R4-GAP-007 from the committed hardened queue, beginning with genuinely independent verification of candidate #2.",
+    "after_new_evidence": "Revisit the objective/evaluation/full-training decision under a new explicit governance review. One or a few negatives do not automatically authorize FPR estimates, thresholds, calibration, or M5."
+  }
+}
