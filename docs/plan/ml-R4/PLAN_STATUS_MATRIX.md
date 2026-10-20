@@ -1,6 +1,6 @@
 # R4 Plan Status Matrix
 
-**Scope:** canonical R4 execution status on `main`. Historical G0–G7 evidence remains valid for the immutable `sentinel-r4-vnext-v1` lineage. Phase 8 remains `IN_PROGRESS`; G8 is not passed and full training is unauthorized. Repaired-v2 physical source/representation evidence remains accepted under R4-D-008, corrected logical V3 remains accepted under R4-D-009, and the exact protected-local V10 V2.6 representation root is physically accepted under R4-D-011 with binding digest `d9f925588913e66476cfbc097bace7daa7e673295fe2a243760313d0bef5ebdd`. The hardened 2026-08-16 Git-safe snapshot remains the accepted pre-pilot logical evidence boundary at `44fbb9c1d2033be8002fe404d650cf09f08b0f29`. R4-GAP-007 is separately in progress: candidate #1 is `NOT_CONFIRMED`; candidate #2 primary review supports `CONFIRMED_NEGATIVE` but still requires genuinely independent agreement, so confirmed negatives remain zero. R4-D-010 preserves v9 for historical reproduction while prohibiting it for the new full run. V2.6 Stages A-D and the complete V4 audit pass for 22,540 identities; all 355 current structural drifts are reconciled as 349 persistent-storage WRITE corrections plus 6 exact index-equivalent graphs with zero unexplained drift. R4-D-012 promotes `target_aware_guarded_v1`; R4-D-013 now physically accepts the exact full guarded-token successor with binding digest `9885d7b88a46aff4102741d63eeaa0bd6968f0857f7bca6a389662bfaa158881`, while R4-D-011 remains the immutable graph/control parent. The cross-module execution controller is `docs/plan/system-finalization/technical-completion/00_MASTER_TECHNICAL_COMPLETION_ROADMAP.md`. DATA/representation completion is closed under R4-D-013; ML M0-M3 are complete; the immediate workstream is the separately bounded M4 pilot under R4-D-014.
+**Scope:** canonical R4 execution status on `main`. Historical G0–G7 evidence remains valid for immutable `sentinel-r4-vnext-v1`. Phase 8 remains `IN_PROGRESS`; G8 is not passed and full training is unauthorized. R4-D-009 is the accepted logical V3 authority; R4-D-011 accepts the exact V10/V2.6 graph/control root; R4-D-013 accepts the exact guarded-token successor; R4-D-014 limits ML execution to the bounded positive-only objective/evaluation contract; and R4-D-015 closes M4 with `PASS_BOUNDED_PILOT_FULL_TRAINING_STILL_HELD`. M0-M4 are complete. The active Phase-8 blocker is R4-GAP-007: confirmed negatives remain zero and candidate #2 remains UNKNOWN/PENDING_REVIEW/target `None`. Before independent candidate #2 review can resume, the neutral `CallToUnknown` class-definition inconsistency between the broad locked taxonomy and narrower operational crosswalks must be resolved. M5/full training remains HOLD.
 
 | Phase | File | Status | Entry condition | Exit gate | Notes |
 |---:|---|---|---|---|---|
@@ -12,8 +12,8 @@
 | 5 | `phases/06_PHASE_5_DATA_VNEXT_POLICY_AND_DESIGN.md` | PASSED | G4 | G5 | `data-vnext-policy-v1`; eight classes enabled, GasException/UnusedReturn disabled; no blanket negatives; G5 PASS |
 | 6 | `phases/07_PHASE_6_PARTITIONS_AND_ACCEPTANCE_FREEZE.md` | PASSED | G5 | G6 | Historical `r4-vnext-roles-v1` frozen; threshold/calibration/untouched acceptance unsupported/empty; G6 PASS |
 | 7 | `phases/08_PHASE_7_DATA_VNEXT_IMPLEMENTATION.md` | PASSED | G6 | G7 | Historical `sentinel-r4-vnext-v1` / 21,657 representations / 64,971 files passed G7; immutable historical evidence |
-| 8 | `phases/09_PHASE_8_EXISTING_MODEL_RETRAINING.md` | IN_PROGRESS | G7 | G8 | Repaired-v2 physical DATA, logical V3, R4-D-011 V10 graphs, and R4-D-013 guarded tokens are accepted. R4-D-014 fixes an evidence-limited positive-only control/evaluation contract and authorizes M3 integration plus later bounded M4 pilot only. R4-GAP-007 remains open; full training is unauthorized. |
-| 9 | `phases/10_PHASE_9_EVALUATION_CALIBRATION_AND_POLICY.md` | WAITING | G8 | G9 | Current threshold/calibration support remains unavailable |
+| 8 | `phases/09_PHASE_8_EXISTING_MODEL_RETRAINING.md` | IN_PROGRESS | G7 | G8 | R4-D-011 V10 graphs and R4-D-013 guarded tokens are accepted. R4-D-014 defines bounded positive-only control/evaluation. R4-D-015 closes M4 but keeps M5/full training on HOLD. R4-GAP-007 semantic-definition/evaluation evidence remains unresolved. |
+| 9 | `phases/10_PHASE_9_EVALUATION_CALIBRATION_AND_POLICY.md` | WAITING | G8 | G9 | Threshold/calibration support remains unavailable |
 | 10 | `phases/11_PHASE_10_ACCEPTANCE_PROMOTION_AND_ROLLBACK.md` | WAITING | G9 | G10 | Untouched acceptance remains unsupported/empty/frozen |
 
 ## Canonical `main` Phase-8 boundary
@@ -21,32 +21,29 @@
 | Layer | State | Meaning |
 |---|---|---|
 | Historical v1 / G7 | PASSED / immutable | `sentinel-r4-vnext-v1`, `r4-vnext-roles-v1`, graph schema v9 remain reproducible historical evidence |
-| Repaired-v2 physical source/representations | ACCEPTED / immutable historical and reproducibility evidence | 22,540 contracts; 67,620 graph/token/sidecar files; zero missing/invalid; physical binding digest `16dd4a3f98c34e52e5c411b39268361881efede07e8f3f52d0c060dd1c5bb6dd`; v9 is not eligible for a new full run under R4-D-010 |
-| Repaired-v2 grouping/roles | SUPERSEDED FOR FUTURE RESEARCH | V2 address-literal grouping produced a 10,327-contract DIVE component; keep only as historical logical evidence |
-| Logical V3 grouping/roles/publication | ACCEPTED | 22,394 groups; max group size 7; 146 normalized-code edges; zero address-authority edges; semantic counts and physical binding unchanged |
-| V3 evidence implementation | HARDENED | MODEL_SELECTION/INTERNAL_AUDIT reporting separated; snapshot coherence fail-closed; sensitivity/selector/queue reports lineage-bound; queue globally group-unique; explicit source-family IDs source-namespaced |
-| Hardened protected-local V3 research | REGENERATED / DURABLE SNAPSHOT COMMITTED | Acceptance, sensitivity, CPU selector, globally unique queue, and CUDA comparison all regenerated from source commit `83bd566b9...`; final snapshot at `docs/plan/ml-R4/evidence/2026-08-15_phase8_logical_v3/` passed coherence and SHA verification and was committed at `44fbb9c1d...` |
-| Confirmed-negative evaluation | IN_PROGRESS | Candidate #1 is `NOT_CONFIRMED`. Candidate #2 primary review supports `CONFIRMED_NEGATIVE`, but authoritative truth remains UNKNOWN / PENDING_REVIEW / target `None` until a genuinely independent reviewer agrees. Accepted negatives, if any, remain evaluation-only. |
-| Historical V10 V2.3/V2.4 diagnostics | PRESERVED / NOT PHYSICALLY ACCEPTED | V2.3 is the frozen structural reference. The later protected V2.4 candidate completed the 26-contract parse-only repair: 22,540 identities, exact accepted-V9 token bytes, zero parse-only artifacts, zero unclassified call IR, and the required 22,539 Slither-0.10 + 1 Slither-0.11.5 runtime split. These are diagnostic/history roots, not current physical authority. |
-| V10 V2.5 bounded structural correction | PASSED / HISTORICAL | Extractor `v2.5-r4-call-semantics-deterministic-cfg`; three fresh 20-identity generations under exact Slither 0.10.0; 8 exact node-index-invariant graph-equivalence identities + 12 deterministic persistent-storage WRITE corrections; bounded verifier passed. V2.6 later superseded V2.5 as current physical authority. |
-| Historical V10 V2.5 full-candidate gate | BLOCKED AT STAGE E / PRESERVED | Protected-local Stages A-D passed, but Stage E found 311 raw non-parse-only drifts and left 298 outside the approved bounded evidence classes. This historical failure motivated V2.6 and is not current physical authority. |
-| V10 V2.6 physical representation | ACCEPTED / IMMUTABLE LOCAL | R4-D-011 accepts the exact 22,540-identity root and digest `d9f925588913e66476cfbc097bace7daa7e673295fe2a243760313d0bef5ebdd`. V4 re-proves all 355 current drifts as 349 WRITE corrections plus 6 index-equivalent graphs with zero unexplained drift. Runtime split is 22,539 Slither-0.10 + one Slither-0.11.5 exception; all tokens are byte-identical to accepted V9. |
-| Guarded-token physical successor | ACCEPTED / IMMUTABLE LOCAL | R4-D-013 accepts `r4-v10-v26-guarded-tokens-v1` for all 22,540 identities with digest `9885d7b8...`: 14,751 guarded selections and 7,789 exact historical fallbacks. R4-D-011 remains the immutable V10 graph/control parent. |
-| Objective/evaluation boundary | ACCEPTED / LIMITED | R4-D-014 retains masked positive BCE only as a bounded control, interprets MODEL_SELECTION as positive-fit diagnostics only, rejects current PU/negative authority, and keeps threshold/calibration/untouched/promotion unsupported. |
-| M3 guarded integration | COMPLETE | Protected-local no-step preflight passed at `ce4c496e...`: exact D9/D11/D13/D14 run binding `5d2b913e...`, V10 17-edge model, 932 active train groups, 71 active selection groups, zero optimizer steps. |
-| M4 bounded pilot | READY / NOT YET EXECUTED | R4-D-014 permits only a separately fixed bounded mechanics/dynamics/recovery pilot after M3 review. Full-horizon execution remains prohibited. |
-| Full training / G8 | HOLD | Physical DATA, bounded objective/evaluation and exact guarded integration are accepted, but R4-GAP-007 remains open, M4 pilot/launch evidence is incomplete, unsupported threshold/calibration/untouched roles remain empty, and no explicit full-training authorization exists. |
+| Repaired-v2 physical source/representations | ACCEPTED / immutable historical and reproducibility evidence | 22,540 contracts; 67,620 graph/token/sidecar files; physical binding digest `16dd4a3f...`; v9 is not eligible for a new full run under R4-D-010 |
+| Logical V3 grouping/roles/publication | ACCEPTED | R4-D-009: 22,394 groups, max group size 7, 146 normalized-code edges, zero address-authority edges |
+| Hardened V3 evidence snapshot | ACCEPTED / immutable snapshot | `docs/plan/ml-R4/evidence/2026-08-15_phase8_logical_v3/`, snapshot commit `44fbb9c1d...`, `coherence=PASS` |
+| Confirmed-negative evaluation | IN_PROGRESS / DEFINITION-BLOCKED | Candidate #1 is `NOT_CONFIRMED`. Candidate #2 primary supports a negative but remains UNKNOWN/PENDING_REVIEW/target `None`. Three recent external attempts are non-authoritative. `CallToUnknown` semantic-definition alignment must complete before a new clean independent review. |
+| Historical V10 V2.3/V2.4 diagnostics | PRESERVED / NOT PHYSICALLY ACCEPTED | V2.3 structural reference and V2.4 parse-only repair remain diagnostic/history roots |
+| Historical V10 V2.5 full-candidate evidence | PRESERVED / historical | Bounded evidence closed its original 20 cases; historical Stage E failure motivated V2.6 and is not current physical authority |
+| V10 V2.6 physical representation | ACCEPTED / IMMUTABLE LOCAL | R4-D-011 accepts exact 22,540-identity root, digest `d9f925588913e66476cfbc097bace7daa7e673295fe2a243760313d0bef5ebdd`, 349 WRITE corrections + 6 index-equivalent graphs, zero unexplained drift |
+| Guarded-token physical successor | ACCEPTED / IMMUTABLE LOCAL | R4-D-013 accepts `r4-v10-v26-guarded-tokens-v1`, digest `9885d7b88a46aff4102741d63eeaa0bd6968f0857f7bca6a389662bfaa158881`, 14,751 guarded + 7,789 historical fallback |
+| Objective/evaluation boundary | ACCEPTED / LIMITED | R4-D-014 retains masked positive BCE as bounded control only; MODEL_SELECTION is positive-fit diagnostic only; no negative/PU, threshold, calibration, untouched acceptance or promotion authority |
+| M3 guarded integration | COMPLETE | Exact D9/D11/D13/D14 binding, V10 17-edge model, 932 active train groups, 71 active selection groups; no-step preflight passed |
+| M4 bounded pilot | COMPLETE | R4-D-015 accepts M4-A/B/C mechanics, recovery and 8-epoch/120-step positive-fit dynamics. Outcome: `PASS_BOUNDED_PILOT_FULL_TRAINING_STILL_HELD`. |
+| Full training / G8 | HOLD | M4 passed, but confirmed-negative evidence remains zero; `CallToUnknown` semantic alignment and clean independent candidate #2 review are unresolved; threshold/calibration/untouched roles remain unsupported; no M5 launch authority exists |
 
 ## Corrected outcome-population terminology
 
-The V3 publication intentionally permits `outcome_metric_mask_*` for both `MODEL_SELECTION` and `INTERNAL_AUDIT` roles. The hardened acceptance rerun now durably establishes:
+The V3 publication intentionally permits `outcome_metric_mask_*` for both `MODEL_SELECTION` and `INTERNAL_AUDIT` roles. The hardened acceptance establishes:
 
-- **143 contracts / 142 unique groups** = combined outcome-metric population across `MODEL_SELECTION` + `INTERNAL_AUDIT`, not the MODEL_SELECTION population;
+- **143 contracts / 142 unique groups** = combined outcome-metric population across `MODEL_SELECTION` + `INTERNAL_AUDIT`, not MODEL_SELECTION alone;
 - active `MODEL_SELECTION = 71 contracts / 71 groups`;
 - active `INTERNAL_AUDIT = 72 contracts / 71 groups`;
 - frozen role assignment remains `MODEL_SELECTION = 73 contracts / 71 groups` and `INTERNAL_AUDIT = 73 contracts / 71 groups`.
 
-The ML adapter itself permits `MODEL_SELECTION` for model selection and does not load `INTERNAL_AUDIT`; the defect was reporting/research-population labeling, not trainer leakage.
+The ML adapter permits `MODEL_SELECTION` for model-selection loading and does not load `INTERNAL_AUDIT`; the old defect was reporting/research-population labeling, not trainer leakage.
 
 ## Version boundaries
 
@@ -57,14 +54,8 @@ Historical/physical roots that remain immutable:
 - repaired provenance/source claims: `r4-provenance-v1`;
 - role-independent evidence ledger: `evidence-ledger-r4-v2`;
 - repaired representations: `representations-r4-v2` / extractor `v2.2-r4-repaired`;
-- graph schema: `v9` (immutable accepted historical/physical evidence; not future-full-training eligible);
-- token tensor contract: `[4,512]`.
-
-Historical/superseded logical V2 identifiers:
-
-- grouping: `r4-leakage-groups-v2`;
-- partition: `r4-vnext-roles-v2`;
-- publication: `sentinel-r4-vnext-v2`.
+- historical graph schema v9;
+- token tensor contract `[4,512]`.
 
 Accepted logical V3 identifiers:
 
@@ -73,33 +64,32 @@ Accepted logical V3 identifiers:
 - publication: `sentinel-r4-vnext-v3`;
 - logical build: `r4-logical-lineage-v3`.
 
-Accepted R4-D-011 V10 physical parent identifiers:
+Accepted R4-D-011 V10 physical parent:
 
-- graph schema: `v10`;
-- extractor: `v2.6-r4-call-semantics-deterministic-cfg-mutators`;
-- accepted root basename: `representations-r4-v3-candidate` within the exact protected-local root recorded by R4-D-011;
-- preprocessing input: accepted `sentinel-preprocessed-r4-v2`;
-- primary runtime: Slither 0.10.0;
-- declared identity-bound exception: `dive/caa35c1a5906269bbe5e70de780d105c2968ece4fc038d7f7208efee681aeec9` under Slither 0.11.5;
-- token selector/payload: historical-control bytes, immutable under R4-D-011.
+- graph schema `v10`;
+- extractor `v2.6-r4-call-semantics-deterministic-cfg-mutators`;
+- root basename `representations-r4-v3-candidate` within the exact protected-local root recorded by R4-D-011;
+- preprocessing input `sentinel-preprocessed-r4-v2`;
+- primary runtime Slither 0.10.0;
+- one identity-bound Slither 0.11.5 exception;
+- historical-control token bytes retained as R4-D-011 control.
 
-Required R4-D-012 guarded-token successor boundary:
+Accepted R4-D-013 guarded-token successor:
 
-- graph schema remains `v10`;
-- graph extractor remains `v2.6-r4-call-semantics-deterministic-cfg-mutators`;
-- selector must be `target_aware_guarded_v1` with `historical_linspace_v1` retained as control/rollback;
-- token tensor shape remains `[4,512]`;
-- candidate root/version name must be fresh and is to be fixed during the DATA completion plan's lineage-design work; do not reuse or overwrite the R4-D-011 root;
-- preprocessing and runtime partition remain inherited unless a new evidence-backed blocker requires a separate decision.
+- graph parent remains exact R4-D-011 V10/V2.6;
+- selector `target_aware_guarded_v1`;
+- control `historical_linspace_v1`;
+- token tensor `[4,512]`;
+- lineage `r4-v10-v26-guarded-tokens-v1`;
+- digest `9885d7b88a46aff4102741d63eeaa0bd6968f0857f7bca6a389662bfaa158881`;
+- 22,540 identities = 14,751 guarded + 7,789 exact historical fallback.
 
-V3 family authority after hardening:
+V3 family authority remains:
 
-- normalized-code identity remains global;
-- exact artifact identity remains global by artifact identity/hash;
-- explicit source-native family/project identifiers are keyed as `<source>:<field>:<value>`;
-- Ethereum address literals remain diagnostic-only and create zero union edges.
-
-The accepted current V3 artifact had zero explicit-family edges, so source-namespacing hardening did not invalidate the accepted V3 grouping population.
+- normalized-code identity global;
+- exact artifact identity global;
+- explicit source-native family/project identifiers source-namespaced;
+- Ethereum address literals diagnostic-only and create zero union edges.
 
 ## Durable current evidence
 
@@ -107,81 +97,68 @@ Accepted V3 evidence root:
 
 `docs/plan/ml-R4/evidence/2026-08-15_phase8_logical_v3/`
 
-Current R4 physical-acceptance boundary:
+Current V10 physical authority:
 
-`runs/2026-09-02_PHASE8_v10_v26_physical_acceptance_and_no_launch.md`
+- `runs/2026-09-02_PHASE8_v10_v26_physical_acceptance_and_no_launch.md`;
+- `adrs/ADR-R4-011-v10-v26-physical-representation-acceptance.md`.
 
-Governing physical representation decision:
+Current guarded-token physical authority:
 
-`adrs/ADR-R4-011-v10-v26-physical-representation-acceptance.md`
+- `runs/2026-09-29_PHASE8_guarded_token_physical_acceptance_and_no_launch.md`;
+- `adrs/ADR-R4-013-guarded-token-physical-representation-acceptance.md`.
 
-Current selector-promotion boundary:
+Current ML objective/evaluation authority:
 
-- `runs/2026-09-02_PHASE8_selector_promotion_review.md`;
-- `adrs/ADR-R4-012-target-aware-guarded-selector-promotion.md`.
+- `runs/2026-10-01_PHASE8_objective_evaluation_decision_and_pilot_boundary.md`;
+- `adrs/ADR-R4-014-phase8-positive-only-control-and-evaluation-hold.md`.
 
-Historical V2.5 restart/staging context only:
+Current M4 closure:
 
-- `runs/2026-08-27_PHASE8_v10_v25_current_restart_checkpoint.md`;
-- `reviews/R4-GAP-008/2026-08-26_v10_v25_bounded_structural_closure.md`;
-- `runs/2026-08-26_PHASE8_v10_v25_full_candidate_staging.md`;
-- `adrs/ADR-R4-010-versioned-external-call-representation-correction.md`.
+- `runs/2026-10-17_PHASE8_m4_bounded_pilot_review_and_full_training_hold.md`;
+- `adrs/ADR-R4-015-bounded-pilot-pass-full-training-hold.md`;
+- `evidence/2026-10-17_phase8_m4_bounded_pilot/decision.json`.
 
-Candidate #1 primary-review closeout:
+Current R4-GAP-007 semantic-alignment checkpoint:
 
-`runs/2026-08-21_PHASE8_gap007_candidate1_primary_review.md`
+`docs/plan/system-finalization/technical-completion/working/2026-10-20_ml_gap007_call_to_unknown_semantic_alignment.md`.
 
-Candidate #2 primary-review state:
+Candidate #2 primary review remains historical input to the gap, not independent truth:
 
-`runs/2026-08-21_PHASE8_gap007_candidate2_primary_review.md`
-
-Key durable V3 facts remain:
-
-- hardened source commit for regenerated reports: `83bd566b9c4f4f653e530c2c0f5c990858dd759d`;
-- final snapshot commit: `44fbb9c1d2033be8002fe404d650cf09f08b0f29`;
-- final snapshot: `coherence=PASS`;
-- all JSON files listed in `SHA256SUMS.txt` verified `OK` before commit;
-- CPU selector: 1,018 analyzed / 737 over-cap / 476 improved / 261 equal / 0 regressed;
-- confirmed-negative queue: 200 cells / 200 globally unique groups / all PENDING_REVIEW / target None / negative_truth_claim=false;
-- CUDA selector comparison: identical initialization true / 4 of 4 worst-case probes / no Run12 state / no checkpoint / no promotion or training authorization.
+`runs/2026-08-21_PHASE8_gap007_candidate2_primary_review.md`.
 
 ## Current restart boundary
 
-For the current technical-completion program, use:
+For current DATA/ML technical-completion work, read in this order:
 
-1. `docs/plan/system-finalization/technical-completion/00_MASTER_TECHNICAL_COMPLETION_ROADMAP.md` for cross-module sequencing;
-2. `docs/plan/system-finalization/technical-completion/01_DATA_REPRESENTATION_COMPLETION_PLAN.md` for the active workstream;
-3. this `PLAN_STATUS_MATRIX.md` for canonical R4 gate state;
-4. `runs/2026-09-02_PHASE8_v10_v26_physical_acceptance_and_no_launch.md`;
-5. `adrs/ADR-R4-011-v10-v26-physical-representation-acceptance.md`;
-6. `runs/2026-09-02_PHASE8_selector_promotion_review.md`;
-7. `adrs/ADR-R4-012-target-aware-guarded-selector-promotion.md`;
-8. `runs/2026-08-16_PHASE8_v3_hardened_evidence_snapshot_closeout.md` when accepted logical/evidence context is needed;
-9. `runs/2026-08-21_PHASE8_gap007_candidate2_primary_review.md` only for the separate confirmed-negative track.
+1. applicable repository/module instructions;
+2. this `PLAN_STATUS_MATRIX.md`;
+3. `docs/plan/system-finalization/technical-completion/02_ML_TRAINING_EVALUATION_COMPLETION_PLAN.md`;
+4. R4-D-015 run/ADR/machine decision for M4 closure;
+5. `docs/plan/system-finalization/technical-completion/working/2026-10-20_ml_gap007_call_to_unknown_semantic_alignment.md`;
+6. `EVIDENCE_GAP_REGISTER.md`, `RISK_AND_BLOCKER_REGISTER.md`, `CLAIM_STATUS_MATRIX.md`, `DECISION_REGISTER.md`;
+7. R4-D-011/R4-D-013/R4-D-014 records when their exact authority is needed;
+8. the accepted V3 snapshot when logical/evidence population detail is needed.
 
 Historical execution context only, not current restart authority:
 
-- `runs/2026-08-27_PHASE8_v10_v25_current_restart_checkpoint.md`;
-- `runs/2026-08-26_PHASE8_v10_v25_full_candidate_staging.md`;
-- `runs/2026-08-21_PHASE8_gap008_external_call_semantics_audit.md`;
-- `runs/2026-08-21_PHASE8_v10_external_call_implementation_handoff.md`;
-- `runs/2026-08-21_PHASE8_v10_implementation_and_local_regression.md`;
-- `runs/2026-08-23_PHASE8_v10_parse_only_resolution_working_plan.md`;
-- `runs/2026-08-23_PHASE8_v10_structural_drift_probe_handoff.md`;
-- `runs/2026-08-16_PHASE8_v3_evidence_hardening_handoff.md`;
-- `runs/2026-08-16_PHASE8_logical_v3_acceptance_and_research_checkpoint.md`.
+- the in-progress stop lines inside `working/2026-10-03_ml_m4_bounded_pilot.md`;
+- V2.5 staging/restart records whose blockers were closed by R4-D-011;
+- earlier selector research reports superseded by R4-D-012/R4-D-013;
+- pre-hardening V3 queues.
 
-Current execution order:
+## Current execution order
 
-1. preserve v9/repaired-v2, accepted logical V3, frozen V2.3 structural reference, protected V2.4 diagnostic candidate, historical V2.5 evidence, and the R4-D-011 accepted V2.6 root as immutable evidence/history;
-2. keep candidate #2 UNKNOWN/target `None` unless independent agreement completes its dual review; any accepted negative remains evaluation-only;
-3. reconstruct and implement the exact R4-D-012 `target_aware_guarded_v1` semantics through the DATA completion plan without mutating R4-D-011;
-4. validate bounded behavior, then construct/bind the fresh guarded-token physical candidate and require a separate physical acceptance review;
-5. revisit objective/evaluation design, including possible PU learning, only after the guarded-token physical lineage is accepted and new evidence supports a versioned decision;
-6. define credible threshold/calibration/untouched-acceptance support rather than inventing populations;
-7. reconsider training authorization only after all remaining evidence/design gates are satisfied and record it explicitly.
+1. preserve all accepted R4-D-009/R4-D-011/R4-D-013 physical/logical roots and historical evidence;
+2. preserve R4-D-014 and R4-D-015 boundaries: no M5/full training, threshold/calibration, promotion, pseudo-negatives or Run12-state reuse;
+3. keep candidate #2 UNKNOWN/PENDING_REVIEW/target `None`;
+4. audit the neutral `CallToUnknown` class definition independently of candidate outcome, resolving the taxonomy/crosswalk inconsistency;
+5. if the resolution is a material definition change, record it through the required ADR/schema/version path before adjudication;
+6. build a self-contained v2 blind-review bundle from the resolved definition/policy;
+7. obtain genuinely isolated independent candidate #2 review with no prior candidate-specific context;
+8. only after new evidence exists, reassess objective/evaluation/full-training authority explicitly;
+9. do not infer that one/few confirmed negatives automatically support stable FPR estimation, threshold fitting or calibration.
 
-Do **not** manually adjudicate the obsolete V2 queue or the pre-hardening V3 queue. Do **not** patch v9 in place, train from v9, infer target `0`, self-verify candidate #2, silently replace the historical selector in accepted lineages, invent pseudo-negatives, reuse Run12 state, fit unsupported threshold/calibration roles, implement PU as an ungoverned shortcut, overwrite protected V10 diagnostic/reference roots, or launch the 100-epoch job.
+Do **not** manually adjudicate obsolete queues, patch v9 in place, infer target `0`, self-verify candidate #2, count contaminated review attempts as independent evidence, silently narrow/broaden the class definition, invent pseudo-negatives, reuse Run12 learned state, fit unsupported threshold/calibration roles, overwrite protected V10/guarded-token roots, or launch the 100-epoch job.
 
 ## Status vocabulary
 
