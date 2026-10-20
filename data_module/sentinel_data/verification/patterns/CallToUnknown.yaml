@@ -1,16 +1,37 @@
 class: CallToUnknown
 description: >
-  Low-level call to an unknown/dynamic address. Includes .call{}, .delegatecall{},
-  .send(), raw call with address-type lvalue. NOT in OZ SafeERC20 wrappers.
+  Raw/dynamic low-level external-call-family interaction with an unknown or
+  unverified callee. Includes call, delegatecall, legacy callcode, staticcall,
+  and send patterns. A checked raw low-level call can still qualify because the
+  unknown/dynamic target is class-defining.
+
+scope_authority: R4-D-016
+
+explicit_exclusions:
+  - transfer
+  - ordinary_typed_high_level_interface_call
+  - same_file_or_in_scope_library_call
+  - contract_creation
+  - selfdestruct_or_suicide_destination
 
 v9_signal:
   method: graph_edge
   edge_type: EXTERNAL_CALL
   edge_id: 11
   note: >
-    EXTERNAL_CALL edge (type 11, added in v9 schema) is a self-loop on the
-    call-site node for cross-contract calls detected during graph extraction.
-    Presence of any EXTERNAL_CALL edge is a positive signal.
+    Historical v9 EXTERNAL_CALL is not sufficient class truth because it
+    conflates library/high-level interactions and misses material low-level/send
+    cases. R4-D-010 withdrew it as an adequate future-training semantic signal.
+
+v10_signal:
+  method: graph_edge
+  edge_types:
+    - LOW_LEVEL_CALL
+    - ETHER_SEND
+  note: >
+    Coarse positive corroboration only. ETHER_TRANSFER, HIGH_LEVEL_CALL,
+    LIBRARY_CALL, and CONTRACT_CREATION are intentionally excluded from the
+    CallToUnknown graph signal. Source review remains truth authority.
 
 false_positive_risk:
   level: VERY_HIGH
@@ -18,13 +39,13 @@ false_positive_risk:
   bccc_root_cause: >
     86.9% of BCCC CallToUnknown positives had NO low-level call at all.
     The BCCC labels were folder-assigned without code verification.
-    A single Slither detector check would have caught this.
+    Transfer-only and library/high-level behavior must not be promoted into
+    CallToUnknown merely because an external address is involved.
 
 library_call_exclusion: >
-  SafeERC20.safeTransfer(), OZ AccessControl, and other library calls are
-  classified as HighLevelCall by Slither but are NOT cross-contract.
-  A call to a Contract or Library declaration in the same source file is
-  a library call, not CallToUnknown.
+  SafeERC20.safeTransfer(), OZ AccessControl, same-file declared libraries, and
+  other ordinary typed/library calls are not CallToUnknown solely because they
+  cross an interface/address boundary.
 
 positive_example: |
   function execute(address target, bytes calldata data) public {
@@ -33,9 +54,8 @@ positive_example: |
   }
 
 negative_example: |
-  using SafeERC20 for IERC20;
-  function safeTransfer(IERC20 token, address to, uint256 amount) internal {
-      token.safeTransfer(to, amount);
+  function withdraw(address payable recipient, uint256 amount) internal {
+      recipient.transfer(amount);
   }
 
 dasp_id: 7
