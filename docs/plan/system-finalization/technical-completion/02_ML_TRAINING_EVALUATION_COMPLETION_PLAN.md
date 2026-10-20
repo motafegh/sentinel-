@@ -1,6 +1,6 @@
 # ML Training / Evaluation Completion Plan
 
-**Status:** ACTIVE — M0-M4 complete; R4-D-015 accepts the bounded pilot and keeps M5/full training on HOLD; R4-GAP-007 `CallToUnknown` semantic-definition alignment is the active boundary before independent negative review can resume  
+**Status:** ACTIVE — M0-M4 complete; R4-D-015 accepts the bounded pilot and keeps M5/full training on HOLD; R4-D-016 resolves `CallToUnknown` semantics; candidate #2 self-contained v2 independent review is the active R4-GAP-007 boundary  
 **Parent:** `00_MASTER_TECHNICAL_COMPLETION_ROADMAP.md`  
 **Primary authority:** R4 Phase 8–10 governance under `docs/plan/ml-R4/`  
 
@@ -34,19 +34,26 @@ Accepted physical input boundary:
 Current evidence limitation:
 
 - confirmed negatives remain zero;
-- candidate #2 has only primary-review support and remains UNKNOWN/PENDING_REVIEW/target `None`;
-- three recent external candidate #2 review attempts are non-authoritative because they were contaminated by prior candidate context and/or lacked a sufficient self-contained governing definition/policy;
-- those attempts exposed a material `CallToUnknown` definition inconsistency between the broad locked taxonomy phrase “calls to unverified external addresses” and narrower DIVE/SolidiFI low-level-call operational mappings;
-- the class-definition boundary must therefore be resolved neutrally before another independent candidate #2 adjudication;
+- R4-D-016 resolves the `CallToUnknown` class boundary as the raw/dynamic low-level unknown-target interaction class while preserving class index/order and taxonomy schema v1;
+- candidate #1's historical `NOT_CONFIRMED` rationale is definition-stale under R4-D-016; its queue state remains UNKNOWN/PENDING_REVIEW/target `None` and it requires a fresh primary review if reused;
+- candidate #2 primary review remains semantically compatible with R4-D-016 but authoritative state remains UNKNOWN/PENDING_REVIEW/target `None` until admissible independent agreement exists;
+- three 2026-10-20 external candidate #2 attempts remain non-authoritative because they were contaminated by prior candidate context and/or lacked sufficient self-contained governing material;
+- blind-review v1 is retired for future adjudication;
 - accepted negatives, if any, remain evaluation-only unless a later policy explicitly grants optimizer authority;
 - threshold-fit, calibration-fit and untouched-acceptance roles remain unsupported/empty;
 - R4-D-015 confirms that M4 bounded mechanics/recovery/dynamics pass but does not establish discrimination or false-positive behavior;
 - G8 is open and M5/full training is unauthorized;
 - Run12 weights, optimizer state, thresholds and calibration are historical operational state and must not seed repaired Phase-8 truth.
 
-Active semantic-alignment working record:
+Closed semantic-alignment evidence:
 
-`docs/plan/system-finalization/technical-completion/working/2026-10-20_ml_gap007_call_to_unknown_semantic_alignment.md`
+- `docs/plan/ml-R4/adrs/ADR-R4-016-call-to-unknown-semantic-clarification.md`;
+- `docs/plan/ml-R4/evidence/2026-10-20_call_to_unknown_semantic_alignment/decision.json`;
+- `docs/plan/system-finalization/technical-completion/working/2026-10-20_ml_gap007_call_to_unknown_semantic_alignment.md`.
+
+Current blind-review builder:
+
+`docs/plan/ml-R4/scripts/p8_build_gap007_candidate2_independent_review_v2.py`
 
 ## 3. Primary source owners to audit
 
@@ -68,7 +75,7 @@ At minimum:
 - R4 role/manifests and Phase-8 evidence records;
 - relevant ML tests and micro-smokes.
 
-For the active R4-GAP-007 definition audit, additionally inspect the canonical taxonomy, source crosswalks, their provenance/decisions, and downstream class consumers without using candidate #2 outcome as the desired answer.
+For current R4-GAP-007 work, R4-D-016 is semantic authority. Do not reopen its definition merely to obtain a preferred candidate result. Review-package work must preserve source completeness, self-contained neutral policy, and reviewer isolation.
 
 ## 4. Work package M0 — current training-seam audit
 
@@ -87,20 +94,21 @@ Before changing objective or launching a run:
 
 ## 5. Work package M1 — supervision/evaluation evidence investigation
 
-**State:** `COMPLETE_WITH_R4_GAP_007_OPEN` — positive-only limits quantified; PU/nnPU not justified under current labeling-mechanism/class-prior evidence; supported/unsupported evaluation roles mapped; R4-GAP-007 semantic-definition alignment is the active evidence continuation
+**State:** `COMPLETE_WITH_R4_GAP_007_OPEN` — positive-only limits quantified; PU/nnPU not justified under current labeling-mechanism/class-prior evidence; supported/unsupported evaluation roles mapped; R4-D-016 closes the semantic-definition sub-blocker; candidate #2 admissible independent review remains the active evidence continuation
 
 This is the central unresolved ML design responsibility.
 
 ### M1-A — confirmed-negative evidence
 
-- preserve candidate #1 as `NOT_CONFIRMED`;
+- use R4-D-016 as the governing `CallToUnknown` definition;
+- preserve candidate #1 queue truth as UNKNOWN/PENDING_REVIEW/target `None`; do not reuse its historical definition-stale `NOT_CONFIRMED` rationale as current semantic authority;
 - preserve candidate #2 as UNKNOWN/PENDING_REVIEW/target `None` until admissible independent agreement exists;
+- retain candidate #2's existing source-first primary review as compatible primary evidence;
 - do not let the primary reviewer self-verify candidate #2;
 - do not count the three 2026-10-20 external attempts as independent verification or disagreement votes;
-- first resolve the neutral `CallToUnknown` class boundary by tracing `taxonomy.yaml`, DIVE/SolidiFI crosswalk semantics, their provenance and downstream consumers;
-- if narrowing the broad taxonomy would be a material class-definition change, use the required ADR/schema/versioning process rather than silently rewriting it;
-- after the definition is fixed, build a self-contained candidate #2 v2 blind bundle containing the exact neutral class definition, generic class-specific negative-evidence rule, complete source/task and hashes, with no prior conclusion;
-- use a genuinely isolated reviewer with no candidate-specific prior context;
+- retire candidate #2 blind-review v1 for future adjudication;
+- build/verify the self-contained candidate #2 v2 blind bundle containing complete source, manifest/hashes, exact neutral R4-D-016 definition/exclusions, generic class-specific confirmed-negative policy, and review task with no prior conclusion;
+- use a genuinely isolated reviewer with no candidate-specific prior context; if such context is present, the reviewer must stop as procedurally contaminated rather than issue a substantive verdict;
 - any accepted negative remains evaluation-only until a separate optimizer-authority decision exists;
 - do not manufacture additional negatives from absence, tool silence, old all-zero labels, model confidence, or unlabeled data.
 
@@ -114,7 +122,7 @@ Quantify what the existing positive-only BCE regime can and cannot establish:
 - class imbalance and weak-positive effects;
 - whether selection by positive NLL/probability alone can choose a useful checkpoint without discrimination evidence.
 
-M4-C now supplies bounded evidence that positive fit can become near-saturated by epoch 8. That strengthens the need for negative-side observability; it does not establish classifier quality.
+M4-C supplies bounded evidence that positive fit can become near-saturated by epoch 8. That strengthens the need for negative-side observability; it does not establish classifier quality.
 
 ### M1-C — candidate alternative objectives
 
@@ -210,7 +218,7 @@ The dated `2026-10-03_ml_m4_bounded_pilot.md` working record contains historical
 
 ## 9. Work package M5 — repaired training execution
 
-**State:** `BLOCKED / NOT AUTHORIZED` — R4-D-015 keeps the full horizon on HOLD. R4-GAP-007 confirmed-negative evidence remains zero, the `CallToUnknown` class-definition boundary is unresolved, R4-D-014 remains the bounded objective/evaluation authority, and G8 remains open.
+**State:** `BLOCKED / NOT AUTHORIZED` — R4-D-015 keeps the full horizon on HOLD. R4-D-016 resolves `CallToUnknown` semantics, but R4-GAP-007 confirmed-negative evidence remains zero and candidate #2 still lacks admissible independent verification. R4-D-014 remains the bounded objective/evaluation authority and G8 remains open.
 
 Only after a new explicit launch authority:
 
@@ -226,13 +234,12 @@ The nominal 100-epoch setting is a configuration value, not current authority. D
 
 ### Re-entry condition for M5 review
 
-1. Complete the neutral `CallToUnknown` semantic-definition audit recorded in `working/2026-10-20_ml_gap007_call_to_unknown_semantic_alignment.md`.
-2. If required, record any material class-definition change through the correct ADR/schema/versioning path before candidate adjudication.
-3. Build a self-contained R4-GAP-007 candidate #2 v2 blind-review bundle from the resolved definition/policy.
-4. Obtain genuinely independent candidate #2 verification from a reviewer with no candidate-specific prior context.
-5. Record any newly accepted negative as evaluation-only unless a separate decision grants optimizer authority.
-6. Reassess objective/evaluation/full-training authority explicitly after new evidence exists.
-7. Do not infer that one or a few negatives automatically support stable FPR estimation, threshold fitting or calibration.
+1. Build and verify the self-contained R4-GAP-007 candidate #2 v2 blind-review bundle under R4-D-016.
+2. Obtain genuinely independent candidate #2 verification from a reviewer with no candidate-specific prior context.
+3. Formally adjudicate candidate #2 against the primary and independent evidence while preserving uncertainty.
+4. Record any newly accepted negative as evaluation-only unless a separate decision grants optimizer authority.
+5. Reassess objective/evaluation/full-training authority explicitly after new evidence exists.
+6. Do not infer that one or a few negatives automatically support stable FPR estimation, threshold fitting or calibration.
 
 ## 10. Work package M6 — checkpoint selection and evidence-qualified evaluation
 
