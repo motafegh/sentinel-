@@ -2,16 +2,16 @@
 
 **Status:** ACTIVE — cross-module execution controller  
 **Created:** 2026-09-14  
-**Planning baseline before this package:** `main` at `796b2e809cc9956b1228930bf45ba5d8a97f5616`  
-**Scope:** remaining technical completion, capability hardening, model repair/promotion, and downstream lineage reconciliation  
+**Current-state reconciliation:** 2026-10-20  
+**Scope:** remaining technical completion, capability hardening, model evidence/promotion, and downstream lineage reconciliation  
 
 ## 1. Purpose
 
-This roadmap coordinates the remaining engineering work across SENTINEL after the portfolio-professionalization program. It is intentionally source-driven: executable source/config/tests remain the highest authority for actual behavior, while the R4 machine-readable governance and accepted ADRs remain authoritative for DATA/ML semantics and gate state.
+This roadmap coordinates the remaining engineering work across SENTINEL. Executable source/config/tests remain the highest authority for actual behavior, while R4 machine-readable governance, registers and accepted ADRs remain authoritative for DATA/ML semantics and gate state.
 
 This file does **not** replace `docs/plan/ml-R4/00_MASTER_PLAN.md`, the R4 decision register, accepted ADRs, or module-specific plans. It defines cross-module sequencing and the conditions under which work may move from one subsystem to another.
 
-The completion program uses six subordinate plans:
+Subordinate plans:
 
 1. `01_DATA_REPRESENTATION_COMPLETION_PLAN.md`
 2. `02_ML_TRAINING_EVALUATION_COMPLETION_PLAN.md`
@@ -22,240 +22,202 @@ The completion program uses six subordinate plans:
 
 ## 2. Current technical baseline
 
-### DATA / representations
+### DATA / representations — CLOSED FOR CURRENT ML INPUT
 
 - historical G0–G7 remain passed and immutable;
-- logical V3 grouping/roles are accepted;
-- exact V10 V2.6 physical graph lineage is accepted under R4-D-011;
-- accepted V10 identity count is 22,540 contracts with the exact R4-D-011 binding digest;
-- R4-D-012 promotes `target_aware_guarded_v1` only for a **new versioned token lineage**;
-- the guarded-token full physical candidate has been generated and reviewed under D5 but is not yet accepted; D6 independent physical acceptance remains open;
-- current executable tokenization still preserves the historical four-window linspace selector unless an accepted token tensor is copied.
+- logical V3 grouping/roles are accepted under R4-D-009;
+- exact V10/V2.6 graph/control lineage is accepted under R4-D-011 with 22,540 identities and binding digest `d9f925588913e66476cfbc097bace7daa7e673295fe2a243760313d0bef5ebdd`;
+- R4-D-012 promotes `target_aware_guarded_v1` for the successor token lineage;
+- R4-D-013 accepts the exact 22,540-identity guarded-token successor `r4-v10-v26-guarded-tokens-v1` with digest `9885d7b88a46aff4102741d63eeaa0bd6968f0857f7bca6a389662bfaa158881`;
+- accepted token tensor shape remains `[4,512]`;
+- R4-D-011 and R4-D-013 roots are immutable; no current DATA construction task blocks ML.
 
-### ML
+### ML — M0-M4 COMPLETE, M5 HELD
 
-- `four_eye_v8` / `v8.1` remains frozen for the first repaired-data baseline;
-- the Phase-8 runner, deterministic grouped sampling, BF16 execution, checkpoint/resume, run binding, and positive-only masked loss/selection diagnostics are implemented;
-- current Phase-8 supervision is positive-only and explicitly rejects authorized target-zero cells;
-- confirmed negatives remain zero;
-- threshold-fit, calibration-fit, and untouched-acceptance populations remain unsupported/empty;
-- G8 is open and the 100-epoch repaired run remains unauthorized;
-- the durable runner is not yet promoted onto a final accepted V3/V10/guarded-token training lineage.
+- architecture remains frozen at `four_eye_v8` / `v8.1`;
+- R4-D-014 accepts `masked_positive_bce_control_v1` only as bounded positive-only control/evaluation authority;
+- exact guarded-lineage M3 integration/no-step proof is complete;
+- M4-A/B/C mechanics, checkpoint/recovery and bounded dynamics are complete;
+- R4-D-015 records `PASS_BOUNDED_PILOT_FULL_TRAINING_STILL_HELD` after the fixed 8-epoch / 120-optimizer-step pilot;
+- M4 reached very strong positive fit, but confirmed-negative evidence remains zero, so no discrimination/false-positive claim follows;
+- G8 remains open and M5/full training is unauthorized;
+- threshold-fit, calibration-fit and untouched-acceptance populations remain unsupported/empty;
+- Run12 remains the historical operational baseline and its learned state must not seed repaired R4 truth.
+
+### Active ML evidence blocker — R4-GAP-007
+
+- candidate #1 is durably `NOT_CONFIRMED`;
+- candidate #2 primary review supports a class-specific negative, but authoritative state remains `UNKNOWN / PENDING_REVIEW / target None`;
+- three recent external review attempts are non-authoritative because of candidate-context contamination and/or insufficient neutral governing material;
+- those attempts exposed a material `CallToUnknown` semantic inconsistency:
+  - locked taxonomy includes unchecked low-level calls **or calls to unverified external addresses**;
+  - DIVE/SolidiFI operational mappings frame the class around raw/unchecked low-level `call` / `send` / `delegatecall` behavior;
+- the neutral class boundary must be resolved before another candidate #2 independent adjudication;
+- active working record: `working/2026-10-20_ml_gap007_call_to_unknown_semantic_alignment.md`.
 
 ### Inference
 
-- the FastAPI inference runtime is real and strict about checkpoint/schema compatibility;
+- the FastAPI inference runtime is substantive and strict about checkpoint/schema compatibility;
 - the default operational checkpoint remains historical Run12;
-- repaired R4 model promotion has not occurred.
+- repaired R4 model promotion has not occurred;
+- no M4 checkpoint may be treated as operational.
 
 ### Agents
 
-- the LangGraph orchestration, tool adapters, provenance contracts, evaluation, persistence, ingestion/feedback, RAG, static analysis and synthesis layers are substantive source modules;
-- execution status/provenance is fail-closed for missing, degraded, mock, or mutated tool output;
-- some capability labels are stronger than their generic implementation today: notably the Halmos harness assumes specific target methods and needs a dedicated capability repair/audit.
+- LangGraph orchestration, tool adapters, provenance contracts, evaluation, persistence, ingestion/feedback, RAG, static analysis and synthesis layers are substantive source modules;
+- execution status/provenance is fail-closed for missing, degraded, mock or mutated tool output;
+- some capability labels still require real-contract capability audit/hardening, including generic Halmos assumptions.
 
 ### ZKML
 
 - proxy distillation, ONNX export, calibration, EZKL setup/prove/verify, bundle validation and verifier generation are implemented;
-- the current proof path remains bound to the historical teacher/proxy lineage;
-- the retained proof scope is proxy-computation only and does not prove the full audit pipeline;
-- retained EZKL settings include `check_mode="UNSAFE"`, which requires explicit investigation before any stronger assurance claim.
+- current proof lineage remains historical-teacher-bound;
+- retained proof scope is proxy computation only, not the full audit pipeline;
+- `check_mode="UNSAFE"` remains a separate assurance limitation to investigate before stronger claims.
 
 ### Contracts / on-chain
 
-- `AuditRegistry` V3, EIP-712 context binding, staking, verifier integration, upgrade behavior, invariants and Foundry tests are substantive;
+- AuditRegistry V3, EIP-712 context binding, staking, verifier integration, upgrade behavior, invariants and Foundry tests are substantive;
 - V3 separates proxy-proof verification from policy/provenance attestation;
-- analysis/MCP code deliberately contains no production private key, signing, transaction broadcast, or receipt/finality authority;
-- autonomous production finality is therefore a separate optional capability, not an implied current feature.
+- analysis/MCP code intentionally contains no production private-key/sign/broadcast/finality authority;
+- production finality remains an optional isolated capability, not an implied current feature.
 
 ## 3. Governing completion principles
 
-1. **Source before prose.** Every module plan starts with a source/test audit before new implementation.
-2. **Preserve accepted history.** R4-D-011 and all earlier accepted lineages are immutable evidence roots. New behavior creates new versioned lineage.
-3. **Unknown is not negative.** No target-zero, pseudo-negative, threshold, calibration, or acceptance population may be invented to unblock training.
-4. **Evidence before policy.** Thresholds, weights, promotion gates and assurance claims require measured evidence and explicit artifact identity.
-5. **No silent capability inflation.** A wired node/tool is not automatically a working generic capability; real-contract behavior must be tested.
-6. **No downstream rebind before upstream identity exists.** Inference, ZKML and contracts must not be rebound to a repaired teacher before that teacher is actually accepted.
-7. **Training is a gated action.** Building the selector candidate does not authorize training; training does not authorize promotion; promotion does not authorize on-chain finality.
-8. **Plans may discover work.** Each module plan explicitly authorizes bounded audit/investigation before design or implementation when the evidence is incomplete.
+1. **Source before prose.** Audit actual source/tests before changing implementation.
+2. **Preserve accepted history.** R4-D-009/R4-D-011/R4-D-013 and earlier accepted roots are immutable evidence.
+3. **Unknown is not negative.** No target-zero, pseudo-negative, threshold, calibration or acceptance population may be invented.
+4. **Resolve semantics before adjudication.** A class-definition ambiguity must not be silently narrowed/broadened to obtain a desired candidate verdict.
+5. **Evidence before policy.** Thresholds, objectives, promotion gates and assurance claims require measured evidence and explicit identity.
+6. **No silent capability inflation.** Wired code is not automatically a validated generic capability.
+7. **No downstream rebind before upstream acceptance.** Inference/ZKML/contracts must not move to an unaccepted repaired model.
+8. **Training is gated.** DATA acceptance does not authorize training; M4 success does not authorize M5; training does not authorize promotion.
+9. **Plans may discover work.** Bounded audit/investigation is allowed when evidence is incomplete; unresolved uncertainty must remain explicit.
 
-## 4. Dependency order
+## 4. Current dependency order
 
 ```text
-R4-D-011 immutable V10 physical parent
+R4-D-009 logical V3
+        +
+R4-D-011 V10 graph parent
+        +
+R4-D-013 guarded tokens
         |
         v
-DATA: implement D-012 guarded selector
+R4-D-014 bounded objective/evaluation
         |
         v
-fresh guarded-token physical candidate
+M3 exact guarded integration        COMPLETE
         |
         v
-binding + full-population validation + physical acceptance
-        |
-        +------------------------------+
-        |                              |
-        v                              v
-ML objective/evaluation evidence     Agents capability hardening
+M4 bounded mechanics/recovery       COMPLETE
         |
         v
-explicit training authorization
+R4-D-015 full-training HOLD
         |
         v
-repaired training + reproducible checkpoint
+R4-GAP-007 class-definition alignment   <-- ACTIVE
         |
         v
-evidence-qualified evaluation / promotion decision
+self-contained v2 blind bundle
+        |
+        v
+genuinely independent negative review
+        |
+        v
+explicit objective/evaluation/M5 re-review
+        |
+        v
+repaired full training only if authorized
+        |
+        v
+evidence-qualified checkpoint/promotion
         |
         v
 Inference migration from Run12
         |
         v
-new teacher-bound proxy distillation / ZKML bundle
+new teacher-bound ZKML lineage
         |
         v
-verifier / registry compatibility reconciliation
-        |
-        v
-optional isolated signer/broadcaster/finality capability
+verifier/registry reconciliation
 ```
 
-Agents auditing and generic-capability repairs may proceed in parallel when they do not change R4 DATA/ML semantics or depend on an unaccepted repaired model.
+Agents capability hardening may proceed in parallel when it neither changes R4 DATA/ML semantics nor depends on an unaccepted repaired model.
 
 ## 5. Program stages
 
 ### T0 — Re-anchor and source audit
 
-For each module:
+For each module, inspect current source/config/tests, compare behavior with claims, identify stale assumptions, and record substantial unresolved questions in a dated working record.
 
-- inspect current source, config, tests and runtime boundaries;
-- compare actual behavior with current public/architectural claims;
-- identify stale or misleading assumptions;
-- record unresolved questions in a dated working record if the investigation is substantial.
-
-**Exit:** module plan has a source-grounded implementation boundary and no critical uncertainty is being silently treated as fact.
+**Exit:** no critical uncertainty is silently treated as fact.
 
 ### T1 — Guarded-token physical lineage
 
-Owned by the DATA plan.
-
-- implement `target_aware_guarded_v1` as a separate, versioned selector;
-- retain the historical linspace selector as explicit control;
-- bind selector/fallback/coverage evidence into artifact metadata;
-- generate the full 22,540-contract candidate locally;
-- prove deterministic behavior and historical-control equivalence where required;
-- compute new physical identity/digest;
-- perform a separate physical acceptance review.
-
-**Stop line:** no repaired full training while this candidate is unaccepted.
+**State: COMPLETE / ACCEPTED.** R4-D-013 accepts the guarded-token physical successor. Do not repeat this work absent concrete contradiction.
 
 ### T2 — Learning/evaluation regime resolution
 
-Owned by the ML plan.
+**State: ACTIVE / EVIDENCE-LIMITED.** R4-D-014 fixed the bounded positive-only contract, but R4-GAP-007 remains open.
 
-Investigate and decide, from evidence rather than convenience:
+Current sub-order:
 
-- whether confirmed-negative evidence can be expanded legitimately;
-- what evaluation claims are possible with positive-only evidence;
-- whether Positive–Unlabeled learning or another objective is justified;
-- what populations can support model selection, threshold fitting, calibration and acceptance;
-- what classes must remain provisional/unsupported if evidence stays insufficient.
+1. resolve `CallToUnknown` semantic-definition authority neutrally;
+2. if material definition change is required, use R4 ADR/schema/version governance;
+3. rebuild candidate #2 blind review as a self-contained v2 package;
+4. obtain genuinely isolated independent review;
+5. assess whether the resulting negative evidence is sufficient for any later evaluation/objective decision.
 
-**Stop line:** do not implement PU learning, pseudo-negatives, thresholds or calibration merely to fill empty roles.
+**Stop line:** no pseudo-negatives, ungoverned PU learning, thresholds, calibration or M5 launch to bypass missing evidence.
 
 ### T3 — Training authorization and execution
 
-Only after T1 and T2 produce explicit accepted inputs:
+**State: BOUNDED PILOT COMPLETE; FULL EXECUTION BLOCKED.**
 
-- bind the accepted physical/data lineage and exact code/config;
-- validate training/inference architecture compatibility;
-- authorize a bounded smoke/pilot before any long run;
-- run the repaired training only when its objective/evaluation contract is explicit;
-- preserve deterministic/resumable evidence and resource telemetry.
-
-**Exit:** reproducible checkpoint candidate bound to source, data, representation, objective and config identities.
+M3 and M4 are complete. R4-D-015 keeps full training on HOLD. A later M5 launch requires a new explicit decision after T2 evidence changes materially.
 
 ### T4 — Evidence-qualified model promotion
 
-Evaluate only claims the evidence supports. Promotion may be full, partial, restricted, or rejected.
-
-Required outputs include:
-
-- class-level support status;
-- discrimination/positive-response evidence appropriate to available truth;
-- calibration/threshold evidence only where valid populations exist;
-- regression/compatibility evidence;
-- rollback path;
-- explicit decision on whether Run12 remains operational baseline.
+**State: WAITING.** Promotion requires an authorized repaired checkpoint and evidence-qualified evaluation. Full, partial, restricted, research-only, rejected and HOLD outcomes remain possible.
 
 ### T5 — Inference migration
 
-Owned by the inference plan.
-
-Only after a model is accepted:
-
-- validate checkpoint architecture/schema/representation compatibility;
-- bind thresholds/policy artifacts separately from raw model output;
-- perform offline parity and live-service regression tests;
-- update deployment configuration only after acceptance;
-- keep rollback to Run12 or the prior accepted bundle rehearsable.
+**State: WAITING ON MODEL PROMOTION.** Run12 remains operational baseline until M7-style model promotion explicitly hands off a repaired checkpoint/policy bundle.
 
 ### T6 — Agents capability hardening
 
-Owned by the agents plan and may overlap earlier stages.
-
-Primary targets:
-
-- real-contract audit of each consequential node/tool path;
-- repair Halmos generic-contract/property generation or narrow its advertised capability honestly;
-- test degraded/unavailable/mock semantics end-to-end;
-- validate routing, evidence fusion, consensus, synthesis and report language against actual tool status;
-- eliminate any remaining case where “tool absent/failed” can look equivalent to “tool ran clean.”
+**State: PARALLEL-ELIGIBLE.** Continue source-level/real-contract validation of consequential node/tool paths and fail-closed unavailable/degraded/mock semantics.
 
 ### T7 — ZKML lineage rebuild
 
-Only after a repaired teacher is accepted and inference identity is stable:
-
-- re-distill proxy from the exact accepted teacher;
-- regenerate ONNX/calibration manifests;
-- investigate and resolve the `UNSAFE` proof-setting limitation before stronger assurance claims;
-- generate a new EZKL setup bundle, keys, proof evidence and verifier as required;
-- preserve the exact proof scope: proxy computation is not the entire audit.
+**State: WAITING ON ACCEPTED OPERATIONAL TEACHER.** Re-distill/rebuild only after repaired model promotion; preserve exact proof-scope language and investigate unsafe proof settings before stronger assurance claims.
 
 ### T8 — Contracts and optional production finality
 
-- validate new verifier/bundle compatibility with V3 registry semantics;
-- rerun unit, upgrade, invariant, golden-digest and real-proof tests;
-- preserve storage and EIP-712 identity guarantees;
-- separately decide whether an isolated signer/broadcaster/finality service belongs in Sentinel’s intended product scope.
-
-A signer/broadcaster is **not** required to declare the analysis system technically coherent. It is required only if autonomous production submission/finality becomes an explicit capability goal.
+**State: WAITING ON DOWNSTREAM LINEAGE where applicable.** Validate new verifier/bundle compatibility only when a new ZKML lineage exists. Signing/broadcast/finality remains a separate optional capability decision.
 
 ## 6. Investigation and working-record protocol
 
-When a stage needs substantial analysis before implementation, create a dated working record under:
+Substantial pre-implementation analysis belongs under:
 
 `docs/plan/system-finalization/technical-completion/working/`
-
-Recommended naming:
-
-`YYYY-MM-DD_<module>_<question>_working.md`
 
 A working record should capture:
 
 - exact question;
 - source/tests inspected;
-- observations and evidence;
+- observations/evidence;
 - rejected interpretations;
 - unresolved items;
 - decision/output needed;
 - next executable step.
 
-Working records are evidence/navigation aids, not new semantic authorities. Durable policy decisions still belong in the appropriate existing R4 decision/ADR system or the relevant module plan when no new ADR is necessary.
+Working records are navigation/evidence aids, not semantic authority. Durable policy/class-definition decisions still use the existing R4 decision/ADR/schema system when required.
 
 ## 7. Module-plan status discipline
 
-Each subordinate plan should use these states:
+Use these states where appropriate:
 
 - `NOT_STARTED`
 - `AUDITING`
@@ -268,11 +230,11 @@ Each subordinate plan should use these states:
 - `DEFERRED`
 - `REJECTED`
 
-A module may contain multiple work packages at different states. “Code exists” is not equivalent to `ACCEPTED`.
+A module may contain work packages at different states. “Code exists” is not equivalent to `ACCEPTED`.
 
 ## 8. Cross-module acceptance rules
 
-A downstream module may consume an upstream artifact only when all of the following are explicit:
+A downstream module may consume an upstream artifact only when all are explicit:
 
 - version/name;
 - source commit;
@@ -283,23 +245,30 @@ A downstream module may consume an upstream artifact only when all of the follow
 - acceptance authority/status;
 - rollback or historical-control identity.
 
-If one of these is missing, the artifact may be used for bounded research but not silently promoted as current authority.
+If one is missing, the artifact may be bounded research evidence but not silently promoted.
 
 ## 9. Completion definition
 
 The technical-completion program is complete only when:
 
-1. the guarded-token physical lineage is accepted or explicitly rejected with a successor decision;
+1. accepted DATA/representation roots remain reproducible;
 2. R4 reaches an evidence-honest terminal model decision rather than merely completing a training run;
 3. the operational inference model is explicitly identified and reproducible;
-4. consequential agent capabilities have source-level and real-contract validation commensurate with their claims;
-5. ZKML artifacts are either rebound to the accepted operational teacher or explicitly retained as historical-only;
+4. consequential agent capabilities have validation commensurate with their claims;
+5. ZKML artifacts are rebound to the accepted operational teacher or explicitly retained as historical-only;
 6. contract/verifier compatibility matches the selected ZKML lineage;
-7. every intentionally deferred capability is named rather than implied;
+7. intentionally deferred capabilities are named rather than implied;
 8. immutable historical roots remain reproducible.
 
 ## 10. Immediate next action
 
-The guarded-token DATA workstream is complete through D6. R4-D-013 accepts the exact 22,540-identity `r4-v10-v26-guarded-tokens-v1` physical successor with binding digest `9885d7b88a46aff4102741d63eeaa0bd6968f0857f7bca6a389662bfaa158881`, while R4-D-011 remains the immutable V10 graph/control parent.
+The active cross-module workstream is **ML evidence completion**, specifically R4-GAP-007 `CallToUnknown` semantic-definition alignment.
 
-The active workstream is **ML training/evaluation completion** in `02_ML_TRAINING_EVALUATION_COMPLETION_PLAN.md`. M0-M3 are complete: the executable seam is mapped, positive-only limits are explicit, R4-D-014 fixes the bounded objective/evaluation contract, and the exact R4-D-013 guarded lineage has passed the protected-local no-step integration proof. The next action is **M4 separately fixed bounded pilot engineering and execution review**. Do **not** launch the repaired full run: R4-GAP-007, bounded-pilot launch evidence, unsupported threshold/calibration/untouched roles, and explicit full-training authorization remain unresolved.
+Read:
+
+1. `docs/plan/ml-R4/PLAN_STATUS_MATRIX.md`;
+2. `02_ML_TRAINING_EVALUATION_COMPLETION_PLAN.md`;
+3. `working/2026-10-20_ml_gap007_call_to_unknown_semantic_alignment.md`;
+4. `docs/plan/ml-R4/EVIDENCE_GAP_REGISTER.md` and `RISK_AND_BLOCKER_REGISTER.md`.
+
+Then audit the neutral class-definition provenance/authority. Do **not** repeat DATA acceptance or M4, do not send candidate #2 for another review until the definition is resolved, and do not launch M5/full training.
