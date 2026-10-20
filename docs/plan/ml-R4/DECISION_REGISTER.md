@@ -18,26 +18,26 @@
 | R4-D-014 | 2026-10-01 | ACCEPTED | Phase-8 objective/evaluation and bounded-pilot boundary | Retain `masked_positive_bce` as `masked_positive_bce_control_v1` for bounded control/pilot use only. Optimizer authority remains TRAIN_STRONG/TRAIN_WEAK target-1 cells; unknowns remain masked; no negative or PU authority. MODEL_SELECTION is positive-fit diagnostic only. Authorize M3 integration and later M4 bounded pilot after preflight, but keep full training/G8 on HOLD. | ADR-R4-014; `runs/2026-10-01_PHASE8_objective_evaluation_decision_and_pilot_boundary.md`; machine record `evidence/2026-10-01_phase8_objective_evaluation/decision.json`; M0/M1 working records | Build a fresh R4-D-013-aware training seam under M3; preserve historical G7 runner as reproduction path; M4 horizon must be separately fixed before execution | rollback is no repaired training integration/run; DATA physical authority remains R4-D-011/R4-D-013 | delegated technical owner / GPT-5.6 Sol |
 | R4-D-015 | 2026-10-17 | ACCEPTED | M4 bounded pilot / Phase-8 full-training launch boundary | Accept M4-A/B/C as successful bounded mechanics, recovery and positive-fit dynamics evidence. M4-C completed 8 epochs / 120 optimizer steps with finite losses and best positive NLL `0.0010884432`, but confirmed negatives remain zero and positive-only fit cannot establish discrimination or false-positive behavior. Outcome: `PASS_BOUNDED_PILOT_FULL_TRAINING_STILL_HELD`; G8 and M5 remain blocked. | ADR-R4-015; `runs/2026-10-17_PHASE8_m4_bounded_pilot_review_and_full_training_hold.md`; machine record `evidence/2026-10-17_phase8_m4_bounded_pilot/decision.json`; M4-C report SHA-256 `7293cf92...` | Preserve M4 checkpoints as bounded research evidence only; continue R4-GAP-007 independent evaluation evidence before any new full-training authority review | no operational promotion occurred; retain Run12 operational baseline and accepted DATA/representation authorities | delegated technical owner / GPT-5.6 Sol |
 
-## R4-D-010 implementation-status note — 2026-08-27
+## R4-D-010 implementation-status note — historical context only
 
-R4-D-010's table row intentionally preserves the **original accepted decision** and its initial V10 candidate extractor identity `v2.3-r4-call-semantics`. That historical row must not be rewritten as if the later implementation revisions were known on 2026-08-21.
+R4-D-010's table row intentionally preserves the **original accepted decision** and its initial V10 candidate extractor identity `v2.3-r4-call-semantics`. That historical row must not be rewritten as if later implementation revisions were known on 2026-08-21.
 
-The decision itself explicitly requires versioning and says a failed V10 candidate must be revised as a new versioned candidate rather than patching v9. Subsequent extractor evolution therefore remains inside R4-D-010's accepted semantic boundary:
+The decision explicitly requires versioning and says a failed V10 candidate must be revised as a new versioned candidate rather than patching v9. Subsequent extractor evolution remained inside R4-D-010's accepted semantic boundary:
 
 - `v2.3-r4-call-semantics` — frozen structural-reference diagnostic lineage;
-- `v2.4-r4-call-semantics-compat` — versioned compatibility repair that closes the 26-contract parse-only tail and preserves the required 22,539 primary + 1 identity-bound runtime split;
-- `v2.5-r4-call-semantics-deterministic-cfg` — historical future-candidate extractor, adding only the evidence-backed deterministic persistent-storage CFG WRITE correction while keeping graph schema V10 and the R4-D-010 call-kind vocabulary unchanged.
-- `v2.6-r4-call-semantics-deterministic-cfg-mutators` — current future-candidate extractor, additionally recognizing only persistent-storage collection `push`/`pop` mutations while preserving call-node priority and the V10 call-kind vocabulary.
+- `v2.4-r4-call-semantics-compat` — versioned compatibility repair that closed the 26-contract parse-only tail and preserved the required 22,539 primary + 1 identity-bound runtime split;
+- `v2.5-r4-call-semantics-deterministic-cfg` — historical candidate extractor adding the evidence-backed deterministic persistent-storage CFG WRITE correction while keeping graph schema V10 and the R4-D-010 call-kind vocabulary unchanged;
+- `v2.6-r4-call-semantics-deterministic-cfg-mutators` — accepted R4-D-011 extractor, additionally recognizing only persistent-storage collection `push`/`pop` mutations while preserving call-node priority and the V10 call-kind vocabulary.
 
-The V2.5 bounded structural tranche is closed 20/20 as 8 exact node-index-invariant graph-equivalence identities plus 12 deterministic persistent-storage WRITE corrections, with zero unexplained drift. This is implementation/acceptance evidence under R4-D-010, **not a new policy decision and not physical acceptance**.
+The V2.5 bounded structural tranche closed 20/20 as 8 exact node-index-invariant graph-equivalence identities plus 12 deterministic persistent-storage WRITE corrections with zero unexplained drift. It is historical implementation/acceptance evidence under R4-D-010, not current restart authority.
 
-Current implementation/restart authority:
+Historical V2.5 implementation/staging context:
 
 - `runs/2026-08-27_PHASE8_v10_v25_current_restart_checkpoint.md`;
 - `reviews/R4-GAP-008/2026-08-26_v10_v25_bounded_structural_closure.md`;
 - `runs/2026-08-26_PHASE8_v10_v25_full_candidate_staging.md`.
 
-R4-D-011 now supplies the separate physical-acceptance authority after explicit review of the passed, bound V2.6 V4 transition report. The exact V2.6 root and digest are immutable accepted physical evidence. G8 remains open and training authority remains separate.
+R4-D-011 supplies the later physical-acceptance authority for the exact V2.6 root/digest. For current restart state, use `PLAN_STATUS_MATRIX.md` and the current technical-completion records instead of the historical V2.5 checkpoint.
 
 ## Decisions requiring ADR
 
