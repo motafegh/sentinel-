@@ -1,0 +1,63 @@
+{
+  "schema": "sentinel-r4-call-to-unknown-semantic-clarification-v1",
+  "decision_id": "R4-D-016",
+  "status": "ACCEPTED",
+  "date": "2026-10-20",
+  "scope": "R4-GAP-007 CallToUnknown semantic authority",
+  "class": {
+    "index": 0,
+    "name": "CallToUnknown",
+    "authoritative_scope": "raw_dynamic_low_level_unknown_target_interactions",
+    "included_constructs": [
+      "call",
+      "delegatecall",
+      "callcode",
+      "staticcall",
+      "send"
+    ],
+    "explicit_exclusions_when_destination_uncertainty_is_the_only_reason": [
+      "transfer",
+      "typed_high_level_interface_call",
+      "same_file_or_in_scope_library_call",
+      "contract_creation",
+      "selfdestruct_or_suicide_destination"
+    ],
+    "checked_raw_low_level_call_can_still_qualify": true,
+    "unchecked_return_or_failure_is_additional_positive_evidence": true
+  },
+  "taxonomy": {
+    "schema_version": "1",
+    "class_order_changed": false,
+    "class_set_changed": false,
+    "model_output_shape_changed": false,
+    "source_crosswalk_role_changed": false,
+    "reason_no_schema_bump": "The decision aligns ambiguous prose with the original crosswalks, class verification pattern, V10 semantic consumers, and R4-D-010 without changing class identity/order or label-source mappings."
+  },
+  "candidate_1": {
+    "historical_primary_decision": "NOT_CONFIRMED",
+    "current_authority": "HISTORICAL_DEFINITION_STALE",
+    "queue_state": "UNKNOWN",
+    "review_state": "PENDING_REVIEW",
+    "target": null,
+    "next_if_reused": "NEW_PRIMARY_REVIEW_UNDER_R4_D_016"
+  },
+  "candidate_2": {
+    "primary_review_semantically_compatible": true,
+    "accepted_confirmed_negative": false,
+    "queue_state": "UNKNOWN",
+    "review_state": "PENDING_REVIEW",
+    "target": null,
+    "next": "SELF_CONTAINED_V2_BLIND_BUNDLE_AND_GENUINELY_ISOLATED_INDEPENDENT_REVIEW"
+  },
+  "blind_review_v1": {
+    "status": "RETIRED_FOR_FUTURE_ADJUDICATION",
+    "reason": "Not self-contained for governing class semantics/negative-evidence policy and susceptible to contradictory repository wording."
+  },
+  "confirmed_negative_cells": 0,
+  "full_training_authorized": false,
+  "m5_execution_authorized": false,
+  "g8_passed": false,
+  "threshold_tuning_authorized": false,
+  "calibration_fit_authorized": false,
+  "production_promotion_authorized": false
+}
