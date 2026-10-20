@@ -9,9 +9,9 @@ No new contract review is permitted without an approved gap entry.
 | R4-GAP-003 | BCCC/CallToUnknown,ExternalBug,GasException | ML-propagated verification deferred in Phase 5 | BCCC v1.4 verified labels provisional | Stage 5.5 never ran; BCCC remains deferred | Reopen only if importing these provisional BCCC strata | PROVISIONAL→VERIFIED or deferred | MASK_OR_EXCLUDE | 2026-08-11 — deferred for first baseline |
 | R4-GAP-004 | BCCC/all classes | 2-tool consensus baseline | skeleton exists; results absent | Tool intersection is not ground truth | Execute only if later benchmark decision requires it | Tier-C benchmark baseline | PROPOSED | Non-blocking |
 | R4-GAP-005 | All classes | Echidna/fuzzing precision estimates | no retained fuzzing evidence | complementary, not required for current DATA source roles | targeted future fuzzing only | Complementary fuzz evidence | PROPOSED | Non-blocking |
-| R4-GAP-006 | All classes | Exploit-reproduction PoC tests | no retained PoC corpus | useful for outcome validation but not smallest current evidence | targeted future PoCs only | Outcome validation/case study | PROPOSED | Non-blocking |
-| R4-GAP-007 | V3 `TRAIN_UNLABELED` groups / eight enabled classes | Confirmed-negative class-specific evaluation evidence sufficient to observe false-positive behavior and support later evaluation design; for candidate #2, the neutral `CallToUnknown` semantic boundary must first be unambiguous | Historical zeros, source silence, unlabeled cells, V2/V3 positive evidence, tools, R4-GAP-002 review, pilot-queue mechanics, candidate #1 review, candidate #2 primary review, three non-authoritative independent-review attempts, canonical taxonomy and source crosswalks | None establishes target `0`. Candidate #2 independent adjudication is additionally blocked because the locked taxonomy includes the broad phrase “calls to unverified external addresses” while DIVE/SolidiFI operational mappings define `CallToUnknown` around raw/unchecked low-level call/send/delegatecall behavior. Reviewers can legitimately diverge until that neutral class boundary is resolved. | First resolve the `CallToUnknown` definition independently of candidate outcome. Then build a self-contained v2 blind bundle with the exact neutral class definition + generic negative-evidence rule and obtain genuinely isolated independent verification. Continue the hardened V3 queue only after that. | Confirmed-negative **evaluation-only** evidence; optimizer/training authority requires separate later policy/ADR | IN_PROGRESS | 2026-10-20 — candidate #1 remains `NOT_CONFIRMED`; candidate #2 remains UNKNOWN/PENDING_REVIEW/target `None`; three recent external attempts are diagnostic only and not admissible independent verification. Semantic-definition alignment is the active blocker. |
-| R4-GAP-008 | repaired-v2 graph schema v9 / external-call semantics / CallToUnknown, ExternalBug, Reentrancy consumers | Population impact and remediation decision for v9 call-kind distortion | Candidate #2 source/graph review; full-population v9 edge-origin audit; V10 call-kind implementation; parse-only compatibility repair; bounded V2.5 analysis; fresh V2.6 Stages A-D; three-run 355-identity evidence; V4 audit; R4-D-011 acceptance review | Reuse is now sufficient only for the exact accepted V2.6 root and digest. Historical V2.3/V2.4/V2.5 roots remain diagnostic evidence and are not interchangeable. | Complete: V4 re-proved 349 persistent-storage WRITE corrections plus 6 exact index-equivalent graphs with zero unexplained drift; R4-D-011 accepted digest `d9f925...`. | Exact V10 V2.6 physical representation authority only; no label, selector, objective, threshold/calibration, or training authority | RESOLVED | 2026-09-02 — R4-D-011 / ADR-R4-011 accepts the exact 22,540-identity V2.6 root after refreshed binder and current-commit V4 review. |
+| R4-GAP-006 | All classes | Exploit-reproduction PoC tests | no retained PoC corpus | useful for outcome validation/case study but not smallest current evidence | targeted future PoCs only | Outcome validation/case study | PROPOSED | Non-blocking |
+| R4-GAP-007 | V3 `TRAIN_UNLABELED` groups / eight enabled classes | Confirmed-negative class-specific evaluation evidence sufficient to observe false-positive behavior and support later evaluation design | Historical zeros, source silence, unlabeled cells, V2/V3 positive evidence, tools, R4-GAP-002 review, hardened queue mechanics, candidate #1/#2 source reviews, R4-D-016 semantic alignment | None yet establishes accepted target `0`. R4-D-016 resolves the `CallToUnknown` semantic ambiguity, but candidate #2 still lacks admissible independent agreeing verification. | Build/verify `r4_gap007_candidate2_independent_review_v2.zip` under R4-D-016; review it in a genuinely isolated context with no candidate-specific history; adjudicate only after that result. Candidate #1 requires a new primary review under R4-D-016 if reused. | Confirmed-negative **evaluation-only** evidence; optimizer/training authority requires separate later policy/ADR | IN_PROGRESS | 2026-10-20 — R4-D-016 accepted. Candidate #1 historical `NOT_CONFIRMED` rationale is definition-stale and no longer current authority; candidate #2 primary remains compatible but state is UNKNOWN/PENDING_REVIEW/target `None`; confirmed negatives remain zero. |
+| R4-GAP-008 | repaired-v2 graph schema v9 / external-call semantics / CallToUnknown, ExternalBug, Reentrancy consumers | Population impact and remediation decision for v9 call-kind distortion | Candidate #2 source/graph review; full-population v9 edge-origin audit; V10 call-kind implementation; parse-only compatibility repair; bounded V2.5 analysis; fresh V2.6 Stages A-D; three-run 355-identity evidence; V4 audit; R4-D-011 acceptance review | Reuse is sufficient only for the exact accepted V2.6 root/digest. Historical V2.3/V2.4/V2.5 roots remain diagnostic evidence and are not interchangeable. | Complete: V4 re-proved 349 persistent-storage WRITE corrections plus 6 exact index-equivalent graphs with zero unexplained drift; R4-D-011 accepted digest `d9f925...`. | Exact V10 V2.6 physical representation authority only; no label, selector, objective, threshold/calibration, or training authority | RESOLVED | 2026-09-02 — R4-D-011 / ADR-R4-011 accepts the exact 22,540-identity V2.6 root after refreshed binder and current-commit V4 review. |
 
 ## R4-GAP-002 closure evidence
 
@@ -50,62 +50,88 @@ Current durable queue invariants:
 
 The old/pre-hardening queue is obsolete for review. **R4-GAP-007 pilot adjudication may proceed only from the committed hardened queue.**
 
-Queue membership is review reservation only. Do not convert source absence, unlabeled state, static-tool silence, or failed/ambiguous review into target `0`. Any `CONFIRMED_NEGATIVE` requires class-specific primary review plus an independent reviewer that agrees from sufficient evidence under an unambiguous governing class definition.
+Queue membership is review reservation only. Do not convert source absence, unlabeled state, static-tool silence, or failed/ambiguous review into target `0`. Any `CONFIRMED_NEGATIVE` requires class-specific primary review plus an independent reviewer that agrees from sufficient evidence under the governing class definition.
 
 Accepted confirmed negatives remain `EVALUATION_ONLY_NOT_TRAINING_AUTHORITY` unless a later versioned decision explicitly grants optimizer authority.
 
-### Pilot progress — candidate #1
+### R4-D-016 semantic authority — 2026-10-20
 
-The first deterministic `CallToUnknown` candidate was completely reviewed. Whole-source and bound-representation review found a typed callback to a caller-supplied address plus a legacy `msg.sender.transfer(...)` value transfer. The governing taxonomy’s broad external-address clause prevented class-specific negative confirmation.
+R4-D-016 closes the definition ambiguity exposed by the failed/contaminated candidate #2 blind-review attempts.
 
-Candidate #1 is durably `NOT_CONFIRMED`; queue state remains UNKNOWN/PENDING_REVIEW/target `None`. A non-confirmed decision does not require independent verification.
+`CallToUnknown` is now explicitly the raw/dynamic low-level unknown-target interaction class:
 
-Primary review closeout:
+- in scope: `call`, `delegatecall`, legacy `callcode`, `staticcall` where applicable, and `send`;
+- a checked raw low-level call can still qualify because target/callee uncertainty is class-defining;
+- unchecked return/failure handling is additional positive evidence rather than the sole condition;
+- `transfer`, ordinary typed high-level interface calls, same-file/in-scope library calls, contract creation, and selfdestruct/suicide destinations do not qualify solely because their destination is external/caller-controlled/unverified.
+
+Authority:
+
+- `adrs/ADR-R4-016-call-to-unknown-semantic-clarification.md`;
+- `evidence/2026-10-20_call_to_unknown_semantic_alignment/decision.json`;
+- `docs/plan/system-finalization/technical-completion/working/2026-10-20_ml_gap007_call_to_unknown_semantic_alignment.md`.
+
+### Candidate #1 current status
+
+The historical candidate #1 primary record returned `NOT_CONFIRMED` because a caller-selected **typed high-level callback** was treated as contradictory evidence under the broad old taxonomy phrase.
+
+R4-D-016 makes that rationale definition-stale. Preserve the historical record, but it no longer controls current semantic authority.
+
+Candidate #1 remains the immutable queue state:
+
+```text
+state  = UNKNOWN / PENDING_REVIEW
+target = None
+```
+
+If candidate #1 is used again, perform a new primary review under R4-D-016. No target rollback is needed because it was never accepted as a confirmed negative.
+
+Historical primary record:
 
 `runs/2026-08-21_PHASE8_gap007_candidate1_primary_review.md`
 
-Machine-readable adjudication and evaluation:
+### Candidate #2 current status
 
-- `reviews/R4-GAP-007/candidate1_primary_adjudication_v1.jsonl`
-- `reviews/R4-GAP-007/candidate1_evaluation_v1.json`
+Candidate #2 (`r4neg-bfe90ef82e33a324d612256a5d4053c6`) completed a source-first primary review whose reasoning is compatible with R4-D-016:
 
-### Candidate #2 authoritative state
+- complete source reviewed;
+- no low-level/send family interaction found;
+- same-file SafeMath library calls excluded;
+- sole relevant Ether interaction is `transfer()`.
 
-Candidate #2 (`r4neg-bfe90ef82e33a324d612256a5d4053c6`) completed source-first primary review. The primary result supports `CONFIRMED_NEGATIVE` for `CallToUnknown`, but the candidate remains UNKNOWN / PENDING_REVIEW / target `None` because admissible independent verification has not completed.
+The primary result therefore remains usable as primary evidence, but candidate #2 remains UNKNOWN / PENDING_REVIEW / target `None` until admissible independent verification agrees.
 
-Candidate #2 primary record:
+Primary record:
 
 `runs/2026-08-21_PHASE8_gap007_candidate2_primary_review.md`
 
-Blind independent-review archive v1:
+### Blind review bundle status
+
+Historical v1 archive:
 
 `review_bundles/r4_gap007_candidate2_independent_review_v1.zip`
 
 SHA-256: `2e7f48c9648097624406d167266a42a31055f222a0f468a0453b2f353b343f1a`.
 
-### 2026-10-20 independent-review diagnostic attempts
+**v1 is retired for future adjudication.** It remains historical evidence only because it lacked self-contained governing semantic/policy material and permitted reviewers to encounter contradictory repository prose.
 
-Three external attempts are **not adjudication evidence**:
+The deterministic v2 builder is:
 
-1. a repository-aware reviewer saw the prior candidate #2 direction in `CLAUDE.md` before returning a substantive negative conclusion;
-2. a strict bundle-only reviewer correctly stopped because v1 lacks the governing class definition and complete generic negative-evidence rule, and also disclosed candidate-specific prior context;
-3. a ZIP + neutral-material reviewer disclosed candidate-specific prior context and returned `NOT_CONFIRMED` under a literal reading of the broad taxonomy phrase “calls to unverified external addresses.”
+`docs/plan/ml-R4/scripts/p8_build_gap007_candidate2_independent_review_v2.py`
 
-Do not vote-count or reconcile these results as candidate truth. They instead exposed a neutral semantic inconsistency:
+The generated v2 bundle must contain only:
 
-- `data_module/sentinel_data/labeling/schema/taxonomy.yaml` broadly includes unchecked low-level calls **or calls to unverified external addresses**;
-- `data_module/sentinel_data/labeling/crosswalks/dive.yaml` says `CallToUnknown` is reserved for raw low-level `call` / `send` / `delegatecall` patterns where the callee is unverified;
-- `data_module/sentinel_data/labeling/crosswalks/solidifi.yaml` likewise explains the class through unchecked low-level `send/call/delegatecall` behavior.
+- complete candidate source;
+- manifest and hashes;
+- review task;
+- neutral R4-D-016 class definition and exclusions;
+- generic class-specific confirmed-negative evidence policy.
 
-This ambiguity can materially change whether an address-level `transfer` is considered potentially in-scope. Therefore **no further candidate #2 review is permitted until the class-definition audit resolves the neutral boundary**.
+It must not contain any primary-review result or prior candidate conclusion. The reviewer context must likewise contain no candidate-specific prior conclusion; otherwise it must stop as procedurally contaminated.
 
-Active working record:
+The three 2026-10-20 external attempts remain diagnostic only and must not be vote-counted as independent evidence.
 
-`docs/plan/system-finalization/technical-completion/working/2026-10-20_ml_gap007_call_to_unknown_semantic_alignment.md`
-
-After the definition is resolved, build a self-contained v2 blind review package containing the exact neutral class definition, generic negative-evidence rule, complete source/task and hashes, with no prior-candidate conclusion. The independent reviewer must also have no candidate-specific prior context.
-
-The 2026-08-16 hardened evidence-snapshot closeout remains the accepted pre-pilot baseline.
+The 2026-08-16 hardened evidence-snapshot closeout remains the accepted pre-pilot logical baseline.
 
 ## R4-GAP-008 resolution and current physical stop line
 
