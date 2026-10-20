@@ -2,59 +2,68 @@
 
 This directory governs the R4 repair of SENTINEL's DATA/ML training and evaluation foundation.
 
-## Current restart — 2026-10-01
+## Current restart — 2026-10-20
 
-Do **not** restart R4 from Phase 0 or from the August 15/21/23 intermediate Phase-8 handoffs. Historical G0–G7 are complete and retained as reproducibility evidence. Phase 8 remains `IN_PROGRESS`; G8 is not passed and the 100-epoch run is **NOT AUTHORIZED**.
+Do **not** restart from Phase 0, old DATA construction, V2.5/V2.6 staging, or M4 execution. Historical G0–G7 are complete. Phase 8 remains `IN_PROGRESS`; G8 is not passed and M5/full training is **NOT AUTHORIZED**.
 
 Current boundary:
 
-- repaired-v2 physical DATA remains accepted immutable reproducibility evidence under R4-D-008;
-- logical V3 grouping/roles/publication remains accepted under R4-D-009 and the hardened V3 evidence snapshot remains the accepted pre-pilot logical baseline;
-- R4-D-010 prohibits the new full run from using graph schema v9 and requires a separately versioned V10 physical representation lineage;
-- the former 26-contract V10 parse-only remediation is complete in the protected V2.4 diagnostic lineage;
-- the later V2.5 bounded structural-drift investigation is complete **20/20**, with 8 exact node-index-invariant graph-equivalence identities and 12 deterministic persistent-storage `CFG_NODE_WRITE` corrections, zero unexplained drift, and no blockers;
-- the V2.6 storage-collection mutator correction is implemented and bounded to persistent-storage `push`/`pop` receivers only;
-- exact final runtime partition is 22,539 ordinary identities under Slither 0.10.0 plus one declared identity-bound exception under Slither 0.11.5;
-- protected-local Stages A-D pass for all 22,540 identities with exact accepted-V9 token bytes and the required 22,539 + 1 runtime split;
-- the V2.6 full candidate is bound by digest `d9f925588913e66476cfbc097bace7daa7e673295fe2a243760313d0bef5ebdd`;
-- Stage E V4 passes: all 355 current raw non-parse-only drifts are re-proven as 349 persistent-storage WRITE corrections plus 6 exact index-equivalent graphs, with zero unexplained drift;
-- R4-D-011 physically accepts only the exact V2.6 protected-local root and digest above; selector promotion and training remain separate and unauthorized;
-- confirmed-negative support remains zero; candidate #1 is `NOT_CONFIRMED`; candidate #2 primary review still requires genuinely independent agreement;
-- threshold fitting, calibration fitting, and untouched acceptance remain unsupported/empty;
-- R4-D-012 promotes `target_aware_guarded_v1` for a fresh versioned token candidate only; R4-D-013 now accepts the exact guarded physical successor with 22,540 identities (14,751 guarded / 7,789 historical fallback) and digest `9885d7b88a46aff4102741d63eeaa0bd6968f0857f7bca6a389662bfaa158881`;
-- R4-D-011 remains immutable as the V10 graph/control parent; DATA D0-D6 are complete and the accepted guarded lineage is handed off to the ML technical-completion workstream;
-- R4-D-014 accepts `masked_positive_bce_control_v1` only for bounded control/pilot use; MODEL_SELECTION is positive-fit diagnostic only; PU/negative supervision, threshold/calibration/untouched roles and promotion remain unauthorized;
-- ML M0-M3 are complete; the M3 protected-local no-step preflight passed with guarded binding `5d2b913e...` and zero optimizer steps; M4 separately bounded pilot engineering/review is now the active work;
-- full 100-epoch training remains unauthorized.
+- R4-D-009 accepts logical V3 grouping/roles/publication;
+- R4-D-011 accepts the exact immutable V10/V2.6 graph/control root with digest `d9f925588913e66476cfbc097bace7daa7e673295fe2a243760313d0bef5ebdd`;
+- R4-D-013 accepts the exact immutable guarded-token successor with 22,540 identities (14,751 guarded / 7,789 historical fallback) and digest `9885d7b88a46aff4102741d63eeaa0bd6968f0857f7bca6a389662bfaa158881`;
+- R4-D-014 accepts `masked_positive_bce_control_v1` only for bounded positive-only control/evaluation; MODEL_SELECTION is positive-fit diagnostic only;
+- ML M0-M4 are complete;
+- R4-D-015 records `PASS_BOUNDED_PILOT_FULL_TRAINING_STILL_HELD` after the fixed 8-epoch / 120-step M4-C pilot;
+- M4 demonstrated mechanics, recovery and positive fitting, not vulnerability discrimination;
+- confirmed-negative support remains zero;
+- candidate #1 is durably `NOT_CONFIRMED`;
+- candidate #2 primary review supports a class-specific negative but authoritative state remains `UNKNOWN / PENDING_REVIEW / target None`;
+- three recent external candidate #2 review attempts are non-authoritative because of prior-context contamination and/or insufficient neutral governing material;
+- those attempts exposed a material `CallToUnknown` definition inconsistency between broad locked-taxonomy wording and narrower DIVE/SolidiFI operational mapping semantics;
+- R4-GAP-007 semantic-definition alignment is therefore the active work before candidate #2 independent review can resume;
+- threshold fitting, calibration fitting and untouched acceptance remain unsupported/empty;
+- M5/full training, G8 and production promotion remain unauthorized;
+- Run12 remains the historical operational baseline.
 
-For current work, read in this order:
+## Current read order
 
 1. applicable repository/module `CLAUDE.md` files;
 2. `PLAN_STATUS_MATRIX.md`;
-3. `runs/2026-09-02_PHASE8_v10_v26_physical_acceptance_and_no_launch.md`;
-4. `adrs/ADR-R4-011-v10-v26-physical-representation-acceptance.md`;
-5. `runs/2026-09-02_PHASE8_selector_promotion_review.md` and `adrs/ADR-R4-012-target-aware-guarded-selector-promotion.md`;
-6. `runs/2026-09-29_PHASE8_guarded_token_physical_acceptance_and_no_launch.md` and `adrs/ADR-R4-013-guarded-token-physical-representation-acceptance.md`;
-7. `runs/2026-10-01_PHASE8_objective_evaluation_decision_and_pilot_boundary.md` and `adrs/ADR-R4-014-phase8-positive-only-control-and-evaluation-hold.md`;
-8. `docs/plan/system-finalization/technical-completion/00_MASTER_TECHNICAL_COMPLETION_ROADMAP.md`;
-9. `docs/plan/system-finalization/technical-completion/02_ML_TRAINING_EVALUATION_COMPLETION_PLAN.md` and the active M4 working record;
-10. `DECISION_REGISTER.md`, `RISK_AND_BLOCKER_REGISTER.md`, `EVIDENCE_GAP_REGISTER.md`, and `CLAIM_STATUS_MATRIX.md`;
-11. `docs/plan/system-finalization/technical-completion/01_DATA_REPRESENTATION_COMPLETION_PLAN.md` only when DATA closure details are needed;
-12. the August 26-30 V2.5/V2.6 execution records only when historical staging/evidence context is needed.
+3. `docs/plan/system-finalization/technical-completion/02_ML_TRAINING_EVALUATION_COMPLETION_PLAN.md`;
+4. `runs/2026-10-17_PHASE8_m4_bounded_pilot_review_and_full_training_hold.md` and `adrs/ADR-R4-015-bounded-pilot-pass-full-training-hold.md`;
+5. `docs/plan/system-finalization/technical-completion/working/2026-10-20_ml_gap007_call_to_unknown_semantic_alignment.md`;
+6. `EVIDENCE_GAP_REGISTER.md`, `RISK_AND_BLOCKER_REGISTER.md`, `CLAIM_STATUS_MATRIX.md`, and `DECISION_REGISTER.md`;
+7. R4-D-011/R4-D-013/R4-D-014 records when exact physical/objective authority is needed;
+8. hardened V3 evidence snapshot when logical/evaluation population detail is needed.
 
-R4-B008 / R4-GAP-008 are closed only for the R4-D-011 root and digest. Preserve that accepted root and its evidence; any regenerated or changed root must fail closed and receive a new physical decision.
+Historical execution records—including the 2026-10-03 M4 working record—may contain truthful *then-current* stop lines. They are not current restart authority after R4-D-015 and the 2026-10-20 semantic-alignment checkpoint.
 
-The selector physical-lineage track is closed by R4-D-013, the bounded objective/evaluation contract is fixed by R4-D-014, and M3 exact guarded integration is closed. R4-GAP-007 remains open; M4 bounded-pilot evidence, unsupported calibration/untouched roles, and full-training authorization remain separate gates.
+## Immediate work
 
-The read-only full-population historical-control selector verification in `runs/2026-09-02_PHASE8_selector_control_equivalence_plan.md` passes 22,540/22,540 with zero mismatches. R4-D-013 now supplies the separate guarded-token physical acceptance while R4-D-011 remains unchanged; training authority remains separate.
+The active technical question is **not** whether candidate #2 “looks negative.” It is whether the repository has one unambiguous governing definition of `CallToUnknown`.
+
+Current conflicting wording:
+
+- locked `data_module/sentinel_data/labeling/schema/taxonomy.yaml`: low-level calls whose return is unchecked **or calls to unverified external addresses**;
+- `data_module/sentinel_data/labeling/crosswalks/dive.yaml`: `CallToUnknown` reserved for raw low-level `call` / `send` / `delegatecall` patterns where the callee is unverified;
+- `data_module/sentinel_data/labeling/crosswalks/solidifi.yaml`: maps Unchecked-Send specifically as unchecked low-level-call behavior.
+
+Resolve that definition independently of candidate #2 outcome. If adopting the narrower interpretation materially changes the class definition, use the required ADR/schema/versioning path. Then build a self-contained candidate #2 v2 blind bundle and obtain a genuinely isolated independent review.
+
+Until then:
+
+- candidate #2 remains UNKNOWN/PENDING_REVIEW/target `None`;
+- contaminated or under-specified review attempts are diagnostic only;
+- do not infer target `0`;
+- do not launch M5/full training.
 
 ## What R4 is solving
 
 R4 starts from an established working premise:
 
-> The historical contract-vulnerability labels are materially untrustworthy, semantically misaligned, or misleading. Prior contract-level investigations already provide substantial evidence for this conclusion.
+> Historical contract-vulnerability labels are materially untrustworthy, semantically misaligned, or misleading. Prior contract-level investigations already provide substantial evidence for this conclusion.
 
-R4 does **not** begin by asking whether the labels might be wrong. It begins by recovering previous evidence, reconstructing how unreliable labels reached the training export, building a trustworthy evidence-qualified DATA vNext, and retraining/evaluating only when the evidence supports the intended claims.
+R4 recovers prior evidence, reconstructs how unreliable labels reached training, builds evidence-qualified DATA vNext, and trains/evaluates only when the evidence supports the intended claims.
 
 ## Primary deliverable
 
@@ -64,60 +73,47 @@ A versioned DATA/ML bundle containing:
 2. contract-class evidence states;
 3. corrected labels where evidence supports correction;
 4. unknown/conflicting/not-applicable masks rather than false negatives;
-5. leakage-safe training, selection, calibration, and acceptance partitions where those roles are actually supportable;
-6. the existing model architecture retrained only after the objective/evaluation contract is credible;
-7. evidence-qualified evaluation and policy thresholds where evidence permits them;
+5. leakage-safe training/selection/calibration/acceptance roles only where supportable;
+6. the existing model architecture trained only after objective/evaluation authority is credible;
+7. evidence-qualified evaluation/policy artifacts only where evidence permits them;
 8. migration and rollback artifacts.
 
 ## Binding execution constraints
 
-- Reuse prior DIVE, BCCC, manual, tool-assisted, and source-level work before creating new reviews.
+- Reuse prior DIVE, BCCC, manual, tool-assisted and source-level work before creating new reviews.
 - A new contract review requires a registered evidence gap.
-- Do not repeat a previous review merely to obtain a cleaner-looking artifact.
-- Preserve historical labels/exports, accepted repaired-v2 evidence, accepted logical V3, the frozen V2.3 structural reference, and protected V2.4 diagnostic evidence; create versioned replacements.
+- Do not repeat a previous review merely to obtain a cleaner-looking answer.
+- Preserve historical labels/exports and all accepted R4-D-009/R4-D-011/R4-D-013 roots; create versioned replacements.
 - Do not redesign the architecture during the normal R4 path without a separate decision.
-- Historical zero does not automatically mean confirmed negative.
+- Historical zero does not mean confirmed negative.
 - Tools are evidence, not ground truth.
-- Do not use the same leakage group for training, model selection, threshold fitting, calibration fitting, and final acceptance.
+- Do not use the same leakage group across incompatible training/evaluation roles.
 - Every conclusion must link to retained evidence or be marked unsupported.
-- Repository tests do not substitute for protected local physical DATA binding.
-- A physically valid dataset does not by itself prove model discrimination quality.
-- Historical bounded V2.5 structural success did not equal physical V10 acceptance; only R4-D-011 grants authority to the exact V2.6 root/digest.
-- Do not launch training from V10 until the separate supervision/evaluation, selector, run-control, and training-governance gates pass.
+- Repository tests do not substitute for protected-local physical binding.
+- Physical validity does not establish model discrimination quality.
+- Do not silently narrow/broaden a class definition to force an adjudication.
+- Do not count reviewer contamination as independence.
+- Do not invent negative targets, PU assumptions, thresholds, calibration or untouched acceptance populations.
+- Do not launch M5 until a later explicit training-authorization decision exists.
 
 ## Authority order
 
-When files conflict, follow this order:
+When files conflict:
 
-1. Repository/module agent instructions such as `CLAUDE.md`.
-2. Executable source/config/tests for actual behavior.
-3. `00_MASTER_PLAN.md` and accepted machine-readable policy/artifacts.
-4. Approved decision records / ADRs, including R4-D-008, R4-D-009, and R4-D-010.
-5. `PLAN_STATUS_MATRIX.md`, `RISK_AND_BLOCKER_REGISTER.md`, and the current restart checkpoint/staging records.
-6. Canonical handbook/current-status documentation.
-7. Historical plans, bootstrap instructions, and dated intermediate reports.
+1. applicable repository/module instructions, interpreted together with current committed R4 governance;
+2. executable source/config/tests for actual behavior;
+3. accepted machine-readable policy/artifacts and ADR/decision authority;
+4. `PLAN_STATUS_MATRIX.md`, R4 registers and current technical-completion plans/checkpoints;
+5. canonical handbook/current-status documentation;
+6. dated historical plans/reports.
 
-An active phase or decision may refine execution detail but may not weaken the master evidence rules.
-
-## Historical bootstrap and intermediate handoffs
-
-`START_HERE_AGENT.md` retains the original Phase-0 bootstrap assignment for provenance but now redirects to the current Phase-8 boundary.
-
-These dated V10 records are historical execution context, not current restart authority:
-
-- `runs/2026-08-21_PHASE8_gap008_external_call_semantics_audit.md`;
-- `runs/2026-08-21_PHASE8_v10_external_call_implementation_handoff.md`;
-- `runs/2026-08-21_PHASE8_v10_implementation_and_local_regression.md`;
-- `runs/2026-08-23_PHASE8_v10_parse_only_resolution_working_plan.md`;
-- `runs/2026-08-23_PHASE8_v10_structural_drift_probe_handoff.md`.
-
-Do not replay their completed blockers merely because the files remain in the repository.
+An old dated report may preserve historical truth but may not override a later accepted decision or current status record.
 
 ## Directory map
 
 ```text
 ml-R4/
-├── START_HERE_AGENT.md          # historical bootstrap + current redirect
+├── START_HERE_AGENT.md
 ├── 00_MASTER_PLAN.md
 ├── KNOWN_PREMISE_AND_NON_DUPLICATION_POLICY.md
 ├── MODEL_ARCHITECTURE_FREEZE.md
