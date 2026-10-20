@@ -13,6 +13,7 @@
 # References:
 #   - ADR-0002 (multi-label formulation)
 #   - docs/proposal/Data_Module_Proposals/actionable_plans/04_stage_3_labeling.md D-3.1
+#   - ADR-R4-016 (CallToUnknown semantic clarification; class identity/order unchanged)
 
 schema_version: "1"
 locked: true
@@ -24,14 +25,21 @@ classes:
     dasp: "DASP-7 (Bad Randomness / Unchecked Low-Level Calls)"
     severity: high
     description: >
-      Low-level calls (call/delegatecall/send) whose return value is not
-      checked, or calls to unverified external addresses. Includes send()
-      without revert on failure and raw address.call() patterns.
+      Raw/dynamic low-level external-call-family interactions with an
+      unverified or dynamically selected callee. This includes call,
+      delegatecall, legacy callcode, staticcall, and send patterns. A checked
+      raw low-level call can still satisfy this class because target uncertainty
+      is class-defining; unchecked return/failure handling is additional positive
+      evidence. Solidity transfer(), ordinary typed high-level interface calls,
+      same-file/in-scope library calls, contract creation, and selfdestruct/suicide
+      destinations do not satisfy CallToUnknown solely because the destination is
+      external, caller-controlled, or otherwise unverified.
     crosswalk_notes: >
-      DIVE maps unchecked_low_level_calls here.
-      SmartBugs Curated maps unchecked_low_level_calls here.
-      BCCC had 86.9% FP rate for this class (per Phase 5 verification).
-      If verified count < 300 post-merger, the merger pauses and asks human.
+      R4-D-016 is the governing semantic clarification. SolidiFI Unchecked-Send
+      and SmartBugs Curated unchecked_low_level_calls map here. DIVE has no
+      direct CallToUnknown category; its Unchecked Return Values maps to
+      UnusedReturn. Historical BCCC had an 86.9% false-positive rate for this
+      class. Transfer/high-level-call presence is not CallToUnknown truth.
 
   - id: 1
     name: DenialOfService
@@ -72,7 +80,7 @@ classes:
       patterns that hit the block gas limit in unexpected ways.
     crosswalk_notes: >
       No direct DASP equivalent in most sources; often mapped from Slither's
-      `costly-loop` or `calls-loop` detectors. SolidiFI has no injection for
+      costly-loop or calls-loop detectors. SolidiFI has no injection for
       this class — GasException contracts will come from DIVE/SmartBugs.
 
   - id: 4
@@ -101,9 +109,9 @@ classes:
       not about whether the callee is trustworthy.
     crosswalk_notes: >
       SolidiFI: unhandled_exceptions injection type maps here directly (T0).
-      Distinct from CallToUnknown (id=0): CallToUnknown is about unchecked
-      low-level calls; MishandledException is about swallowed try/catch or
-      ignored send() return values in higher-level patterns.
+      Distinct from CallToUnknown (id=0): CallToUnknown is about low-level
+      unknown/dynamic-target interactions; MishandledException is about swallowed
+      external-call exceptions or ignored failure handling.
 
   - id: 6
     name: Reentrancy
