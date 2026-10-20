@@ -12,7 +12,7 @@ from __future__ import annotations
 import hashlib
 import json
 from pathlib import Path
-from zipfile import ZIP_DEFLATED, ZipFile, ZipInfo
+from zipfile import ZIP_STORED, ZipFile, ZipInfo
 
 
 REPO_ROOT = Path(__file__).resolve().parents[4]
@@ -21,6 +21,7 @@ V1 = BUNDLES / "r4_gap007_candidate2_independent_review_v1.zip"
 V2 = BUNDLES / "r4_gap007_candidate2_independent_review_v2.zip"
 V2_SHA = BUNDLES / "r4_gap007_candidate2_independent_review_v2.zip.sha256"
 
+V1_EXPECTED_SHA256 = "2e7f48c9648097624406d167266a42a31055f222a0f468a0453b2f353b343f1a"
 CANDIDATE_ID = "r4neg-bfe90ef82e33a324d612256a5d4053c6"
 CONTRACT_ID = "f7afe9fff9f6c117c6cd9dd4730c0f12e3cc3c8ab98797911de091e240051b93"
 SOURCE_MEMBER = f"source/{CONTRACT_ID}.sol"
@@ -37,8 +38,9 @@ def json_bytes(value: object) -> bytes:
 
 
 def zip_info(name: str) -> ZipInfo:
+    # ZIP_STORED avoids zlib-version-dependent compressed-byte differences.
     info = ZipInfo(name, date_time=(1980, 1, 1, 0, 0, 0))
-    info.compress_type = ZIP_DEFLATED
+    info.compress_type = ZIP_STORED
     info.external_attr = 0o644 << 16
     return info
 
@@ -161,6 +163,14 @@ def main() -> int:
     if not V1.exists():
         raise FileNotFoundError(f"missing tracked v1 archive: {V1}")
 
+    v1_bytes = V1.read_bytes()
+    observed_v1_sha = sha256_bytes(v1_bytes)
+    if observed_v1_sha != V1_EXPECTED_SHA256:
+        raise RuntimeError(
+            "v1 archive SHA-256 mismatch: "
+            f"expected {V1_EXPECTED_SHA256}, observed {observed_v1_sha}"
+        )
+
     with ZipFile(V1, "r") as source_zip:
         names = set(source_zip.namelist())
         if SOURCE_MEMBER not in names:
@@ -194,6 +204,7 @@ def main() -> int:
         "contract_id": CONTRACT_ID,
         "target": {"class_index": CLASS_INDEX, "class_name": CLASS_NAME},
         "semantic_authority": "R4-D-016",
+        "source_carrier_v1_sha256": observed_v1_sha,
         "source_sha256": observed_source_sha,
         "files": {
             name: {"sha256": sha256_bytes(data), "bytes": len(data)}
@@ -239,6 +250,8 @@ def main() -> int:
             raise RuntimeError("v2 manifest read-back mismatch")
 
     print(f"PASS: {V2}")
+    print(f"v1_sha256={observed_v1_sha}")
+    print(f"source_sha256={observed_source_sha}")
     print(f"sha256={archive_sha}")
     print("members:")
     for name in sorted(payloads):
