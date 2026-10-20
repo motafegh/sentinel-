@@ -1,10 +1,10 @@
 # R4 Claim Status Matrix
 
-This matrix describes the **current evidence-qualified claim boundary**, not the historical binary-label surface. R4-D-008 accepts repaired-v2 physical DATA as immutable reproducibility evidence; R4-D-009 accepts corrected logical V3 grouping/roles; R4-D-010 prohibits v9 for the new full training lineage; R4-D-011 accepts the exact V10 V2.6 graph/control root; R4-D-013 accepts the guarded-token successor; R4-D-014 limits the executable ML regime to bounded positive-only control/positive-fit diagnostics; and R4-D-015 accepts the completed M4 bounded pilot while explicitly keeping M5/full training on HOLD. None of these facts establishes general model discrimination, calibration, thresholds, or production acceptance.
+This matrix describes the **current evidence-qualified claim boundary**, not the historical binary-label surface. R4-D-008 accepts repaired-v2 physical DATA as immutable reproducibility evidence; R4-D-009 accepts corrected logical V3 grouping/roles; R4-D-010 prohibits v9 for the new full training lineage; R4-D-011 accepts the exact V10 V2.6 graph/control root; R4-D-013 accepts the guarded-token successor; R4-D-014 limits the executable ML regime to bounded positive-only control/positive-fit diagnostics; R4-D-015 accepts the completed M4 bounded pilot while explicitly keeping M5/full training on HOLD; and R4-D-016 resolves `CallToUnknown` semantic scope without changing class identity/order. None of these facts establishes general model discrimination, calibration, thresholds, or production acceptance.
 
 | Index | Class | DATA vNext supervision | Current positive authority | Confirmed-negative support | Discrimination | Calibration / threshold | Current claim status | Key limitation |
 |---:|---|---|---|---|---|---|---|---|
-| 0 | CallToUnknown | ENABLED | STRONG: SolidiFI Unchecked-Send; SmartBugs unchecked_low_level_calls | NONE — candidate #1 `NOT_CONFIRMED`; candidate #2 remains UNKNOWN/PENDING_REVIEW/target `None`; independent review is blocked first on neutral class-definition alignment | UNSUPPORTED | UNSUPPORTED_EMPTY | TRAINING_ONLY | Locked taxonomy wording and operational crosswalk wording are materially ambiguous around “unverified external addresses” vs raw/unchecked low-level calls; no confirmed-negative evaluation support exists |
+| 0 | CallToUnknown | ENABLED | STRONG: SolidiFI Unchecked-Send; SmartBugs unchecked_low_level_calls | NONE — candidate #1 historical rationale is definition-stale; candidate #2 remains UNKNOWN/PENDING_REVIEW/target `None`; admissible v2 independent review pending | UNSUPPORTED | UNSUPPORTED_EMPTY | TRAINING_ONLY | R4-D-016 resolves the class to raw/dynamic low-level unknown-target interactions, but no confirmed-negative evaluation support exists yet |
 | 1 | DenialOfService | ENABLED | STRONG: SmartBugs denial_of_service | NONE — V3 pilot queue available | UNSUPPORTED | UNSUPPORTED_EMPTY | TRAINING_ONLY | DIVE DoS is masked; no confirmed negatives yet |
 | 2 | ExternalBug | ENABLED | STRONG: SolidiFI tx.origin; SmartBugs access_control | NONE — V3 pilot queue available | UNSUPPORTED | UNSUPPORTED_EMPTY | TRAINING_ONLY | DIVE Access Control is masked; class scope remains broader than any one source category |
 | 3 | GasException | SUPERVISION_DISABLED_PENDING_EVIDENCE | none | NONE | UNSUPPORTED | UNSUPPORTED_EMPTY | DISABLED_PENDING_EVIDENCE | No active approved class-specific positive authority |
@@ -66,40 +66,64 @@ R4-D-015 accepts the completed M4 program as **bounded mechanics/recovery/dynami
 
 The strong positive-fit result makes negative-side observability more important, not less: unknown/non-target behavior is still unconstrained by accepted negative truth.
 
+## R4-D-016 `CallToUnknown` semantic boundary
+
+R4-D-016 is accepted semantic authority for class index 0.
+
+`CallToUnknown` is the raw/dynamic low-level unknown-target interaction class:
+
+- included family: `call`, `delegatecall`, legacy `callcode`, applicable `staticcall`, and `send`;
+- a checked raw low-level call can still qualify because target/callee uncertainty is class-defining;
+- unchecked return/failure handling is additional positive evidence, not the sole defining condition;
+- `transfer`, ordinary typed high-level interface calls, same-file/in-scope library calls, contract creation, and selfdestruct/suicide destinations do **not** qualify solely because the destination is external/caller-controlled/unverified.
+
+The decision aligns canonical prose with original crosswalk/pattern semantics and R4-D-010/V10 consumers. It does not change class index/order, model output shape, source role mappings, or taxonomy schema version.
+
+Authority:
+
+- `adrs/ADR-R4-016-call-to-unknown-semantic-clarification.md`;
+- `evidence/2026-10-20_call_to_unknown_semantic_alignment/decision.json`.
+
 ## Hardened V3 negative-evidence pilot state
 
-R4-GAP-007 is in progress and confirmed-negative support remains `NONE` for every enabled class.
+R4-GAP-007 remains in progress and confirmed-negative support remains `NONE` for every enabled class.
 
-Candidate #1 is durably `NOT_CONFIRMED`.
+Candidate #1:
 
-Candidate #2 primary review supports `CONFIRMED_NEGATIVE`, but authoritative queue truth remains:
+- historical primary `NOT_CONFIRMED` rationale depended on the broad old taxonomy phrase;
+- R4-D-016 makes that rationale definition-stale;
+- authoritative queue state remains `UNKNOWN / PENDING_REVIEW / target None`;
+- if reused, candidate #1 needs a new primary review under R4-D-016.
+
+Candidate #2:
+
+- existing source-first primary review is semantically compatible with R4-D-016;
+- authoritative queue truth remains:
 
 ```text
 UNKNOWN / PENDING_REVIEW / target None
 ```
 
-Three external review attempts performed after M4 closure are not admissible independent verification:
+- admissible independent agreeing verification is still missing.
+
+Three external review attempts performed after M4 closure are diagnostic only and must not be vote-counted:
 
 - one saw the prior primary-review direction through repository governance;
 - one correctly stopped because the v1 blind bundle lacked sufficient neutral class/policy material;
-- one disclosed candidate-specific prior context and produced a literal-taxonomy `NOT_CONFIRMED` result.
+- one disclosed candidate-specific prior context and produced a literal-old-taxonomy `NOT_CONFIRMED` result.
 
-These attempts must not be vote-counted. They exposed a definition inconsistency that must be resolved before candidate #2 review can continue:
+Blind-review v1 is historical only and retired for future adjudication. The next evidence artifact is the self-contained v2 bundle built by:
 
-- locked `taxonomy.yaml`: unchecked low-level calls **or calls to unverified external addresses**;
-- DIVE crosswalk: `CallToUnknown` reserved for raw low-level `call` / `send` / `delegatecall` patterns where the callee is unverified;
-- SolidiFI crosswalk: `Unchecked-Send` maps to `CallToUnknown` specifically as unchecked low-level-call behavior.
+`docs/plan/ml-R4/scripts/p8_build_gap007_candidate2_independent_review_v2.py`
 
-The active working record is:
+The generated v2 archive must contain complete source, manifest/hashes, review task, the neutral R4-D-016 definition/exclusions, and generic class-specific confirmed-negative policy, with no primary verdict/history leakage. The reviewer must have no candidate-specific prior conclusion in context.
 
-`docs/plan/system-finalization/technical-completion/working/2026-10-20_ml_gap007_call_to_unknown_semantic_alignment.md`
+Until admissible independent evidence returns:
 
-Until that audit closes:
-
-- do not run another candidate #2 adjudication;
 - do not change candidate #2 target/state;
-- do not infer any target `0`;
-- do not authorize M5/full training.
+- do not infer target `0`;
+- do not authorize M5/full training;
+- do not infer that one/few future confirmed negatives support stable FPR, threshold, or calibration estimation.
 
 The committed hardened pilot queue still contains:
 
@@ -156,11 +180,12 @@ Current M4 decision boundary:
 - `adrs/ADR-R4-015-bounded-pilot-pass-full-training-hold.md`;
 - `evidence/2026-10-17_phase8_m4_bounded_pilot/decision.json`.
 
-Current R4-GAP-007 semantic-alignment checkpoint:
+Current `CallToUnknown` semantic authority:
 
-`docs/plan/system-finalization/technical-completion/working/2026-10-20_ml_gap007_call_to_unknown_semantic_alignment.md`.
+- `adrs/ADR-R4-016-call-to-unknown-semantic-clarification.md`;
+- `evidence/2026-10-20_call_to_unknown_semantic_alignment/decision.json`.
 
-Candidate #2 primary-review record remains:
+Candidate #2 primary-review record remains primary evidence only:
 
 `runs/2026-08-21_PHASE8_gap007_candidate2_primary_review.md`.
 
