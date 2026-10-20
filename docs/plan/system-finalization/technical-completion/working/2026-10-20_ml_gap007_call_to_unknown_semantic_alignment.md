@@ -1,97 +1,137 @@
 # ML / R4-GAP-007 — CallToUnknown semantic alignment checkpoint
 
 **Date:** 2026-10-20  
-**State:** ACTIVE BLOCKER — resolve neutral class semantics before any further candidate #2 independent adjudication  
+**State:** COMPLETE — closed by R4-D-016  
 **Applies to:** R4-GAP-007 / `CallToUnknown` confirmed-negative evaluation evidence  
 
-## Current accepted boundary
+## Accepted boundary
 
-The current accepted ML/R4 state is:
+The accepted ML/R4 state remains:
 
-- logical authority remains R4-D-009 / `sentinel-r4-vnext-v3`;
-- R4-D-011 is the immutable accepted V10/V2.6 graph/control root;
-- R4-D-013 is the immutable accepted guarded-token successor;
-- R4-D-014 limits the executable objective/evaluation regime to bounded positive-only control and positive-fit diagnostics;
-- M0-M4 are complete;
-- R4-D-015 records `PASS_BOUNDED_PILOT_FULL_TRAINING_STILL_HELD` after the 8-epoch / 120-step M4-C pilot;
-- M5/full training is not authorized; G8 remains open;
+- logical authority R4-D-009 / `sentinel-r4-vnext-v3`;
+- immutable V10/V2.6 graph/control authority R4-D-011;
+- immutable guarded-token authority R4-D-013;
+- bounded positive-only objective/evaluation authority R4-D-014;
+- M0-M4 complete;
+- R4-D-015 = `PASS_BOUNDED_PILOT_FULL_TRAINING_STILL_HELD`;
+- M5/full training unauthorized; G8 open;
 - confirmed-negative targets remain zero;
 - threshold-fit, calibration-fit and untouched-acceptance support remain unavailable.
 
-## R4-GAP-007 authoritative candidate state
+## Problem audited
 
-Candidate #1 remains durably `NOT_CONFIRMED`.
+Candidate #2 independent-review preparation exposed conflicting `CallToUnknown` wording:
 
-Candidate #2 remains:
+- `taxonomy.yaml` used a broad phrase that could be read to include any call to an unverified external address;
+- original SolidiFI/DIVE crosswalks and the class-specific verification pattern operationalized the class as raw/low-level unknown-target behavior;
+- accepted R4-D-010 and the V10 semantic checker separated transfer/high-level/library/creation interactions from `CallToUnknown` corroboration.
+
+Three external candidate #2 review attempts were useful diagnostics but are not admissible independent verification because they were contaminated by candidate-specific prior context and/or the v1 bundle lacked self-contained governing material.
+
+## Provenance findings
+
+The inconsistency is original, not recent drift:
+
+1. `taxonomy.yaml` was introduced on 2026-06-11 with the broad prose.
+2. The SolidiFI crosswalk was committed minutes later and mapped `Unchecked-Send -> CallToUnknown` as a low-level-send concern.
+3. The DIVE crosswalk, committed the same day, explicitly stated that `CallToUnknown` is reserved for raw low-level `call` / `send` / `delegatecall` patterns where the callee is unverified.
+4. The Stage-4 class pattern subsequently defined the class as a low-level call to an unknown/dynamic address.
+5. R4-D-010 later made call-kind separation explicit and directed `CallToUnknown` graph checking to low-level/send evidence while excluding transfer/library from vulnerability truth.
+6. Current V10 `semantic_checker.py` and `graph_schema_versions.py` encode only `LOW_LEVEL_CALL` + `ETHER_SEND` as coarse `CallToUnknown` signals.
+
+The narrow operational meaning therefore predates R4-GAP-007 candidate review and was not invented to produce a desired candidate #2 result.
+
+## Decision — R4-D-016
+
+R4-D-016 accepts `CallToUnknown` as the **raw/dynamic low-level unknown-target interaction class**.
+
+Included call family:
+
+- `call`;
+- `delegatecall`;
+- legacy `callcode`;
+- `staticcall` where applicable;
+- `send`.
+
+A checked raw low-level call can still qualify because target uncertainty is class-defining; unchecked return/failure handling is additional positive evidence rather than the sole condition.
+
+Explicit exclusions when destination uncertainty is the only reason:
+
+- Solidity `transfer()`;
+- ordinary typed high-level interface calls;
+- same-file/in-scope library calls;
+- contract creation;
+- `selfdestruct` / `suicide` destinations.
+
+The canonical taxonomy and class verification pattern are aligned to this definition. A focused V10 regression test locks low-level/send positive signals and transfer/high-level/library/creation exclusions.
+
+## Versioning conclusion
+
+No taxonomy schema bump is required:
+
+- class index 0 remains `CallToUnknown`;
+- the 10-class set/order is unchanged;
+- model output shape is unchanged;
+- source crosswalk mappings are unchanged;
+- the clarification aligns canonical prose to long-standing operational semantics.
+
+Future expansion of the class to make typed high-level or transfer destinations positive merely because the address is unverified would require a new governed semantic change.
+
+## Candidate consequences
+
+### Candidate #1
+
+The historical `NOT_CONFIRMED` primary rationale depended on the broad clause to treat a caller-selected typed high-level callback as contradictory class-positive evidence.
+
+Under R4-D-016 that rationale is definition-stale. The historical record remains preserved but does not control current semantics.
+
+Candidate #1 remains the immutable queue state:
 
 ```text
 state  = UNKNOWN / PENDING_REVIEW
 target = None
 ```
 
-Its primary source-first review supports a class-specific negative, but this is not authoritative negative truth without admissible independent agreement.
+If reused, candidate #1 requires a new primary review under R4-D-016.
 
-No recent external review attempt changes that state.
+### Candidate #2
 
-## Independent-review attempts after M4 closure
+The existing candidate #2 primary review is semantically compatible with R4-D-016 because it already:
 
-Three review attempts supplied useful diagnostic information but are **not admissible as the required independent verification**:
+- reviewed the complete source;
+- excluded same-file SafeMath library calls;
+- found no low-level/send family interaction;
+- treated the sole `transfer()` interaction as outside direct `CallToUnknown` scope.
 
-1. **Repository-aware reviewer:** returned a substantive `CONFIRMED_NEGATIVE` analysis, but disclosed that `CLAUDE.md` exposed the direction of the prior candidate #2 primary result before adjudication. The result is supportive/diagnostic only, not independent verification.
-2. **Strict bundle-only reviewer:** correctly stopped without a substantive verdict because the v1 blind ZIP did not contain the governing `CallToUnknown` definition or a sufficient generic negative-evidence rule. The session also disclosed candidate-specific prior context. No verdict is accepted.
-3. **ZIP + neutral-material reviewer:** returned `NOT_CONFIRMED` under a literal reading of the supplied broad taxonomy clause, but disclosed candidate-specific prior context and is therefore procedurally contaminated. The result is not an adjudication. It is retained only as evidence that the class wording has a material interpretation ambiguity.
+It remains:
 
-Do not count these attempts as agreeing votes, disagreeing votes, or candidate truth.
+```text
+state  = UNKNOWN / PENDING_REVIEW
+target = None
+```
 
-## Semantic inconsistency exposed
+until a genuinely isolated independent reviewer agrees from sufficient self-contained evidence.
 
-Current repository sources do not express `CallToUnknown` with one unambiguous boundary.
+## Blind-review consequence
 
-### Locked canonical taxonomy wording
+`r4_gap007_candidate2_independent_review_v1.zip` is historical only and retired for future adjudication.
 
-`data_module/sentinel_data/labeling/schema/taxonomy.yaml` defines class 0 as:
+The next artifact must be `r4_gap007_candidate2_independent_review_v2.zip`, containing only:
 
-> Low-level calls (`call` / `delegatecall` / `send`) whose return value is not checked, **or calls to unverified external addresses**. Includes `send()` without revert on failure and raw `address.call()` patterns.
+- complete source;
+- manifest/hashes;
+- review task;
+- neutral R4-D-016 class definition/exclusions;
+- generic class-specific confirmed-negative evidence rule.
 
-Read literally, the second clause can be interpreted more broadly than raw low-level calls and can raise questions about operations such as `address.transfer()` to a caller-controlled address.
-
-### Operational crosswalk wording
-
-`data_module/sentinel_data/labeling/crosswalks/dive.yaml` states:
-
-> `CallToUnknown` is reserved for raw low-level `call` / `send` / `delegatecall` patterns where the callee is unverified.
-
-`data_module/sentinel_data/labeling/crosswalks/solidifi.yaml` likewise explains its `Unchecked-Send -> CallToUnknown` mapping in terms of unchecked low-level `send/call/delegatecall` behavior.
-
-These operational mappings therefore express a narrower class boundary than the broad standalone phrase in the locked taxonomy.
-
-## Why this blocks candidate #2 review
-
-The candidate contains an address-level `transfer` to `msg.sender`. Whether that construct is outside or potentially inside `CallToUnknown` depends on which repository wording is treated as controlling.
-
-A new reviewer must not be forced to invent that semantic precedence. Repeated blind reviews before the class boundary is resolved can legitimately produce different answers while each reviewer follows a different repository text.
-
-Therefore:
-
-- do **not** run another candidate #2 adjudication yet;
-- do **not** change candidate #2 state/target;
-- do **not** reinterpret any historical zero as negative;
-- do **not** use any contaminated review as independent verification;
-- do **not** launch M5/full training.
-
-## Required next work
-
-Perform a source/governance audit of the `CallToUnknown` definition itself, independent of candidate #2 outcome:
-
-1. trace the provenance and authority of `taxonomy.yaml` and the relevant source crosswalk clarifications;
-2. determine whether the narrower operational wording is merely an already-established interpretation of the locked taxonomy or whether adopting it would materially change the class definition;
-3. inspect downstream consumers/evidence to determine the impact of either interpretation;
-4. if the class definition must change materially, use the existing R4 class-definition governance/ADR + schema/versioning rules rather than silently editing wording;
-5. after the neutral definition is resolved, build a self-contained `r4_gap007_candidate2_independent_review_v2` bundle containing the exact neutral class definition, generic negative-evidence rule, complete source, task and hashes, with no candidate-history leakage;
-6. obtain a genuinely isolated independent review with no prior candidate-specific context.
-
-Only after that review may candidate #2 be formally adjudicated.
+It must contain no primary-review result or prior candidate conclusion, and the reviewer context must contain no candidate-specific history.
 
 ## Current restart instruction
 
-The active technical-completion action is **CallToUnknown semantic-definition alignment for R4-GAP-007**. M4 is complete; do not repeat M4 or begin M5 while this evidence blocker remains unresolved.
+Semantic alignment is complete. The active R4-GAP-007 action is now:
+
+1. build/verify the self-contained candidate #2 v2 blind bundle;
+2. provide it to a genuinely isolated reviewer with no repository/project history;
+3. adjudicate candidate #2 only after that result returns.
+
+Do not begin M5/full training, generate target `0`, or fit unsupported threshold/calibration roles while confirmed-negative evidence remains zero.
