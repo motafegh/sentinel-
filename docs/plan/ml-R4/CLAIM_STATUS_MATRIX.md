@@ -1,18 +1,18 @@
 # R4 Claim Status Matrix
 
-This matrix describes the **current evidence-qualified claim boundary**, not the historical binary-label surface. R4-D-008 accepts repaired-v2 physical DATA as immutable reproducibility evidence; R4-D-009 accepts corrected logical V3 grouping/roles for current Phase-8 research. R4-D-010 prohibits using v9 for the new full training run; R4-D-011 accepts the exact protected-local V10 V2.6 graph/control root with binding digest `d9f925588913e66476cfbc097bace7daa7e673295fe2a243760313d0bef5ebdd`; and R4-D-013 accepts the exact guarded-token successor with binding digest `9885d7b88a46aff4102741d63eeaa0bd6968f0857f7bca6a389662bfaa158881`. V2.6 graph evidence and the guarded-token D5/D6 acceptance chain pass for all 22,540 identities. The hardened V3 research tranche remains durably snapshotted with `coherence=PASS` at commit `44fbb9c1d2033be8002fe404d650cf09f08b0f29`. None of these facts establishes general model discrimination, calibration, thresholds, training authorization, or production acceptance.
+This matrix describes the **current evidence-qualified claim boundary**, not the historical binary-label surface. R4-D-008 accepts repaired-v2 physical DATA as immutable reproducibility evidence; R4-D-009 accepts corrected logical V3 grouping/roles; R4-D-010 prohibits v9 for the new full training lineage; R4-D-011 accepts the exact V10 V2.6 graph/control root; R4-D-013 accepts the guarded-token successor; R4-D-014 limits the executable ML regime to bounded positive-only control/positive-fit diagnostics; and R4-D-015 accepts the completed M4 bounded pilot while explicitly keeping M5/full training on HOLD. None of these facts establishes general model discrimination, calibration, thresholds, or production acceptance.
 
 | Index | Class | DATA vNext supervision | Current positive authority | Confirmed-negative support | Discrimination | Calibration / threshold | Current claim status | Key limitation |
 |---:|---|---|---|---|---|---|---|---|
-| 0 | CallToUnknown | ENABLED | STRONG: SolidiFI Unchecked-Send; SmartBugs unchecked_low_level_calls | NONE — candidate #1 `NOT_CONFIRMED`; candidate #2 primary supports a negative but independent verification is pending | UNSUPPORTED | UNSUPPORTED_EMPTY | TRAINING_ONLY | V10 V2.6 graphs and the guarded-token physical successor are accepted, but no confirmed-negative evaluation support or discrimination evidence exists |
-| 1 | DenialOfService | ENABLED | STRONG: SmartBugs denial_of_service | NONE — V3 pilot review ready | UNSUPPORTED | UNSUPPORTED_EMPTY | TRAINING_ONLY | DIVE DoS is masked; no confirmed negatives yet |
-| 2 | ExternalBug | ENABLED | STRONG: SolidiFI tx.origin; SmartBugs access_control | NONE — V3 pilot review ready | UNSUPPORTED | UNSUPPORTED_EMPTY | TRAINING_ONLY | DIVE Access Control is masked; class scope remains broader than any one source category |
+| 0 | CallToUnknown | ENABLED | STRONG: SolidiFI Unchecked-Send; SmartBugs unchecked_low_level_calls | NONE — candidate #1 `NOT_CONFIRMED`; candidate #2 remains UNKNOWN/PENDING_REVIEW/target `None`; independent review is blocked first on neutral class-definition alignment | UNSUPPORTED | UNSUPPORTED_EMPTY | TRAINING_ONLY | Locked taxonomy wording and operational crosswalk wording are materially ambiguous around “unverified external addresses” vs raw/unchecked low-level calls; no confirmed-negative evaluation support exists |
+| 1 | DenialOfService | ENABLED | STRONG: SmartBugs denial_of_service | NONE — V3 pilot queue available | UNSUPPORTED | UNSUPPORTED_EMPTY | TRAINING_ONLY | DIVE DoS is masked; no confirmed negatives yet |
+| 2 | ExternalBug | ENABLED | STRONG: SolidiFI tx.origin; SmartBugs access_control | NONE — V3 pilot queue available | UNSUPPORTED | UNSUPPORTED_EMPTY | TRAINING_ONLY | DIVE Access Control is masked; class scope remains broader than any one source category |
 | 3 | GasException | SUPERVISION_DISABLED_PENDING_EVIDENCE | none | NONE | UNSUPPORTED | UNSUPPORTED_EMPTY | DISABLED_PENDING_EVIDENCE | No active approved class-specific positive authority |
-| 4 | IntegerUO | ENABLED | STRONG: SolidiFI Overflow-Underflow; SmartBugs arithmetic | NONE — V3 pilot review ready | UNSUPPORTED | UNSUPPORTED_EMPTY | TRAINING_ONLY | DIVE Arithmetic is masked; no confirmed negatives yet |
-| 5 | MishandledException | ENABLED | STRONG: SolidiFI Unhandled-Exceptions | NONE — V3 pilot review ready | UNSUPPORTED | UNSUPPORTED_EMPTY | TRAINING_ONLY | Positive evidence only; no discrimination-grade negative population |
-| 6 | Reentrancy | ENABLED | STRONG: SolidiFI Re-entrancy; SmartBugs reentrancy | NONE — V3 pilot review ready | UNSUPPORTED | UNSUPPORTED_EMPTY | TRAINING_ONLY | DIVE Reentrancy is masked; no confirmed negatives yet |
-| 7 | Timestamp | ENABLED | STRONG: SolidiFI Timestamp-Dependency; SmartBugs time_manipulation | NONE — V3 pilot review ready | UNSUPPORTED | UNSUPPORTED_EMPTY | TRAINING_ONLY | SmartBugs bad_randomness→Timestamp is superseded/no-target; DIVE time manipulation is masked |
-| 8 | TransactionOrderDependence | ENABLED | STRONG: SolidiFI TOD; SmartBugs front_running; WEAK training-only: DIVE Front Running | NONE — V3 pilot review ready | UNSUPPORTED | UNSUPPORTED_EMPTY | TRAINING_ONLY | DIVE contribution is weak and barred from outcome metrics/model selection; no confirmed negatives yet |
+| 4 | IntegerUO | ENABLED | STRONG: SolidiFI Overflow-Underflow; SmartBugs arithmetic | NONE — V3 pilot queue available | UNSUPPORTED | UNSUPPORTED_EMPTY | TRAINING_ONLY | DIVE Arithmetic is masked; no confirmed negatives yet |
+| 5 | MishandledException | ENABLED | STRONG: SolidiFI Unhandled-Exceptions | NONE — V3 pilot queue available | UNSUPPORTED | UNSUPPORTED_EMPTY | TRAINING_ONLY | Positive evidence only; no discrimination-grade negative population |
+| 6 | Reentrancy | ENABLED | STRONG: SolidiFI Re-entrancy; SmartBugs reentrancy | NONE — V3 pilot queue available | UNSUPPORTED | UNSUPPORTED_EMPTY | TRAINING_ONLY | DIVE Reentrancy is masked; no confirmed negatives yet |
+| 7 | Timestamp | ENABLED | STRONG: SolidiFI Timestamp-Dependency; SmartBugs time_manipulation | NONE — V3 pilot queue available | UNSUPPORTED | UNSUPPORTED_EMPTY | TRAINING_ONLY | SmartBugs bad_randomness→Timestamp is superseded/no-target; DIVE time manipulation is masked |
+| 8 | TransactionOrderDependence | ENABLED | STRONG: SolidiFI TOD; SmartBugs front_running; WEAK training-only: DIVE Front Running | NONE — V3 pilot queue available | UNSUPPORTED | UNSUPPORTED_EMPTY | TRAINING_ONLY | DIVE contribution is weak and barred from outcome metrics/model selection; no confirmed negatives yet |
 | 9 | UnusedReturn | SUPERVISION_DISABLED_PENDING_EVIDENCE | none | NONE | UNSUPPORTED | UNSUPPORTED_EMPTY | DISABLED_PENDING_EVIDENCE | DIVE Unchecked Return Values failed the Phase-4 authority threshold and no other active source directly supports the class |
 
 ## Global current claim boundary
@@ -26,11 +26,11 @@ Physical DATA:
 - V10 `v2.3-r4-call-semantics` is preserved as the frozen structural-reference diagnostic lineage;
 - the protected V2.4 compatibility candidate completed the former 26-contract parse-only remediation and binds all 22,540 identities with exact accepted-V9 token bytes, zero parse-only artifacts, zero unclassified call IR, and the required 22,539 primary + 1 identity-bound runtime split; it remains diagnostic history, not physical acceptance;
 - the historical V2.5 candidate and its Stage-E blocker remain preserved diagnostic evidence;
-- the accepted extractor is `v2.6-r4-call-semantics-deterministic-cfg-mutators`, which adds only persistent-storage collection `push`/`pop` recognition while preserving call-node priority;
+- the accepted extractor is `v2.6-r4-call-semantics-deterministic-cfg-mutators`;
 - protected-local V2.6 Stages A-D pass for 22,540 identities, exact accepted-V9 token bytes, zero missing/extra/invalid artifacts, and the exact 22,539 ordinary primary + one declared runtime-exception split; binding digest `d9f925588913e66476cfbc097bace7daa7e673295fe2a243760313d0bef5ebdd`;
 - three fresh 355-identity generations and three byte-identical semantic-evidence reports support V4's 349 persistent-storage WRITE corrections and 6 exact index-equivalent graphs;
 - R4-D-011 physically accepts this exact V10 V2.6 graph/control root as immutable local evidence;
-- R4-D-013 physically accepts the exact guarded-token successor `r4-v10-v26-guarded-tokens-v1` with digest `9885d7b88a46aff4102741d63eeaa0bd6968f0857f7bca6a389662bfaa158881`, 14,751 guarded selections and 7,789 exact historical fallbacks; training remains unauthorized and all model-quality, objective, threshold/calibration, untouched-acceptance and production claims remain separate.
+- R4-D-013 physically accepts the exact guarded-token successor `r4-v10-v26-guarded-tokens-v1` with digest `9885d7b88a46aff4102741d63eeaa0bd6968f0857f7bca6a389662bfaa158881`, 14,751 guarded selections and 7,789 exact historical fallbacks.
 
 Logical authority:
 
@@ -44,37 +44,80 @@ Current V3 supervised/evaluation surface:
 - active `MODEL_SELECTION`: **71 contracts / 71 groups**;
 - active `INTERNAL_AUDIT`: **72 contracts / 71 groups**;
 - combined outcome-metric population: **143 contracts / 142 unique groups**;
-- total outcome-metric cells recorded by the V3 publication: **143**; this must not be mislabeled as MODEL_SELECTION-only evidence;
+- total outcome-metric cells recorded by V3: **143**; this must not be mislabeled as MODEL_SELECTION-only evidence;
 - confirmed-negative targets: **0**;
 - `THRESHOLD_FIT = UNSUPPORTED_EMPTY`;
 - `CALIBRATION_FIT = UNSUPPORTED_EMPTY`;
 - `UNTOUCHED_ACCEPTANCE = UNSUPPORTED_EMPTY_FROZEN`;
 - no repaired/V3 full training checkpoint exists;
-- no class is currently validated for general vulnerability discrimination, specificity/FPR, calibration, or production outcome claims.
+- no class is validated for general vulnerability discrimination, specificity/FPR, calibration, or production outcome claims.
+
+## M4 bounded-model evidence boundary
+
+R4-D-015 accepts the completed M4 program as **bounded mechanics/recovery/dynamics evidence only**:
+
+- M4-A proved guarded V10/guarded-token CUDA forward/backward mechanics;
+- M4-B proved exact-binding checkpoint/recovery, RNG restoration, deterministic sampler reconstruction and changed-lineage rejection;
+- M4-C completed 8 epochs / 120 optimizer steps with finite execution and strong positive fit;
+- positive NLL reached approximately `0.00109` and mean positive probability approximately `0.9989`;
+- this does not establish negative discrimination because confirmed-negative evidence remains zero;
+- `PASS_BOUNDED_PILOT_FULL_TRAINING_STILL_HELD` is the accepted M4-D outcome;
+- M5/full training, G8, threshold/calibration and promotion remain unauthorized.
+
+The strong positive-fit result makes negative-side observability more important, not less: unknown/non-target behavior is still unconstrained by accepted negative truth.
 
 ## Hardened V3 negative-evidence pilot state
 
-R4-GAP-007 is in progress and confirmed-negative support remains `NONE` for every enabled class. Candidate #1 was fully reviewed as `NOT_CONFIRMED`. Candidate #2's source-first primary review supports `CONFIRMED_NEGATIVE`, but its authoritative queue truth remains UNKNOWN / PENDING_REVIEW / target `None` until a genuinely independent reviewer agrees.
+R4-GAP-007 is in progress and confirmed-negative support remains `NONE` for every enabled class.
 
-The committed hardened pilot queue contains:
+Candidate #1 is durably `NOT_CONFIRMED`.
+
+Candidate #2 primary review supports `CONFIRMED_NEGATIVE`, but authoritative queue truth remains:
+
+```text
+UNKNOWN / PENDING_REVIEW / target None
+```
+
+Three external review attempts performed after M4 closure are not admissible independent verification:
+
+- one saw the prior primary-review direction through repository governance;
+- one correctly stopped because the v1 blind bundle lacked sufficient neutral class/policy material;
+- one disclosed candidate-specific prior context and produced a literal-taxonomy `NOT_CONFIRMED` result.
+
+These attempts must not be vote-counted. They exposed a definition inconsistency that must be resolved before candidate #2 review can continue:
+
+- locked `taxonomy.yaml`: unchecked low-level calls **or calls to unverified external addresses**;
+- DIVE crosswalk: `CallToUnknown` reserved for raw low-level `call` / `send` / `delegatecall` patterns where the callee is unverified;
+- SolidiFI crosswalk: `Unchecked-Send` maps to `CallToUnknown` specifically as unchecked low-level-call behavior.
+
+The active working record is:
+
+`docs/plan/system-finalization/technical-completion/working/2026-10-20_ml_gap007_call_to_unknown_semantic_alignment.md`
+
+Until that audit closes:
+
+- do not run another candidate #2 adjudication;
+- do not change candidate #2 target/state;
+- do not infer any target `0`;
+- do not authorize M5/full training.
+
+The committed hardened pilot queue still contains:
 
 - 200 candidate cells;
 - 25 candidates for each of the eight enabled classes;
 - 200 globally unique reserved V3 leakage groups;
 - `group_uniqueness_scope=GLOBAL_ACROSS_ENABLED_CLASSES`;
-- all candidates `PENDING_REVIEW`;
-- all current targets `None`;
-- all source roles `TRAIN_UNLABELED`;
+- all candidates `PENDING_REVIEW` at queue creation;
+- all current targets `None` unless separately adjudicated;
+- source roles `TRAIN_UNLABELED` at queue creation;
 - `negative_truth_claim=false`;
 - manifest/source lineage validated by the final coherence snapshot.
 
-Queue membership or one primary opinion is not confirmed-negative support. A class remains `NONE` in the matrix until explicit class-specific adjudication and genuinely independent verification accept negative evidence. Any accepted negative is initially `EVALUATION_ONLY_NOT_TRAINING_AUTHORITY`.
-
-Candidate #2 also exposed the representation-quality defect that led to R4-GAP-008 and R4-D-010. The population audit found at least 11,702 provable same-file declared-library calls among 217,490 v9 type-11 edges, while type 11 was attached to only 7,057 / 13,413 raw-low-level nodes, 40 / 4,215 send nodes, and 6,557 / 80,927 transfer nodes. These are historical representation diagnostics, not label truth. The remediation semantics are proven and the exact V2.6 root is physically accepted under R4-D-011; historical V2.5 remains diagnostic only.
+Any accepted negative is initially `EVALUATION_ONLY_NOT_TRAINING_AUTHORITY`.
 
 ## Selector/model-execution evidence boundary
 
-`target_aware_guarded_v1` has completed the hardened corrected-V3 CPU coverage comparison and bounded identical-initialization CUDA comparison with all four required worst-case probes.
+`target_aware_guarded_v1` completed the corrected-V3 CPU coverage comparison and bounded identical-initialization CUDA comparison, then R4-D-012 promoted it for a new physical lineage and R4-D-013 accepted that lineage.
 
 Durable CPU result:
 
@@ -87,17 +130,15 @@ Durable CPU result:
 
 Durable CUDA result:
 
-- status `LOGICAL_V3_BOUNDED_RESEARCH_COMPLETE`;
 - identical initialization true;
 - 4/4 required worst-case probes completed;
 - no Run12 weights;
 - no checkpoint;
-- historical evidence report selector-promotion flag false; later R4-D-012 promotes only a new versioned candidate;
-- full-training authorization false.
+- historical comparison itself did not authorize promotion/training.
 
-R4-D-012 promoted the selector for a new versioned token lineage. R4-D-013 now accepts that physical successor after full D5 generation and independent D6 review, while R4-D-011 remains the immutable graph/control parent. This closes the physical selector-lineage gap only; it does not improve the model-quality claim boundary. The positive-only CUDA result cannot establish false-positive discrimination.
+The full-population control-equivalence prerequisite passes: dynamic `historical_linspace_v1` reconstruction matches all 22,540 R4-D-011 `input_ids`, `attention_mask`, and selected-window-index payloads with zero failures. R4-D-013 subsequently accepts the guarded successor after D6 independently reproduced all 22,540 identities, the exact digest, selector counts, parent bindings, runtime split and deterministic probes.
 
-The full-population control-equivalence prerequisite passes: dynamic `historical_linspace_v1` reconstruction matches all 22,540 R4-D-011 `input_ids`, `attention_mask`, and selected-window-index payloads with zero failures. R4-D-013 subsequently accepts the guarded successor after D6 independently reproduced all 22,540 identities, the exact digest, selector counts, parent bindings, runtime split and nine deterministic probes. Training remains separate and unauthorized.
+The positive-only model evidence cannot establish false-positive discrimination.
 
 ## Durable current evidence
 
@@ -105,23 +146,25 @@ Final coherent V3 snapshot:
 
 `docs/plan/ml-R4/evidence/2026-08-15_phase8_logical_v3/`
 
-Current V10 restart checkpoint:
+Current accepted V10 physical boundary:
 
-`runs/2026-08-27_PHASE8_v10_v25_current_restart_checkpoint.md`.
+`runs/2026-09-02_PHASE8_v10_v26_physical_acceptance_and_no_launch.md`.
 
-Bounded V2.5 structural closure:
+Current M4 decision boundary:
 
-`reviews/R4-GAP-008/2026-08-26_v10_v25_bounded_structural_closure.md`.
+- `runs/2026-10-17_PHASE8_m4_bounded_pilot_review_and_full_training_hold.md`;
+- `adrs/ADR-R4-015-bounded-pilot-pass-full-training-hold.md`;
+- `evidence/2026-10-17_phase8_m4_bounded_pilot/decision.json`.
 
-Current full-candidate staging protocol:
+Current R4-GAP-007 semantic-alignment checkpoint:
 
-`runs/2026-08-26_PHASE8_v10_v25_full_candidate_staging.md`.
+`docs/plan/system-finalization/technical-completion/working/2026-10-20_ml_gap007_call_to_unknown_semantic_alignment.md`.
 
-Current candidate-review record for the separate R4-GAP-007 track:
+Candidate #2 primary-review record remains:
 
 `runs/2026-08-21_PHASE8_gap007_candidate2_primary_review.md`.
 
-The accepted pre-pilot baseline remains `runs/2026-08-16_PHASE8_v3_hardened_evidence_snapshot_closeout.md`. The August 21 V10 implementation records and August 23 parse-only/structural-drift handoffs are historical execution context rather than the current restart boundary.
+The accepted pre-pilot logical baseline remains `runs/2026-08-16_PHASE8_v3_hardened_evidence_snapshot_closeout.md`.
 
 ## Status vocabulary
 
