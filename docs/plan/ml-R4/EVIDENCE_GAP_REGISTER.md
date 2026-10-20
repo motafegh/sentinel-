@@ -10,7 +10,7 @@ No new contract review is permitted without an approved gap entry.
 | R4-GAP-004 | BCCC/all classes | 2-tool consensus baseline | skeleton exists; results absent | Tool intersection is not ground truth | Execute only if later benchmark decision requires it | Tier-C benchmark baseline | PROPOSED | Non-blocking |
 | R4-GAP-005 | All classes | Echidna/fuzzing precision estimates | no retained fuzzing evidence | complementary, not required for current DATA source roles | targeted future fuzzing only | Complementary fuzz evidence | PROPOSED | Non-blocking |
 | R4-GAP-006 | All classes | Exploit-reproduction PoC tests | no retained PoC corpus | useful for outcome validation but not smallest current evidence | targeted future PoCs only | Outcome validation/case study | PROPOSED | Non-blocking |
-| R4-GAP-007 | V3 `TRAIN_UNLABELED` groups / eight enabled classes | Confirmed-negative class-specific evaluation evidence sufficient to observe false-positive behavior and support later evaluation design | Historical zeros, source silence, unlabeled cells, V2/V3 positive evidence, tools, R4-GAP-002 review, pilot-queue mechanics | None establishes target `0`; historical/source absence is explicitly non-negative | Use the **committed hardened V3 queue**: 25 UNKNOWN/PENDING_REVIEW candidates per enabled class with one globally unique leakage group per queued cell. Any `CONFIRMED_NEGATIVE` requires complete class-specific primary review plus independent agreeing verification. Use observed pilot yield before expanding; 59 confirmed negatives/class at 5% max FPR and 95% confidence remains planning-only | Confirmed-negative **evaluation-only** evidence; optimizer/training authority requires separate later policy/ADR | IN_PROGRESS | 2026-08-21 — candidate #1 is `NOT_CONFIRMED`. Candidate #2 primary review supports a negative but awaits genuinely independent verification from the blind bundle; it remains UNKNOWN/target `None`. Confirmed negatives remain zero. |
+| R4-GAP-007 | V3 `TRAIN_UNLABELED` groups / eight enabled classes | Confirmed-negative class-specific evaluation evidence sufficient to observe false-positive behavior and support later evaluation design; for candidate #2, the neutral `CallToUnknown` semantic boundary must first be unambiguous | Historical zeros, source silence, unlabeled cells, V2/V3 positive evidence, tools, R4-GAP-002 review, pilot-queue mechanics, candidate #1 review, candidate #2 primary review, three non-authoritative independent-review attempts, canonical taxonomy and source crosswalks | None establishes target `0`. Candidate #2 independent adjudication is additionally blocked because the locked taxonomy includes the broad phrase “calls to unverified external addresses” while DIVE/SolidiFI operational mappings define `CallToUnknown` around raw/unchecked low-level call/send/delegatecall behavior. Reviewers can legitimately diverge until that neutral class boundary is resolved. | First resolve the `CallToUnknown` definition independently of candidate outcome. Then build a self-contained v2 blind bundle with the exact neutral class definition + generic negative-evidence rule and obtain genuinely isolated independent verification. Continue the hardened V3 queue only after that. | Confirmed-negative **evaluation-only** evidence; optimizer/training authority requires separate later policy/ADR | IN_PROGRESS | 2026-10-20 — candidate #1 remains `NOT_CONFIRMED`; candidate #2 remains UNKNOWN/PENDING_REVIEW/target `None`; three recent external attempts are diagnostic only and not admissible independent verification. Semantic-definition alignment is the active blocker. |
 | R4-GAP-008 | repaired-v2 graph schema v9 / external-call semantics / CallToUnknown, ExternalBug, Reentrancy consumers | Population impact and remediation decision for v9 call-kind distortion | Candidate #2 source/graph review; full-population v9 edge-origin audit; V10 call-kind implementation; parse-only compatibility repair; bounded V2.5 analysis; fresh V2.6 Stages A-D; three-run 355-identity evidence; V4 audit; R4-D-011 acceptance review | Reuse is now sufficient only for the exact accepted V2.6 root and digest. Historical V2.3/V2.4/V2.5 roots remain diagnostic evidence and are not interchangeable. | Complete: V4 re-proved 349 persistent-storage WRITE corrections plus 6 exact index-equivalent graphs with zero unexplained drift; R4-D-011 accepted digest `d9f925...`. | Exact V10 V2.6 physical representation authority only; no label, selector, objective, threshold/calibration, or training authority | RESOLVED | 2026-09-02 — R4-D-011 / ADR-R4-011 accepts the exact 22,540-identity V2.6 root after refreshed binder and current-commit V4 review. |
 
 ## R4-GAP-002 closure evidence
@@ -20,7 +20,7 @@ No new contract review is permitted without an approved gap entry.
 - frozen sample SHA-256: `2899ad5a210ac6e2e2a4e6b43f31cd718afa3b1d603b659cdd6bf0918f34fbe9`
 - blind source bundle SHA-256: `2b1ce12fdd96819c89bbb9fe1dfb2d9aa992ec0a05ce32f651c6b834b97ddf38`
 - machine-readable semantic review: `reviews/R4-GAP-002/p4_gap002_blind_semantic_review_v1.jsonl`
-- review rows SHA-256: `7d7f0cce287c847df2376ac0f580abf6be05b46f6a2c90b5f00f9b34f8fc5473`
+- review rows SHA-256: `7d7f0cce287f847df2376ac0f580abf6be05b46f6a2c90b5f00f9b34f8fc5473`
 - review report: `findings/06_gap002_blind_semantic_review_report.json`
 - interpretation/role decision: `findings/06_gap002_blind_semantic_review.md`
 
@@ -30,7 +30,7 @@ No `DOES_NOT_SUPPORT_POSITIVE` review verdict is a confirmed negative. The Phase
 
 Current logical authority is R4-D-009 / `sentinel-r4-vnext-v3`.
 
-The hardened queue is now durably captured at:
+The hardened queue is durably captured at:
 
 `docs/plan/ml-R4/evidence/2026-08-15_phase8_logical_v3/confirmed_negative_review_queue_v1.json`
 
@@ -50,26 +50,15 @@ Current durable queue invariants:
 
 The old/pre-hardening queue is obsolete for review. **R4-GAP-007 pilot adjudication may proceed only from the committed hardened queue.**
 
-Queue membership is review reservation only. Do not convert source absence, unlabeled state, static-tool silence, or failed/ambiguous review into target `0`. Any `CONFIRMED_NEGATIVE` requires class-specific primary review plus an independent reviewer that agrees from sufficient evidence.
+Queue membership is review reservation only. Do not convert source absence, unlabeled state, static-tool silence, or failed/ambiguous review into target `0`. Any `CONFIRMED_NEGATIVE` requires class-specific primary review plus an independent reviewer that agrees from sufficient evidence under an unambiguous governing class definition.
 
 Accepted confirmed negatives remain `EVALUATION_ONLY_NOT_TRAINING_AUTHORITY` unless a later versioned decision explicitly grants optimizer authority.
 
-### Pilot progress — 2026-08-21
+### Pilot progress — candidate #1
 
-The pilot has started with the first deterministic `CallToUnknown` queue candidate:
+The first deterministic `CallToUnknown` candidate was completely reviewed. Whole-source and bound-representation review found a typed callback to a caller-supplied address plus a legacy `msg.sender.transfer(...)` value transfer. The governing taxonomy’s broad external-address clause prevented class-specific negative confirmation.
 
-```text
-candidate_id = r4neg-f6a71e420a116cb4b9a334ba961ba1b6
-contract_id  = defe4690028dc863df4611176a4c35f0ffd0bbc90f61db2bd4f25f5ad7f2a384
-group_id     = r4grp-91091daa51a561493045bd21a5d321fa
-source       = dive
-state        = UNKNOWN / PENDING_REVIEW
-target       = None
-```
-
-Complete whole-source and bound-representation primary review identified a typed callback `spender.receiveApproval(...)` to a caller-supplied address and a legacy Solidity `msg.sender.transfer(...)` value transfer. Solidity 0.4.18 error semantics and targeted Slither analysis corroborate that neither is an unchecked raw low-level call. However, the governing taxonomy also includes calls to unverified external addresses, so the dynamic typed callback is contradictory or ambiguous positive evidence and prevents class-specific negative confirmation.
-
-Candidate #1 was therefore adjudicated `NOT_CONFIRMED`. The explicit-path validator passed with one `NOT_CONFIRMED` decision, zero accepted cells, no errors, and all training/threshold/calibration authorizations false. The queue remains immutable; candidate #1 remains `UNKNOWN` / `PENDING_REVIEW`, target `None`, and confirmed negatives remain zero. A non-confirmed decision does not require independent verification.
+Candidate #1 is durably `NOT_CONFIRMED`; queue state remains UNKNOWN/PENDING_REVIEW/target `None`. A non-confirmed decision does not require independent verification.
 
 Primary review closeout:
 
@@ -80,23 +69,43 @@ Machine-readable adjudication and evaluation:
 - `reviews/R4-GAP-007/candidate1_primary_adjudication_v1.jsonl`
 - `reviews/R4-GAP-007/candidate1_evaluation_v1.json`
 
-Prior partial-review handoff:
+### Candidate #2 authoritative state
 
-`runs/2026-08-21_PHASE8_gap007_candidate1_local_handoff.md`
-
-Candidate #2 (`r4neg-bfe90ef82e33a324d612256a5d4053c6`) then completed source-first primary review. The primary result supports `CONFIRMED_NEGATIVE` for `CallToUnknown`, but the candidate remains UNKNOWN / PENDING_REVIEW / target `None` because genuinely independent verification is still pending. The primary reviewer must not self-verify.
+Candidate #2 (`r4neg-bfe90ef82e33a324d612256a5d4053c6`) completed source-first primary review. The primary result supports `CONFIRMED_NEGATIVE` for `CallToUnknown`, but the candidate remains UNKNOWN / PENDING_REVIEW / target `None` because admissible independent verification has not completed.
 
 Candidate #2 primary record:
 
 `runs/2026-08-21_PHASE8_gap007_candidate2_primary_review.md`
 
-Blind independent-review archive:
+Blind independent-review archive v1:
 
 `review_bundles/r4_gap007_candidate2_independent_review_v1.zip`
 
 SHA-256: `2e7f48c9648097624406d167266a42a31055f222a0f468a0453b2f353b343f1a`.
 
-The 2026-08-16 hardened evidence-snapshot closeout remains the accepted pre-pilot baseline and must still be read before the current primary-review closeout.
+### 2026-10-20 independent-review diagnostic attempts
+
+Three external attempts are **not adjudication evidence**:
+
+1. a repository-aware reviewer saw the prior candidate #2 direction in `CLAUDE.md` before returning a substantive negative conclusion;
+2. a strict bundle-only reviewer correctly stopped because v1 lacks the governing class definition and complete generic negative-evidence rule, and also disclosed candidate-specific prior context;
+3. a ZIP + neutral-material reviewer disclosed candidate-specific prior context and returned `NOT_CONFIRMED` under a literal reading of the broad taxonomy phrase “calls to unverified external addresses.”
+
+Do not vote-count or reconcile these results as candidate truth. They instead exposed a neutral semantic inconsistency:
+
+- `data_module/sentinel_data/labeling/schema/taxonomy.yaml` broadly includes unchecked low-level calls **or calls to unverified external addresses**;
+- `data_module/sentinel_data/labeling/crosswalks/dive.yaml` says `CallToUnknown` is reserved for raw low-level `call` / `send` / `delegatecall` patterns where the callee is unverified;
+- `data_module/sentinel_data/labeling/crosswalks/solidifi.yaml` likewise explains the class through unchecked low-level `send/call/delegatecall` behavior.
+
+This ambiguity can materially change whether an address-level `transfer` is considered potentially in-scope. Therefore **no further candidate #2 review is permitted until the class-definition audit resolves the neutral boundary**.
+
+Active working record:
+
+`docs/plan/system-finalization/technical-completion/working/2026-10-20_ml_gap007_call_to_unknown_semantic_alignment.md`
+
+After the definition is resolved, build a self-contained v2 blind review package containing the exact neutral class definition, generic negative-evidence rule, complete source/task and hashes, with no prior-candidate conclusion. The independent reviewer must also have no candidate-specific prior context.
+
+The 2026-08-16 hardened evidence-snapshot closeout remains the accepted pre-pilot baseline.
 
 ## R4-GAP-008 resolution and current physical stop line
 
@@ -113,18 +122,9 @@ The final bounded evidence is recorded at:
 - `reviews/R4-GAP-008/v10_v25_reproducibility_probe_v2.json` (protected-local/generated evidence when present);
 - `runs/2026-08-27_PHASE8_v10_v25_current_restart_checkpoint.md`.
 
-The full-candidate execution then supplied concrete evidence that reopens this
-gap only for population-wide structural proof. Stages A-D pass for all 22,540
-identities. Stage E passes base mechanics but finds 311 raw non-parse-only
-drifts; 298 are outside the old bounded evidence classes. A diagnostic probe
-classifies 298 feature/metadata drifts, 12 node-order cases, and one semantic
-structure drift, while duplicate semantic identities prevent unique node
-matching in 128 contracts.
+The full-candidate execution then supplied concrete evidence that reopens this gap only for population-wide structural proof. Stages A-D pass for all 22,540 identities. Stage E passes base mechanics but finds 311 raw non-parse-only drifts; 298 are outside the old bounded evidence classes. A diagnostic probe classifies 298 feature/metadata drifts, 12 node-order cases, and one semantic structure drift, while duplicate semantic identities prevent unique node matching in 128 contracts.
 
-R4-B008 is closed for the exact R4-D-011 root and digest. Preserve the accepted
-candidate, all Stage A-D reports, the three-run 355-identity evidence, the V4
-audit, and the acceptance record as immutable evidence. Any later graph semantic
-or selector change requires a new versioned root and acceptance chain.
+R4-B008 is closed for the exact R4-D-011 root and digest. Preserve the accepted candidate, all Stage A-D reports, the three-run 355-identity evidence, the V4 audit, and the acceptance record as immutable evidence. Any later graph semantic or selector change requires a new versioned root and acceptance chain.
 
 Current construction protocol:
 
@@ -138,9 +138,7 @@ Governing decision:
 
 `adrs/ADR-R4-010-versioned-external-call-representation-correction.md`
 
-Do not mutate accepted v9/repaired-v2 artifacts, the frozen V2.3 structural
-reference, protected V2.4/V2.5 diagnostics, or the R4-D-011 accepted V2.6 root.
-Physical acceptance does not authorize G8/full training.
+Do not mutate accepted v9/repaired-v2 artifacts, the frozen V2.3 structural reference, protected V2.4/V2.5 diagnostics, or the R4-D-011 accepted V2.6 root. Physical acceptance does not authorize G8/full training.
 
 ## Approval delegation note
 
