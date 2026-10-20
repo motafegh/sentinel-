@@ -1,6 +1,6 @@
 # R4 Plan Status Matrix
 
-**Scope:** canonical R4 execution status on `main`. Historical G0–G7 evidence remains valid for immutable `sentinel-r4-vnext-v1`. Phase 8 remains `IN_PROGRESS`; G8 is not passed and full training is unauthorized. R4-D-009 is the accepted logical V3 authority; R4-D-011 accepts the exact V10/V2.6 graph/control root; R4-D-013 accepts the exact guarded-token successor; R4-D-014 limits ML execution to the bounded positive-only objective/evaluation contract; and R4-D-015 closes M4 with `PASS_BOUNDED_PILOT_FULL_TRAINING_STILL_HELD`. M0-M4 are complete. The active Phase-8 blocker is R4-GAP-007: confirmed negatives remain zero and candidate #2 remains UNKNOWN/PENDING_REVIEW/target `None`. Before independent candidate #2 review can resume, the neutral `CallToUnknown` class-definition inconsistency between the broad locked taxonomy and narrower operational crosswalks must be resolved. M5/full training remains HOLD.
+**Scope:** canonical R4 execution status on `main`. Historical G0–G7 evidence remains valid for immutable `sentinel-r4-vnext-v1`. Phase 8 remains `IN_PROGRESS`; G8 is not passed and full training is unauthorized. R4-D-009 is the accepted logical V3 authority; R4-D-011 accepts the exact V10/V2.6 graph/control root; R4-D-013 accepts the exact guarded-token successor; R4-D-014 limits ML execution to the bounded positive-only objective/evaluation contract; R4-D-015 closes M4 with `PASS_BOUNDED_PILOT_FULL_TRAINING_STILL_HELD`; and R4-D-016 resolves the `CallToUnknown` semantic-definition inconsistency. M0–M4 are complete. The active Phase-8 evidence boundary is R4-GAP-007: confirmed negatives remain zero and candidate #2 remains `UNKNOWN / PENDING_REVIEW / target None`. The next action is to build/verify the self-contained candidate #2 blind-review v2 package and obtain genuinely isolated independent review. M5/full training remains HOLD.
 
 | Phase | File | Status | Entry condition | Exit gate | Notes |
 |---:|---|---|---|---|---|
@@ -12,7 +12,7 @@
 | 5 | `phases/06_PHASE_5_DATA_VNEXT_POLICY_AND_DESIGN.md` | PASSED | G4 | G5 | `data-vnext-policy-v1`; eight classes enabled, GasException/UnusedReturn disabled; no blanket negatives; G5 PASS |
 | 6 | `phases/07_PHASE_6_PARTITIONS_AND_ACCEPTANCE_FREEZE.md` | PASSED | G5 | G6 | Historical `r4-vnext-roles-v1` frozen; threshold/calibration/untouched acceptance unsupported/empty; G6 PASS |
 | 7 | `phases/08_PHASE_7_DATA_VNEXT_IMPLEMENTATION.md` | PASSED | G6 | G7 | Historical `sentinel-r4-vnext-v1` / 21,657 representations / 64,971 files passed G7; immutable historical evidence |
-| 8 | `phases/09_PHASE_8_EXISTING_MODEL_RETRAINING.md` | IN_PROGRESS | G7 | G8 | R4-D-011 V10 graphs and R4-D-013 guarded tokens are accepted. R4-D-014 defines bounded positive-only control/evaluation. R4-D-015 closes M4 but keeps M5/full training on HOLD. R4-GAP-007 semantic-definition/evaluation evidence remains unresolved. |
+| 8 | `phases/09_PHASE_8_EXISTING_MODEL_RETRAINING.md` | IN_PROGRESS | G7 | G8 | R4-D-011 V10 graphs and R4-D-013 guarded tokens are accepted. R4-D-014 defines bounded positive-only control/evaluation. R4-D-015 closes M4 but keeps M5/full training on HOLD. R4-D-016 resolves `CallToUnknown` semantics; R4-GAP-007 independent negative evidence remains incomplete. |
 | 9 | `phases/10_PHASE_9_EVALUATION_CALIBRATION_AND_POLICY.md` | WAITING | G8 | G9 | Threshold/calibration support remains unavailable |
 | 10 | `phases/11_PHASE_10_ACCEPTANCE_PROMOTION_AND_ROLLBACK.md` | WAITING | G9 | G10 | Untouched acceptance remains unsupported/empty/frozen |
 
@@ -24,7 +24,8 @@
 | Repaired-v2 physical source/representations | ACCEPTED / immutable historical and reproducibility evidence | 22,540 contracts; 67,620 graph/token/sidecar files; physical binding digest `16dd4a3f...`; v9 is not eligible for a new full run under R4-D-010 |
 | Logical V3 grouping/roles/publication | ACCEPTED | R4-D-009: 22,394 groups, max group size 7, 146 normalized-code edges, zero address-authority edges |
 | Hardened V3 evidence snapshot | ACCEPTED / immutable snapshot | `docs/plan/ml-R4/evidence/2026-08-15_phase8_logical_v3/`, snapshot commit `44fbb9c1d...`, `coherence=PASS` |
-| Confirmed-negative evaluation | IN_PROGRESS / DEFINITION-BLOCKED | Candidate #1 is `NOT_CONFIRMED`. Candidate #2 primary supports a negative but remains UNKNOWN/PENDING_REVIEW/target `None`. Three recent external attempts are non-authoritative. `CallToUnknown` semantic-definition alignment must complete before a new clean independent review. |
+| `CallToUnknown` semantic authority | ACCEPTED / R4-D-016 | Raw/dynamic low-level unknown-target class. `call` / `delegatecall` / legacy `callcode` / `staticcall` / `send` are in scope. `transfer`, ordinary typed high-level calls, in-scope library calls, contract creation and selfdestruct/suicide destinations are not positive solely because their destination is unverified. Class index/order and taxonomy schema v1 remain unchanged. |
+| Confirmed-negative evaluation | IN_PROGRESS / INDEPENDENT REVIEW PENDING | Confirmed negatives remain zero. Candidate #1's historical `NOT_CONFIRMED` rationale is definition-stale under R4-D-016; its queue state remains UNKNOWN/PENDING_REVIEW/target `None` and it needs a new primary review if reused. Candidate #2 primary remains semantically compatible but is still UNKNOWN/PENDING_REVIEW/target `None`; self-contained v2 blind review is next. Three prior external attempts are diagnostic only. |
 | Historical V10 V2.3/V2.4 diagnostics | PRESERVED / NOT PHYSICALLY ACCEPTED | V2.3 structural reference and V2.4 parse-only repair remain diagnostic/history roots |
 | Historical V10 V2.5 full-candidate evidence | PRESERVED / historical | Bounded evidence closed its original 20 cases; historical Stage E failure motivated V2.6 and is not current physical authority |
 | V10 V2.6 physical representation | ACCEPTED / IMMUTABLE LOCAL | R4-D-011 accepts exact 22,540-identity root, digest `d9f925588913e66476cfbc097bace7daa7e673295fe2a243760313d0bef5ebdd`, 349 WRITE corrections + 6 index-equivalent graphs, zero unexplained drift |
@@ -32,7 +33,7 @@
 | Objective/evaluation boundary | ACCEPTED / LIMITED | R4-D-014 retains masked positive BCE as bounded control only; MODEL_SELECTION is positive-fit diagnostic only; no negative/PU, threshold, calibration, untouched acceptance or promotion authority |
 | M3 guarded integration | COMPLETE | Exact D9/D11/D13/D14 binding, V10 17-edge model, 932 active train groups, 71 active selection groups; no-step preflight passed |
 | M4 bounded pilot | COMPLETE | R4-D-015 accepts M4-A/B/C mechanics, recovery and 8-epoch/120-step positive-fit dynamics. Outcome: `PASS_BOUNDED_PILOT_FULL_TRAINING_STILL_HELD`. |
-| Full training / G8 | HOLD | M4 passed, but confirmed-negative evidence remains zero; `CallToUnknown` semantic alignment and clean independent candidate #2 review are unresolved; threshold/calibration/untouched roles remain unsupported; no M5 launch authority exists |
+| Full training / G8 | HOLD | M4 passed, but confirmed-negative evidence remains zero; candidate #2 admissible independent review is unresolved; threshold/calibration/untouched roles remain unsupported; no M5 launch authority exists |
 
 ## Corrected outcome-population terminology
 
@@ -118,13 +119,19 @@ Current M4 closure:
 - `adrs/ADR-R4-015-bounded-pilot-pass-full-training-hold.md`;
 - `evidence/2026-10-17_phase8_m4_bounded_pilot/decision.json`.
 
-Current R4-GAP-007 semantic-alignment checkpoint:
+Current `CallToUnknown` semantic authority:
 
-`docs/plan/system-finalization/technical-completion/working/2026-10-20_ml_gap007_call_to_unknown_semantic_alignment.md`.
+- `adrs/ADR-R4-016-call-to-unknown-semantic-clarification.md`;
+- `evidence/2026-10-20_call_to_unknown_semantic_alignment/decision.json`;
+- `docs/plan/system-finalization/technical-completion/working/2026-10-20_ml_gap007_call_to_unknown_semantic_alignment.md` (closed working evidence).
 
-Candidate #2 primary review remains historical input to the gap, not independent truth:
+Candidate #2 primary review remains primary evidence only, not independent truth:
 
 `runs/2026-08-21_PHASE8_gap007_candidate2_primary_review.md`.
+
+Blind-review v1 remains historical only and is retired for future adjudication. Current bundle builder:
+
+`docs/plan/ml-R4/scripts/p8_build_gap007_candidate2_independent_review_v2.py`.
 
 ## Current restart boundary
 
@@ -132,9 +139,9 @@ For current DATA/ML technical-completion work, read in this order:
 
 1. applicable repository/module instructions;
 2. this `PLAN_STATUS_MATRIX.md`;
-3. `docs/plan/system-finalization/technical-completion/02_ML_TRAINING_EVALUATION_COMPLETION_PLAN.md`;
-4. R4-D-015 run/ADR/machine decision for M4 closure;
-5. `docs/plan/system-finalization/technical-completion/working/2026-10-20_ml_gap007_call_to_unknown_semantic_alignment.md`;
+3. R4-D-016 ADR + machine decision;
+4. `docs/plan/system-finalization/technical-completion/02_ML_TRAINING_EVALUATION_COMPLETION_PLAN.md`;
+5. R4-D-015 run/ADR/machine decision for M4 closure;
 6. `EVIDENCE_GAP_REGISTER.md`, `RISK_AND_BLOCKER_REGISTER.md`, `CLAIM_STATUS_MATRIX.md`, `DECISION_REGISTER.md`;
 7. R4-D-011/R4-D-013/R4-D-014 records when their exact authority is needed;
 8. the accepted V3 snapshot when logical/evidence population detail is needed.
@@ -144,21 +151,23 @@ Historical execution context only, not current restart authority:
 - the in-progress stop lines inside `working/2026-10-03_ml_m4_bounded_pilot.md`;
 - V2.5 staging/restart records whose blockers were closed by R4-D-011;
 - earlier selector research reports superseded by R4-D-012/R4-D-013;
-- pre-hardening V3 queues.
+- pre-hardening V3 queues;
+- candidate #1's historical `NOT_CONFIRMED` rationale when interpreting current R4-D-016 semantics;
+- candidate #2 blind-review bundle v1 for future adjudication.
 
 ## Current execution order
 
 1. preserve all accepted R4-D-009/R4-D-011/R4-D-013 physical/logical roots and historical evidence;
-2. preserve R4-D-014 and R4-D-015 boundaries: no M5/full training, threshold/calibration, promotion, pseudo-negatives or Run12-state reuse;
-3. keep candidate #2 UNKNOWN/PENDING_REVIEW/target `None`;
-4. audit the neutral `CallToUnknown` class definition independently of candidate outcome, resolving the taxonomy/crosswalk inconsistency;
-5. if the resolution is a material definition change, record it through the required ADR/schema/version path before adjudication;
-6. build a self-contained v2 blind-review bundle from the resolved definition/policy;
-7. obtain genuinely isolated independent candidate #2 review with no prior candidate-specific context;
-8. only after new evidence exists, reassess objective/evaluation/full-training authority explicitly;
+2. preserve R4-D-014/R4-D-015 boundaries: no M5/full training, threshold/calibration, promotion, pseudo-negatives or Run12-state reuse;
+3. preserve R4-D-016 `CallToUnknown` semantics;
+4. keep candidate #2 `UNKNOWN / PENDING_REVIEW / target None`;
+5. build and verify the self-contained `r4_gap007_candidate2_independent_review_v2.zip` using the committed deterministic builder;
+6. provide only that v2 archive to a genuinely isolated reviewer with no candidate-specific prior context;
+7. adjudicate candidate #2 only after the independent result returns;
+8. only after new accepted evidence exists, reassess objective/evaluation/full-training authority explicitly;
 9. do not infer that one/few confirmed negatives automatically support stable FPR estimation, threshold fitting or calibration.
 
-Do **not** manually adjudicate obsolete queues, patch v9 in place, infer target `0`, self-verify candidate #2, count contaminated review attempts as independent evidence, silently narrow/broaden the class definition, invent pseudo-negatives, reuse Run12 learned state, fit unsupported threshold/calibration roles, overwrite protected V10/guarded-token roots, or launch the 100-epoch job.
+Do **not** manually adjudicate obsolete queues, patch v9 in place, infer target `0`, self-verify candidate #2, count contaminated review attempts as independent evidence, broaden/narrow R4-D-016 silently, invent pseudo-negatives, reuse Run12 learned state, fit unsupported threshold/calibration roles, overwrite protected V10/guarded-token roots, or launch the 100-epoch job.
 
 ## Status vocabulary
 
