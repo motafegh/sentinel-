@@ -44,16 +44,15 @@ Subordinate plans:
 - threshold-fit, calibration-fit and untouched-acceptance populations remain unsupported/empty;
 - Run12 remains the historical operational baseline and its learned state must not seed repaired R4 truth.
 
-### Active ML evidence blocker — R4-GAP-007
+### Active ML evidence boundary — R4-GAP-007
 
-- candidate #1 is durably `NOT_CONFIRMED`;
-- candidate #2 primary review supports a class-specific negative, but authoritative state remains `UNKNOWN / PENDING_REVIEW / target None`;
-- three recent external review attempts are non-authoritative because of candidate-context contamination and/or insufficient neutral governing material;
-- those attempts exposed a material `CallToUnknown` semantic inconsistency:
-  - locked taxonomy includes unchecked low-level calls **or calls to unverified external addresses**;
-  - DIVE/SolidiFI operational mappings frame the class around raw/unchecked low-level `call` / `send` / `delegatecall` behavior;
-- the neutral class boundary must be resolved before another candidate #2 independent adjudication;
-- active working record: `working/2026-10-20_ml_gap007_call_to_unknown_semantic_alignment.md`.
+- R4-D-016 resolves `CallToUnknown` as the raw/dynamic low-level unknown-target class while preserving class index/order and taxonomy schema v1;
+- candidate #1 historical `NOT_CONFIRMED` rationale is definition-stale; its authoritative queue state remains `UNKNOWN / PENDING_REVIEW / target None`, and it requires a new primary review if reused;
+- candidate #2 primary review is semantically compatible with R4-D-016, but authoritative state remains `UNKNOWN / PENDING_REVIEW / target None`;
+- confirmed-negative support remains zero;
+- three external review attempts are diagnostic/non-authoritative because of candidate-context contamination and/or insufficient self-contained governing material;
+- blind-review v1 is historical only and retired for future adjudication;
+- the next evidence step is candidate #2 self-contained v2 bundle publication and genuinely isolated independent review.
 
 ### Inference
 
@@ -87,7 +86,7 @@ Subordinate plans:
 1. **Source before prose.** Audit actual source/tests before changing implementation.
 2. **Preserve accepted history.** R4-D-009/R4-D-011/R4-D-013 and earlier accepted roots are immutable evidence.
 3. **Unknown is not negative.** No target-zero, pseudo-negative, threshold, calibration or acceptance population may be invented.
-4. **Resolve semantics before adjudication.** A class-definition ambiguity must not be silently narrowed/broadened to obtain a desired candidate verdict.
+4. **Govern class semantics.** R4-D-016 is current `CallToUnknown` authority; do not silently broaden/narrow it to obtain a desired candidate verdict.
 5. **Evidence before policy.** Thresholds, objectives, promotion gates and assurance claims require measured evidence and explicit identity.
 6. **No silent capability inflation.** Wired code is not automatically a validated generic capability.
 7. **No downstream rebind before upstream acceptance.** Inference/ZKML/contracts must not move to an unaccepted repaired model.
@@ -116,13 +115,16 @@ M4 bounded mechanics/recovery       COMPLETE
 R4-D-015 full-training HOLD
         |
         v
-R4-GAP-007 class-definition alignment   <-- ACTIVE
+R4-D-016 CallToUnknown semantics    COMPLETE
         |
         v
-self-contained v2 blind bundle
+candidate #2 self-contained v2 blind bundle   <-- ACTIVE
         |
         v
-genuinely independent negative review
+genuinely isolated independent review
+        |
+        v
+formal candidate #2 adjudication
         |
         v
 explicit objective/evaluation/M5 re-review
@@ -159,15 +161,15 @@ For each module, inspect current source/config/tests, compare behavior with clai
 
 ### T2 — Learning/evaluation regime resolution
 
-**State: ACTIVE / EVIDENCE-LIMITED.** R4-D-014 fixed the bounded positive-only contract, but R4-GAP-007 remains open.
+**State: ACTIVE / EVIDENCE-LIMITED.** R4-D-014 fixed the bounded positive-only contract; R4-D-016 resolved `CallToUnknown` semantics; R4-GAP-007 independent negative evidence remains open.
 
 Current sub-order:
 
-1. resolve `CallToUnknown` semantic-definition authority neutrally;
-2. if material definition change is required, use R4 ADR/schema/version governance;
-3. rebuild candidate #2 blind review as a self-contained v2 package;
-4. obtain genuinely isolated independent review;
-5. assess whether the resulting negative evidence is sufficient for any later evaluation/objective decision.
+1. build and verify the self-contained candidate #2 v2 blind package under R4-D-016;
+2. obtain genuinely isolated independent review with no candidate-specific prior context;
+3. formally adjudicate candidate #2 against primary + independent evidence;
+4. preserve any accepted negative as evaluation-only absent a separate optimizer-authority decision;
+5. assess whether resulting negative evidence is sufficient for any later evaluation/objective/full-training decision.
 
 **Stop line:** no pseudo-negatives, ungoverned PU learning, thresholds, calibration or M5 launch to bypass missing evidence.
 
@@ -262,13 +264,13 @@ The technical-completion program is complete only when:
 
 ## 10. Immediate next action
 
-The active cross-module workstream is **ML evidence completion**, specifically R4-GAP-007 `CallToUnknown` semantic-definition alignment.
+The active cross-module workstream is **ML evidence completion**, specifically R4-GAP-007 candidate #2 isolated independent verification under R4-D-016.
 
 Read:
 
 1. `docs/plan/ml-R4/PLAN_STATUS_MATRIX.md`;
-2. `02_ML_TRAINING_EVALUATION_COMPLETION_PLAN.md`;
-3. `working/2026-10-20_ml_gap007_call_to_unknown_semantic_alignment.md`;
+2. `docs/plan/ml-R4/adrs/ADR-R4-016-call-to-unknown-semantic-clarification.md` and its machine decision;
+3. `02_ML_TRAINING_EVALUATION_COMPLETION_PLAN.md`;
 4. `docs/plan/ml-R4/EVIDENCE_GAP_REGISTER.md` and `RISK_AND_BLOCKER_REGISTER.md`.
 
-Then audit the neutral class-definition provenance/authority. Do **not** repeat DATA acceptance or M4, do not send candidate #2 for another review until the definition is resolved, and do not launch M5/full training.
+Then build/verify `r4_gap007_candidate2_independent_review_v2.zip` with the committed deterministic builder and provide only that archive to a genuinely isolated reviewer. Do **not** repeat DATA acceptance or M4, use v1 for future adjudication, count contaminated review attempts, or launch M5/full training.
