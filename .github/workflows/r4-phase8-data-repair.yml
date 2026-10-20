@@ -7,10 +7,12 @@ on:
       - 'data_module/CLAUDE.md'
       - 'data_module/sentinel_data/preprocessing/**'
       - 'data_module/sentinel_data/representation/**'
+      - 'data_module/sentinel_data/labeling/**'
       - 'data_module/sentinel_data/vnext/**'
       - 'data_module/sentinel_data/verification/**'
       - 'data_module/tests/test_preprocessing/**'
       - 'data_module/tests/test_representation/**'
+      - 'data_module/tests/test_labeling/**'
       - 'data_module/tests/test_vnext/**'
       - 'data_module/tests/test_verification/**'
       - 'ml/src/data_extraction/**'
@@ -33,6 +35,7 @@ on:
     paths:
       - 'data_module/sentinel_data/preprocessing/**'
       - 'data_module/sentinel_data/representation/**'
+      - 'data_module/sentinel_data/labeling/**'
       - 'data_module/sentinel_data/vnext/**'
       - 'data_module/sentinel_data/verification/**'
       - 'data_module/tests/**'
@@ -73,7 +76,7 @@ jobs:
           python -m pip install --disable-pip-version-check \
             pytest 'numpy==1.26.4' 'pyarrow==19.0.1' \
             'torch==2.10.0' 'torch-geometric==2.7.0' \
-            'transformers==4.46.3' loguru
+            'transformers==4.46.3' loguru pyyaml
 
       - name: Compile repaired DATA, ML, token, and research modules
         run: |
@@ -129,6 +132,7 @@ jobs:
             docs/plan/ml-R4/scripts/p8_build_confirmed_negative_review_queue.py \
             docs/plan/ml-R4/scripts/p8_build_confirmed_negative_review_queue_v3.py \
             docs/plan/ml-R4/scripts/p8_validate_confirmed_negative_adjudications.py \
+            docs/plan/ml-R4/scripts/p8_build_gap007_candidate2_independent_review_v2.py \
             docs/plan/ml-R4/scripts/p8_audit_grouping_breadth.py \
             docs/plan/ml-R4/scripts/p8_profile_representation_sensitivity.py \
             docs/plan/ml-R4/scripts/p8_compare_bounded_window_selector_v1.py \
@@ -167,6 +171,7 @@ jobs:
             data_module/tests/test_representation/test_r4_v10_orchestrator.py \
             data_module/tests/test_representation/test_r4_guarded_token_candidate.py \
             data_module/tests/test_representation/test_windowed_tokenizer_coverage.py \
+            data_module/tests/test_labeling/test_taxonomy.py \
             data_module/tests/test_vnext/test_policy.py \
             data_module/tests/test_vnext/test_r4_source_claims.py \
             data_module/tests/test_vnext/test_r4_builder.py \
@@ -178,6 +183,7 @@ jobs:
             data_module/tests/test_vnext/test_logical_v3_v10_ml_adapter.py \
             data_module/tests/test_vnext/test_confirmed_negative_evaluation.py \
             data_module/tests/test_vnext/test_v3_evidence_snapshot.py \
+            data_module/tests/test_verification/test_call_to_unknown_scope.py \
             data_module/tests/test_verification/test_semantic_checker.py \
             docs/plan/ml-R4/scripts/test_p8_generate_v10_candidate.py \
             docs/plan/ml-R4/scripts/test_p8_audit_v10_transition.py
