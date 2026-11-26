@@ -18,9 +18,9 @@ Reconnaissance source baseline: 61854a32a2badbcd84b98cef3f3976f070b1341e. The pr
 | Stage | State |
 |---|---|
 | S4-00 Baseline | COMPLETE / G00 PASS_WITH_LIMITATIONS |
-| S4-01 Architecture/usefulness | IN_PROGRESS (001 complete; 002 ready) |
+| S4-01 Architecture/usefulness | IN_PROGRESS (001/002 complete; 003 ready) |
 | S4-02 Dependencies/CI | READY (parallel eligible) |
-| S4-03 DATA | NOT_STARTED |
+| S4-03 DATA | L0 READY (parallel label-recovery priority) |
 | S4-04 ML/inference | NOT_STARTED |
 | S4-05 AGENTS/LLM/RAG | NOT_STARTED |
 | S4-06 ZKML/contracts | NOT_STARTED |
@@ -30,7 +30,7 @@ Reconnaissance source baseline: 61854a32a2badbcd84b98cef3f3976f070b1341e. The pr
 | S4-10 Implementation | NOT_STARTED |
 | S4-11 Integrated acceptance | NOT_STARTED |
 
-G00 passed with limitations. F-0004 CLOSED on exact remote CI; F-0011/F-0012 locally validated, CI coverage pending. F-0013 immediate report-adequacy follow-up. S4-D-0001 product direction accepted; no model/toolchain promotion. Existing historical domain gates retain their own authority.
+G00 passed with limitations. F-0004 CLOSED on exact remote CI; F-0011/F-0012 locally validated, CI coverage pending. F-0013 locally validated under S4-D-0002; dedicated AGENTS CI pending. S4-D-0001 product direction accepted; no model/toolchain promotion. Existing historical domain gates retain their own authority.
 
 ## Completed slice: S4-00-001
 
@@ -51,11 +51,15 @@ Source: 5d8dd776ad647c0c32778653342f84ab5b5d27df. [Evidence and gate decision](e
 
 Inspected 9eaaae171c09650f6cca6eae3f4b56c7965cf050. [Architecture and scope](module-audits/S4-01_ARCHITECTURE_AND_SCOPE.md), [evidence](evidence/2026-11-26_s4_01_001/WORKING_RECORD.md). S4-D-0001: evidence-first off-chain investigation as primary product, DATA/ML and optional trust tracks separately governed. User delegated design/direction and engineering authority; no bypass of evidence/safety/launch gates. Reproduced and repaired F-0011 per-job LLM disable and F-0012 screen eligibility/actual routing trace. Final selected runs 28 + 46 + 47 passed (overlap); initial failures preserved. F-0013 no-evidence SAFE exposed and confirmed; F-0014 ZK claim mismatch confirmed; F-0015 durable recovery candidate. G01 remains IN_PROGRESS; no empirical product usefulness established.
 
-## Next bounded slice: S4-01-002
+## Completed slice: S4-01-002
 
-Question: can an investigation report preserve useful positive findings while explicitly abstaining when evidence or required tool coverage is insufficient, without breaking downstream consumers?
+Inspected 154896459942c772b267e2de4e11670a1d812819. [Evidence and decision](evidence/2026-11-26_s4_01_002/WORKING_RECORD.md). S4-D-0002 evidence-adequacy-v1 projects report verdicts separately from raw fusion, abstains for insufficient evidence, preserves target signals, prevents RAG-only promotion, explicitly scopes no findings; no safety assurance. Legacy evaluation rejects new report policy until coverage-aware metrics exist. 135 selected test executions pass; prior commit three workflows green. F-0013 VALIDATING; narrow F-0014 wording corrected, broader sweep pending. No physical artifact, scientific label or training change.
 
-Trace report/eval/visualizer consumers, define versioned coverage and abstention policy, reproduce F-0013, implement bounded correction with tests for no evidence, failed/missing tools, positive findings under degraded coverage and truthful recommendations. Preserve historical reports/compatibility, R4 class identity, no model discrimination/calibration claims. Address F-0014 assurance wording in a bounded claim maintenance step as relevant. Then design and run an authorized bounded comparative utility pilot (S4-01-003). S4-02 dependency/CI remains independently eligible; prioritize reproducible AGENTS CI coverage and F-0001/2/3. Do not wait for routine design approvals.
+[S4-03-L Solidity source and label recovery](module-audits/S4-03_LABEL_RECOVERY_PROGRAM.md) approved for planning/bounded evidence research. L0 independently ready: recover exact current class/source/outcome/group/role counts, source provenance and review queue gaps. Committed logical V3 seed: 225,400 cells, 932 effective loss, 143 outcome metric, zero confirmed negatives. Do not infer physical revalidation or admit labels from counts. R4 authority and independent GAP-007 remain intact.
+
+## Next bounded slices
+
+S4-01-003: design and run a bounded coverage-aware comparative analyst utility pilot, separating target evidence, contextual retrieval, missing coverage and abstention; no closed-world negative metrics on new reports. Establish exact cases, rubric, budgets, allowed tools and source-level evidence before execution. S4-03-L0 can independently start now (read-only label/source inventory); S4-02 dependency/CI independently eligible. Prioritize dedicated AGENTS CI. G01 still IN_PROGRESS; no product or training promotion.
 
 ## Known initial blockers and independent work
 
@@ -65,4 +69,4 @@ Trace report/eval/visualizer consumers, define versioned coverage and abstention
 - R4-GAP-007 isolated independent review remains pending; confirmed negatives zero, M5/full training and G8 not authorized. That separate evidence path can proceed without S4 context.
 - ZKML proof scope, read-only audit MCP, production signing/deployment and accepted DATA/ML roots unchanged.
 
-Next action: execute S4-01-002 evidence adequacy (S4-02 parallel eligible); no broad redesign without comparative evidence.
+Next actions: S4-01-003 coverage-aware utility evaluation and S4-03-L0 label inventory (S4-02 parallel eligible); no broad redesign or new training without admissible evidence.

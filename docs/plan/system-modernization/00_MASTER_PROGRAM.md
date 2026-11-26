@@ -109,6 +109,7 @@ Outputs: compatibility matrix, dependency risks, tooling options, CI design. Gat
 - Trace acquisition/licenses/provenance, compiler versions, normalization/dedup/grouping, label evidence/roles, verification, graph/tokens, export/registry/DVC.
 - Investigate silent failures, alignment, instability, leakage, semantic drift, compiler coverage, resource usage with representative malformed/legacy/multi-contract/long cases.
 - Review negative-evidence acquisition feasibility, class support, independent review, sampling bias and role eligibility under R4; coordinate GAP-007 without adjudicating in S4.
+- Execute the dedicated [Solidity source and label recovery program](module-audits/S4-03_LABEL_RECOVERY_PROGRAM.md): source-native claims, wrong/missing labels, new licensed sources, AI-assisted candidate triage, independent evidence adjudication, leakage-safe candidate release and role-qualified ML handoff. L0 may start in parallel; no implicit promotion.
 - Evaluate parsers, representations, stores, versioning and annotation in isolated successors where justified; verify downstream parity and immutable roots.
 
 Outputs: lineage/coverage map, findings, scientific gaps, tests/experiments. Gate S4-G03: active paths and relevant historical findings accounted for; assumptions validated or bounded; accepted inputs protected.
@@ -191,7 +192,7 @@ Severity (impact/exposure) differs from delivery priority. Prioritize risk, depe
 
 Each slice has a question, scope, owner, prerequisites, command/resource budget, acceptance criteria and stop condition. Checkpoint durable findings before expanding scope. If blocked, record why and choose independent bounded work. Keep R4 independent review eligible in parallel; one accepted negative does not unlock M5.
 
-Routine approvals are delegated by CLAUDE.md. Ask only for non-routine scope/safety decisions. Integrate brief concept-to-code walkthroughs, trade-offs and practical checkpoints with real milestones; avoid endless theory and inflated individual authorship claims.
+Direction/design and routine engineering decisions are delegated by CLAUDE.md. Ask only for actions outside that authority or protected safety boundaries. Integrate brief concept-to-code walkthroughs, trade-offs and practical checkpoints with real milestones; avoid endless theory and inflated individual authorship claims.
 
 ## 7. Records and restart
 

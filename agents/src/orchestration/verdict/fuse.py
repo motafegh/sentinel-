@@ -4,7 +4,7 @@ fuse.py — Single verdict fusion function (proposal §5.2).
 Takes a flat list of Evidence items, groups by class, de-correlates within
 witness families, aggregates signed confidence, applies the FN/FP asymmetry
 rule, maps confidence to a verdict band, and emits a dual verdict:
-  - verdict_provable: computed over deterministic=True evidence only (ZK-anchored)
+  - verdict_provable: computed over deterministic=True evidence only (not a ZK proof)
   - verdict_full:     computed over all evidence (human report)
 
 This one function replaces consensus_engine's vote + the 8-case _reconcile_verdicts.

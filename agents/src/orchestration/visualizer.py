@@ -27,7 +27,9 @@ _VERDICT_COLORS = {
     "LIKELY":    "#e67e22",
     "DISPUTED":  "#f1c40f",
     "WATCH":     "#7f8c8d",
-    "SAFE":      "#27ae60",
+    "SAFE":      "#27ae60",  # historical report only
+    "INCONCLUSIVE": "#7f8c8d",
+    "NO_FINDINGS_IN_SCREEN_SCOPE": "#7f8c8d",
 }
 
 _CSS = """
@@ -135,7 +137,7 @@ def generate_hotspot_html(state: dict[str, Any]) -> str:
             f'<h3>{html.escape(cls)} '
             f'<span class="badge" style="background:{color}">{html.escape(verdict)}</span></h3>'
             f'<div class="conf">Confidence: <b>{conf_txt}</b> · '
-            f'probability {v.get("probability", 0.0):.1%} · {html.escape(str(v.get("severity", "")))}</div>'
+            f'{"ML probability unavailable" if v.get("ml_probability_available") is False else "ML probability " + format(v.get("probability", 0.0), ".1%")} · {html.escape(str(v.get("severity", "")))}</div>'
             f'<div class="bar">'
             f'<span class="bml" style="width:{ml_pct}%"></span>'
             f'<span class="bsl" style="width:{sl_pct}%"></span>'
@@ -146,6 +148,11 @@ def generate_hotspot_html(state: dict[str, Any]) -> str:
     panel_html = "".join(cards) if cards else '<div class="empty">No flagged vulnerabilities.</div>'
 
     overall = report.get("overall_verdict", "n/a")
+    assessment = report.get("assessment") or {}
+    if assessment:
+        coverage = html.escape(str(assessment.get("coverage", "UNKNOWN")))
+        panel_html = (f'<div class="empty">Coverage: {coverage}. '
+                      'No safety assurance established.</div>' + panel_html)
     top = report.get("top_vulnerability", "n/a")
 
     return (

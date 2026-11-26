@@ -43,4 +43,14 @@ def validate_report_ml_provenance(
         raise EvaluationInputError(f"{location}: ml_result and tool_status.ml provenance disagree")
 
 
-__all__ = ["EvaluationInputError", "validate_report_ml_provenance"]
+def require_legacy_report_policy(report: Mapping[str, Any], *, report_path: Path | str) -> None:
+    """Prevent closed-world metrics from counting new abstentions as negatives."""
+    final = report.get("final_report") or report
+    if isinstance(final, Mapping) and "assessment" in final:
+        raise EvaluationInputError(
+            f"{report_path}: versioned assessment requires coverage-aware evaluation; "
+            "legacy closed-world metrics are not admissible"
+        )
+
+
+__all__ = ["EvaluationInputError", "validate_report_ml_provenance", "require_legacy_report_policy"]

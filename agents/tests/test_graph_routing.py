@@ -640,7 +640,8 @@ class TestSynthesizerNode:
     async def test_safe_label_recommendation(self, base_state, ml_safe):
         state = {**base_state, "ml_result": ml_safe, "rag_results": [], "audit_history": []}
         result = await synthesizer(state)
-        assert "LOW RISK" in result["final_report"]["recommendation"]
+        assert "INCONCLUSIVE" in result["final_report"]["recommendation"]
+        assert "LOW RISK" not in result["final_report"]["recommendation"]
 
     @pytest.mark.asyncio
     async def test_ml_failure_path(self, base_state):

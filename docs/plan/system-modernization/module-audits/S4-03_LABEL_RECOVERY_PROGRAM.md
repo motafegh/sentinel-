@@ -1,0 +1,55 @@
+# S4-03-L — Solidity source and label recovery program
+
+**Status:** APPROVED FOR PLANNING AND BOUNDED EVIDENCE RESEARCH; no new label admitted, no optimizer authorization.
+**Parent:** [S4 master](../00_MASTER_PROGRAM.md), S4-03 DATA and S4-04 ML.
+**Authority:** [R4 status](../../ml-R4/PLAN_STATUS_MATRIX.md), [label policy](../../ml-R4/LABEL_STATE_AND_DATASET_ROLE_POLICY.md), [Phase 2 reconstruction](../../ml-R4/findings/03_label_corruption_reconstruction_summary.md), [negative evaluation policy](../../ml-R4/specs/confirmed_negative_evaluation_v1.json). R4 decisions control semantic/role changes and training. This program does not replace them.
+
+## 1. Problem and objective
+
+R4 established that historical zeros collapsed missing, unsupported, unmapped, unknown and explicit negative source states. The historical reconstruction identified DIVE folderization loss, unsupported source classes, inappropriate NonVulnerable mapping, 2,655 DoS positive-to-zero cell changes, and missing representation/export issues. These are historical reconstructed mechanisms, not counts of currently wrong labels. Accepted logical V3 and D-011/D-013 physical roots improve lineage; they do not manufacture class truth. Confirmed negatives remain zero; D-015 bounded positive-fit result did not establish discrimination. D-016 governs current CallToUnknown; GAP-007 independent review remains separate.
+
+### Existing accepted logical V3 support (starting evidence)
+
+The committed [logical V3 summary](../../ml-R4/evidence/2026-08-15_phase8_logical_v3/logical_v3_summary.json) reports 22,540 contracts, 22,394 leakage groups and 225,400 contract-class cells across ten classes. There are 932 effective loss cells and 143 outcome-metric cells, with zero confirmed negatives. Roles: TRAIN_STRONG 343 contracts; TRAIN_WEAK 602; TRAIN_UNLABELED 21,449; MODEL_SELECTION 73; INTERNAL_AUDIT 73. These are exact reported snapshot counts, not newly verified physical contents or class support. [Seed record](../evidence/2026-11-26_s4_01_002/label_baseline_seed.json) binds the summary bytes to the inspected SHA. L0 must recover detailed per-class/source/group denominators and outcome-state counts before choosing acquisition targets. The very sparse eligible supervision, not simply the contract count, is the key planning constraint.
+
+Objective: improve evidence-qualified label correctness, coverage, class balance and reproducibility per contract identity × vulnerability class, and measure what additional supervision/evaluation becomes feasible. More rows or model confidence alone do not meet this objective.
+
+## 2. Parallel work packages
+
+| ID | Work package | Method and exit evidence |
+|---|---|---|
+| L0 | Reconstruct current source/label inventory | Trace raw source claim -> crosswalk -> review outcome -> role/mask -> exact physical identity. Count per class/source/compiler/group and outcome, distinguish historical versus accepted current. Record source license/version/hashes, missing records, contradictions and acquisition constraints. |
+| L1 | Recover original claims | Recover native CSV/JSON/annotations, exploit/injection and patch metadata from verified source versions. Compare SmartBugs, DIVE, SolidiFI and other actually acquired sources. Preserve unknown/missing/unsupported distinctions; no default zeros. Verify compiler/source scope. |
+| L2 | Correct existing label errors | Stratified review of suspected wrong positives, wrong historical zeros, out-of-taxonomy mappings, contradictory claims, duplicate/pair cases. Record source locations, class criteria, reasoning and disagreement. Separate label error from representation failure and taxonomy ambiguity. Publish append-only adjudication candidates. |
+| L3 | Acquire new Solidity evidence | Research current licensed datasets, verified source snapshots, public audit reports, known exploit/fix pairs, curated challenge suites and reproducible compiler/tool fixtures. Check availability, licensing, commit/address/chain/source identity and complete source/build context before ingestion. No automatic trust of published labels, no blind scraping or credential use. |
+| L4 | AI-assisted candidate review | Compare local code-capable models, retrieval of exact class definitions, static/dynamic analysis, constrained evidence extraction and targeted adjudication. Use full relevant code scope or explicit abstention, source ranges, compiler/import context, tool result IDs, alternative explanations. LLM output is a proposal, not gold truth; same model/agents sharing context do not establish independent verification. |
+| L5 | Class-specific negative evidence | Continue existing approved R4-GAP-007 queue and independent process; candidate #2 is not adjudicated by this session. Use class-relevant manual/static arguments, trusted explicit negative sources, applicable property tests as corroboration. Preserve not-applicable vs negative vs unknown; no global safe labels. Reserve leakage groups before review; evaluation-only unless later authority. |
+| L6 | Quality and review operations | Design reviewer schema, versioned rubric, conflict handling, blind packets, agreement and review cost, deterministic sampling, random control plus active-learning triage. Assess tool disagreement and model uncertainty as queue priority only. Include false positives/false negatives and missing-class strata. |
+| L7 | Candidate publication | Immutable successor semantic release with provenance, reproducible builder, exact accepted adjudication IDs, source/group/role/mask validation, leakage and duplicate checks, rejection logs, delta report and rollback. Never overwrite D-011/D-013 or prior label history. Gate new representation only if meaning/identity changes require it. |
+| L8 | ML handoff | Quantify role-eligible per-class positives/negatives, coverage/uncertainty, independent group counts, supported metrics and explicit remaining gaps. Compare alternatives (positive-unlabeled, weak supervision, self-supervision, transfer learning) only in separately approved experiments. No new optimizer or calibration/threshold authority without R4 decision. |
+
+## 3. Evidence acquisition and adjudication design
+
+Use an evidence ledger, not an LLM-generated label spreadsheet. The record should bind exact source hash and contract/component scope, source origin/license/version, vulnerability class and governing definition version, native label and crosswalk, candidate evidence (line ranges, functions, claim types, compilation/tool status, reproduction), reviewer/independence and conflict, current outcome and reason, role eligibility, leakage group, adjudication identity and publication version. Existing R4 schema/validators remain authoritative; design successor schema only if an explicit ADR is necessary.
+
+Evidence hierarchy is conditional on class: a reproducible exploit/injection or property counterexample can establish a scoped positive when the class matches; a fix pair does not establish unrelated negatives. Public audit prose must match exact code/version and class. Static analyzers and LLMs may suggest candidates, not silently promote labels. A tool run with no findings, missing source label, LLM agreement or low ML score is not negative evidence. Independent primary/review evidence and conflict policy apply under R4; when insufficient, retain UNKNOWN/NOT_REVIEWED/CONFLICTING_EVIDENCE/NOT_APPLICABLE as appropriate. Do not collapse to 0.
+
+Human review bottleneck: prioritize high-information cells, combine stratified random controls with disagreement/uncertainty sampling, and estimate actual cost/yield before scaling. Blind review packets must include neutral current definitions and required scope, not prior verdicts. Separate reviewers must actually be independent; record contamination. Never reuse this session for blind candidate #2 review.
+
+## 4. Measurements and gates
+
+Start with L0/L1 read-only inventory; no arbitrary acquisition count. Report denominator and unit for each measure:
+
+- unique source identities, group count, eligible compiled source coverage and provenance completeness;
+- class-by-source outcome counts and mask eligibility; label conflict and unknown rates;
+- verified correction counts (old state -> new candidate state), acceptance yield, reviewer disagreement, time/cost per accepted cell, abstention;
+- independent positive/negative group support per class and role, leakage violations, class/source/compiler skew;
+- representation compatibility and source-location coverage; versioned changes and reproducibility.
+
+Freeze a bounded pilot design before labeling: select classes based on inventory, include randomized controls and under-supported strata, explicit budgets and failure/stop criteria. Existing negative evaluation policy uses a 25-candidate-per-enabled-class pilot to estimate yield; the 59 independent confirmed negatives per class planning number assumes zero observed false positives and 95% confidence for 5% upper bound. It is not a universal training target and does not establish threshold/calibration eligibility. Separate development, selection and untouched evaluation groups; measure sampling bias and avoid optimizing on review/acceptance cases.
+
+Gate L-G0: source/label inventory reconciled with existing R4 evidence. L-G1: candidate sources and review method validated on bounded pilot; measured yield and limitations. L-G2: adjudicated candidate release validates provenance, policy, independence and leakage; acceptance only through owning R4 authority. L-G3: explicit ML handoff decision stating eligible roles and supported metrics. If no admissible negative evidence can be acquired, retain hold and evaluate alternative research paths; do not lower standards.
+
+## 5. Execution order and relationship to S4
+
+This is an early, independent DATA priority: S4-03-L0 can start alongside S4-01/S4-02 once its exact baseline is captured; do not wait for all runtime architecture work. S4-01-003 analyst utility evaluation must remain separate from R4 training/acceptance roles; no leakage into future optimizer populations. L3/L4 current external dataset/tool/model research should occur when L0 reveals gaps, using primary sources and actual license/version verification. No external models or tools are selected yet. Prior accepted data and review records remain intact. Record every candidate experiment and decision under S4/R4, preserve unsuccessful review attempts, publish only admissible evidence. User explicitly requested this priority on 2026-11-26.

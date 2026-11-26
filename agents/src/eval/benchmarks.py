@@ -204,6 +204,8 @@ class Benchmark:
         labels, gt, _, _ = label_info
 
         raw = self._load_report(report_path)
+        from src.eval.provenance import require_legacy_report_policy
+        require_legacy_report_policy(raw, report_path=report_path)
         validate_report_ml_provenance(raw, report_path=report_path)
         ml_result = raw.get("ml_result", {}) or {}
         probabilities = ml_result.get("probabilities", {}) or {}

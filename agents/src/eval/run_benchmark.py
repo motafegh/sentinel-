@@ -117,6 +117,8 @@ def _load_contract_eval(
     label_info = _derive_labels_for_stem(stem, sol_path, sidecar_index)
     if label_info is None:
         return None
+    from src.eval.provenance import require_legacy_report_policy
+    require_legacy_report_policy(raw, report_path=report_path)
     validate_report_ml_provenance(raw, report_path=report_path)
     labels, gt, label_source_path, _label_format = label_info
     verdicts = raw.get("verdicts") or (raw.get("final_report", {}) or {}).get("verdicts") or {}

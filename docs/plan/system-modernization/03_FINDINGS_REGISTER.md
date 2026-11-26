@@ -49,8 +49,8 @@ Source: 9eaaae171c09650f6cca6eae3f4b56c7965cf050. [Architecture map](module-audi
 |---|---|---|---|---|---|
 | S4-F-0011 | Per-request LLM disable flag must govern execution. Gateway recorded metadata only, node gates process-only, app-level monkeypatch global. | REPRODUCED / HIGH | VALIDATING (local acceptance) | P1 / NOW | S4-01/05 |
 | S4-F-0012 | Fast path must require actual screen completion; missing/failed screen with empty hits routed fast; path inferred from result presence. | REPRODUCED / HIGH | VALIDATING (local acceptance) | P1 / NOW | S4-01/05 |
-| S4-F-0013 | No usable evidence is not SAFE. compute_overall_verdict({}) returns SAFE; observed unknown ML + no evidence yet SAFE report. | REPRODUCED / HIGH | CONFIRMED | P1 / NOW | S4-01-002 |
-| S4-F-0014 | Deterministic-only verdict is not ZK proof. AGENTS verdict/fuse.py and orchestration README describe ZK-anchorable/anchored verdict; retained EZKL proves proxy only. | SOURCE_CONFIRMED / HIGH for claim mismatch | CONFIRMED | P1 / NEXT | S4-06/08 |
+| S4-F-0013 | No usable evidence is not SAFE. compute_overall_verdict({}) returns SAFE; observed unknown ML + no evidence yet SAFE report. | REPRODUCED / HIGH | VALIDATING (local acceptance) | P1 / NOW | S4-01-002 |
+| S4-F-0014 | Deterministic-only verdict is not ZK proof. AGENTS verdict/fuse.py and orchestration README describe ZK-anchorable/anchored verdict; retained EZKL proves proxy only. | SOURCE_CONFIRMED / HIGH for claim mismatch | PARTIAL REPAIR (claim sweep pending) | P1 / NEXT | S4-06/08 |
 | S4-F-0015 | Gateway default checkpointer disabled; pending jobs marked FAILED on restart, no resume. Whether durable resume is required not yet established. | SOURCE_CONFIRMED / HIGH behavior, LOW defect confidence | CANDIDATE | Pending / PLANNED | S4-05/07 |
 
 F-0011: gateway.py submit_audit/_run_job, state.py, nodes/_helpers.py and three LLM nodes. Before E-0010 failed. Fix job-owned bool, prevent caller metadata override, preserve process controls, remove gateway monkeypatch. Acceptance E-0012: query and app default correctly bind state, next job independent, spy asserts no LLM calls across all three nodes. No external transfer observed. Relevant CI coverage absent; S4-02 track. Rollback narrow source/test delta.
@@ -62,3 +62,7 @@ F-0013: routing.compute_overall_verdict and synthesizer final report. E-0011 tra
 F-0014: source claim mismatches R4/ZKML proof boundary. Correct documentation/claim tests; retain compatibility keys until explicit versioned decision; no changes to proxy/verifier needed to correct claim. F-0015: source observation; evaluate requirement and current state ownership; no unsupported severity or premature framework replacement.
 
 Historical D2 candidate mappings for these new findings must be reconciled against original records in owner stages; no historical closures inferred. S4-D-0001 accepted scope direction, comparative usefulness not yet tested.
+
+## S4-01-002 disposition
+
+F-0013: E-0013/14 reproduce and repair report SAFE default using S4-D-0002 evidence-adequacy-v1. Projected verdicts distinguish no findings in completed screen scope, insufficient evidence and direct positive signals. Historical raw fusion preserved. 135 selected tests pass; legacy evaluation of new reports intentionally blocked pending coverage-aware S4-01-003. Dedicated remote AGENTS CI not yet established; VALIDATING. F-0014: corrected narrow misleading ZK wording; broader claim sweep remains open. No changes to R4 label truth or protocol. S4-03-L0 label inventory independent priority; see [label program](module-audits/S4-03_LABEL_RECOVERY_PROGRAM.md).

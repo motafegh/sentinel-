@@ -99,7 +99,7 @@ updated. LangGraph merges partial dicts back automatically.
 | `hotspot_visualization` | `str\|None` | `visualizer` | A.9 self-contained HTML |
 | `final_report` | `dict` | `synthesizer` | Complete audit output |
 | `evidence_list` | `Annotated[list, operator.add]` | any node | P2: append-reducer, consumed by fuse() |
-| `verdict_provable` | `dict[str, str]` | `synthesizer` | P2: ZK-anchorable tier (deterministic evidence only) |
+| `verdict_provable` | `dict[str, str]` | `synthesizer` | P2: legacy deterministic-evidence tier (not ZK-proven) |
 | `verdict_full` | `dict[str, str]` | `synthesizer` | P2: human-report tier (all evidence) |
 | `tool_status` | `Annotated[dict, _merge_tool_status]` | any node | Rule 5C: explicit ran/reason per tool |
 | `injection_matches` | `Annotated[list, operator.add]` | `cross_validator`, `synthesizer` | P4: injection detections |
@@ -182,7 +182,7 @@ Verdict production split from synthesizer into a dedicated package (P2, 2026-06-
 
 | Tier | Field | Source | ZK-anchorable |
 |------|-------|--------|---------------|
-| Provable | `verdict_provable` | Deterministic evidence only (Slither, Aderyn, Halmos) | Yes |
+| Legacy deterministic tier | `verdict_provable` | Deterministic evidence only | No; retained proof covers proxy computation only |
 | Full | `verdict_full` | All evidence (+ ML, RAG, LLM debate) | No |
 
 The ZK circuit can only commit to deterministic evidence. The human report uses both.

@@ -21,7 +21,7 @@ from src.contracts.execution import (
 from src.contracts.submission import normalize_submission
 from src.ingestion.pipeline import REPORTS_DIR
 from src.orchestration.nodes._helpers import _llm_enabled
-from src.orchestration.routing import compute_overall_verdict, prob_to_severity
+from src.orchestration.routing import prob_to_severity
 from src.orchestration.state import AuditState
 from src.orchestration.timeouts import (
     DEFAULT_SYNTHESIZER_NARRATIVE_TIMEOUT_S,
@@ -171,8 +171,8 @@ async def synthesizer(state: AuditState) -> dict[str, Any]:
     # Every channel upstream (consensus_engine, cross_validator) emits Evidence
     # objects to state["evidence_list"] (append-reducer). This node adds RAG
     # evidence, then fuse() de-correlates, aggregates, and applies FN/FP asymmetry
-    # to produce verdict_provable (deterministic-only → ZK-anchorable) and
-    # verdict_full (all evidence → human report).
+    # to produce verdict_provable (deterministic-only; not a ZK proof) and
+    # verdict_full (historical raw fusion; projected report follows).
     from src.orchestration.verdict.emit import emit_rag_evidence
     from src.orchestration.verdict.evidence import Polarity
     from src.orchestration.verdict.fuse import fuse
@@ -188,8 +188,6 @@ async def synthesizer(state: AuditState) -> dict[str, Any]:
         verdict_provable[cls] = cv.verdict_provable
         verdict_full[cls] = cv.verdict_full
         class_confidences[cls] = cv.confidence
-
-    verdicts = verdict_full
 
     confirmations: dict[str, list[str]] = {}
     for ev in evidence_list:
@@ -213,24 +211,34 @@ async def synthesizer(state: AuditState) -> dict[str, Any]:
     all_classes = (
         set(flagged_by_cls.keys()) | set(verdict_full.keys()) | set(consensus_verdict.keys())
     )
+    from src.orchestration.verdict.adequacy import project_assessment
+    verdicts, overall_verdict, assessment = project_assessment(
+        state, ml_result=ml_result, ml_eligible=ml_eligible,
+        evidence=evidence_list, raw_verdicts=verdict_full, classes=all_classes,
+    )
+    assessment["raw_fusion_scores"] = class_confidences
+    class_confidences = assessment["direct_signal_scores"]
     vuln_verdicts: list[dict] = []
     for cls in sorted(all_classes):
         vuln = flagged_by_cls.get(cls, {"vulnerability_class": cls, "probability": 0.0})
-        prob = float(vuln.get("probability", 0.0))
-        verdict = verdict_full.get(cls, "SAFE")
+        ml_probability = (ml_result.get("probabilities") or {}).get(cls, vuln.get("probability") if cls in flagged_by_cls else None)
+        probability_available = type(ml_probability) in (int, float)
+        prob = float(ml_probability) if probability_available else 0.0
+        verdict = verdicts.get(cls, "INCONCLUSIVE")
         ev_sources = list(dict.fromkeys(ev.source for ev in evidence_list if ev.vuln_class == cls))
         vuln_verdicts.append(
             {
                 "vulnerability_class": cls,
-                "probability": prob,
+                "probability": prob,  # legacy numeric projection; see availability flag
+                "ml_probability_available": probability_available,
                 "verdict": verdict,
                 "evidence_sources": ev_sources,
-                "severity": prob_to_severity(prob),
+                "direct_evidence_sources": assessment["direct_signal_sources"].get(cls, []),
+                "severity": prob_to_severity(prob) if probability_available else "UNKNOWN",
                 "confidence": class_confidences.get(cls, 0.0),
             }
         )
 
-    overall_verdict = compute_overall_verdict(verdicts)
 
     # ── Rule-based recommendation (fallback) ─────────────────────────────────
     # Used when the LLM is unavailable or times out.
@@ -247,7 +255,7 @@ async def synthesizer(state: AuditState) -> dict[str, Any]:
         prior_count = len(audit_history)
         slither_high = sum(1 for f in static_findings if f.get("impact") in ("High", "Medium"))
         recommendation = (
-            f"HIGH RISK — top vulnerability: {top_vuln_name} "
+            f"Historical ML HIGH RISK signal — top vulnerability: {top_vuln_name} "
             f"(probability {risk_prob:.1%}, CONFIRMED tier). "
             f"{rag_count} similar exploit pattern(s) found in DeFiHackLabs corpus. "
             f"{slither_high} Slither High/Medium finding(s). "
@@ -261,15 +269,14 @@ async def synthesizer(state: AuditState) -> dict[str, Any]:
             else f"probability {risk_prob:.1%}"
         )
         recommendation = (
-            f"MODERATE RISK — top vulnerability: {top_vuln_name} "
+            f"Historical ML MODERATE RISK signal — top vulnerability: {top_vuln_name} "
             f"({tier_note}). "
             "Recommend targeted review of flagged patterns."
         )
     else:
         recommendation = (
-            f"LOW RISK — no vulnerability exceeded detection threshold "
-            f"(max probability: {risk_prob:.1%}). "
-            "Standard due diligence recommended."
+            "No historical ML flag exceeded its detection threshold. "
+            "This is not a safety assurance."
         )
 
     # ── LLM narrative (T3-A / Move 5) ────────────────────────────────────────
@@ -355,7 +362,7 @@ async def synthesizer(state: AuditState) -> dict[str, Any]:
                     "## Vulnerability Summary\n"
                     "2–3 sentences describing what was detected and why it is dangerous. "
                     "Only discuss classes whose verdict below is CONFIRMED or LIKELY — "
-                    "if a class's verdict is SAFE or DISPUTED, do NOT describe it as a "
+                    "if a class's verdict is SAFE, INCONCLUSIVE, WATCH or DISPUTED, do NOT describe it as a "
                     "real risk even though it appears in the list, and do NOT introduce "
                     "a vulnerability class that is not in the list at all.\n"
                     "## Exploit Pattern\n"
@@ -430,12 +437,24 @@ async def synthesizer(state: AuditState) -> dict[str, Any]:
         else ""
     )
 
-    final_recommendation = (narrative or recommendation) + truncated_note
+    if overall_verdict == "NO_FINDINGS_IN_SCREEN_SCOPE":
+        scope_note = "No findings in the completed screen scope; this is not a safety assurance."
+    elif assessment["abstained"]:
+        scope_note = "INCONCLUSIVE: evidence or coverage is insufficient; manual review required."
+    else:
+        scope_note = "Target-specific signals require manual review; no safety assurance."
+    if assessment["coverage"] == "INCOMPLETE":
+        scope_note += " Coverage limitations: " + ", ".join(assessment["coverage_reasons"]) + "."
+    final_recommendation = scope_note + "\n\n" + recommendation + truncated_note
+    if narrative:
+        final_recommendation += "\n\nAdvisory LLM narrative (not independently verified):\n" + narrative
 
     report = {
         "contract_address": state.get("contract_address", ""),
         "overall_label": label,
         "overall_verdict": overall_verdict,
+        "assessment": assessment,
+        "verdicts": verdicts,
         "risk_probability": risk_prob,
         "top_vulnerability": top_vuln_name,
         "confirmed": confirmed,
