@@ -20,7 +20,7 @@ No new contract review is permitted without an approved gap entry.
 - frozen sample SHA-256: `2899ad5a210ac6e2e2a4e6b43f31cd718afa3b1d603b659cdd6bf0918f34fbe9`
 - blind source bundle SHA-256: `2b1ce12fdd96819c89bbb9fe1dfb2d9aa992ec0a05ce32f651c6b834b97ddf38`
 - machine-readable semantic review: `reviews/R4-GAP-002/p4_gap002_blind_semantic_review_v1.jsonl`
-- review rows SHA-256: `7d7f0cce287f847df2376ac0f580abf6be05b46f6a2c90b5f00f9b34f8fc5473`
+- review rows SHA-256: `7d7f0cce287c847df2376ac0f580abf6be05b46f6a2c90b5f00f9b34f8fc5473`
 - review report: `findings/06_gap002_blind_semantic_review_report.json`
 - interpretation/role decision: `findings/06_gap002_blind_semantic_review.md`
 

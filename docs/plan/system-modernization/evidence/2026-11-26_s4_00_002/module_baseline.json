@@ -1,0 +1,211 @@
+{
+  "source_sha": "5d8dd776ad647c0c32778653342f84ab5b5d27df",
+  "observed_utc": "2026-11-26T14:11:09.075434+00:00",
+  "scratch_source": "git archive selected tracked paths; local Foundry libs copied excluding .git/node_modules/out/cache",
+  "network_isolation": "unshare -Urn (verified available); allowlisted env and temporary HOME/TMPDIR; not a complete filesystem sandbox",
+  "env_note": "existing module venv interpreters, no install; CUDA hidden, HF offline, AGENTS LLM disabled, RPC/key blank, no protected roots/checkpoint/RAG index present",
+  "selected_tests": {
+    "DATA": [
+      "data_module/tests/test_archive_safety.py",
+      "data_module/tests/test_preprocessing/test_r4_grouping_v3.py",
+      "data_module/tests/test_vnext/test_policy.py"
+    ],
+    "ML": [
+      "ml/tests/test_vnext_phase8_compat.py"
+    ],
+    "AGENTS": [
+      "tests/test_audit_mcp_readonly.py",
+      "tests/test_audit_server.py",
+      "tests/test_policy_signer_v3.py"
+    ],
+    "ZKML": [
+      "zkml/tests/test_validate_bundle.py",
+      "zkml/tests/test_setup_circuit_lineage.py"
+    ]
+  },
+  "foundry_compiler": {
+    "version": "0.8.22",
+    "path": "/home/motafeq/.solc-select/artifacts/solc-0.8.22/solc-0.8.22",
+    "sha256": "8be0aeb74fc1b8213292a09a84cb524a403602526df87ecad5f5cd2a7ea7d089"
+  },
+  "results": {
+    "DATA": {
+      "command": [
+        "unshare",
+        "-Urn",
+        "--",
+        "/home/motafeq/projects/sentinel/data_module/.venv/bin/python",
+        "-m",
+        "pytest",
+        "-q",
+        "-c",
+        "/dev/null",
+        "--noconftest",
+        "-p",
+        "no:cacheprovider",
+        "--basetemp",
+        "/tmp/sentinel-s4-002-lcd1fied/pytest-DATA",
+        "data_module/tests/test_archive_safety.py",
+        "data_module/tests/test_preprocessing/test_r4_grouping_v3.py",
+        "data_module/tests/test_vnext/test_policy.py"
+      ],
+      "cwd": ".",
+      "exit_code": 0,
+      "elapsed_seconds": 0.31,
+      "stdout": "..........................................                               [100%]\n=============================== warnings summary ===============================\n::TestCollisionRejection::test_duplicate_member_rejected\n  /usr/lib/python3.12/zipfile/__init__.py:1620: UserWarning: Duplicate name: 'same.txt'\n    return self._open_to_write(zinfo, force_zip64=force_zip64)\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n42 passed, 1 warning in 0.12s\n",
+      "stderr": ""
+    },
+    "ML": {
+      "command": [
+        "unshare",
+        "-Urn",
+        "--",
+        "/home/motafeq/projects/sentinel/ml/.venv/bin/python",
+        "-m",
+        "pytest",
+        "-q",
+        "-c",
+        "/dev/null",
+        "--noconftest",
+        "-p",
+        "no:cacheprovider",
+        "--basetemp",
+        "/tmp/sentinel-s4-002-lcd1fied/pytest-ML",
+        "ml/tests/test_vnext_phase8_compat.py"
+      ],
+      "cwd": ".",
+      "exit_code": 0,
+      "elapsed_seconds": 5.174,
+      "stdout": "..........                                                               [100%]\n=============================== warnings summary ===============================\n../../../home/motafeq/projects/sentinel/ml/.venv/lib/python3.12/site-packages/torch_geometric/llm/utils/backend_utils.py:26\n  /home/motafeq/projects/sentinel/ml/.venv/lib/python3.12/site-packages/torch_geometric/llm/utils/backend_utils.py:26: DeprecationWarning: `torch_geometric.distributed` has been deprecated since 2.7.0 and will no longer be maintained. For distributed training, refer to our tutorials on distributed training at https://pytorch-geometric.readthedocs.io/en/latest/tutorial/distributed.html or cuGraph examples at https://github.com/rapidsai/cugraph-gnn/tree/main/python/cugraph-pyg/cugraph_pyg/examples\n    from torch_geometric.distributed import (\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n10 passed, 1 warning in 4.19s\n",
+      "stderr": ""
+    },
+    "AGENTS": {
+      "command": [
+        "unshare",
+        "-Urn",
+        "--",
+        "/home/motafeq/projects/sentinel/agents/.venv/bin/python",
+        "-m",
+        "pytest",
+        "-q",
+        "-c",
+        "/dev/null",
+        "--noconftest",
+        "-p",
+        "no:cacheprovider",
+        "--basetemp",
+        "/tmp/sentinel-s4-002-lcd1fied/pytest-AGENTS-retry",
+        "-p",
+        "pytest_asyncio.plugin",
+        "-o",
+        "asyncio_mode=auto",
+        "tests/test_audit_mcp_readonly.py",
+        "tests/test_audit_server.py",
+        "tests/test_policy_signer_v3.py"
+      ],
+      "cwd": "agents",
+      "pythonpath": "/tmp/sentinel-s4-002-lcd1fied/source/agents:/tmp/sentinel-s4-002-lcd1fied/source",
+      "exit_code": 0,
+      "elapsed_seconds": 1.117,
+      "stdout": "........................................                                 [100%]\n=============================== warnings summary ===============================\n../../../../home/motafeq/projects/sentinel/agents/.venv/lib/python3.12/site-packages/websockets/legacy/__init__.py:6\n  /home/motafeq/projects/sentinel/agents/.venv/lib/python3.12/site-packages/websockets/legacy/__init__.py:6: DeprecationWarning: websockets.legacy is deprecated; see https://websockets.readthedocs.io/en/stable/howto/upgrade.html for upgrade instructions\n    warnings.warn(  # deprecated in 14.0 - 2024-11-09\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n40 passed, 1 warning in 0.82s\n",
+      "stderr": ""
+    },
+    "ZKML": {
+      "command": [
+        "unshare",
+        "-Urn",
+        "--",
+        "/home/motafeq/projects/sentinel/ml/.venv/bin/python",
+        "-m",
+        "pytest",
+        "-q",
+        "-c",
+        "/dev/null",
+        "--noconftest",
+        "-p",
+        "no:cacheprovider",
+        "--basetemp",
+        "/tmp/sentinel-s4-002-lcd1fied/pytest-ZKML",
+        "zkml/tests/test_validate_bundle.py",
+        "zkml/tests/test_setup_circuit_lineage.py"
+      ],
+      "cwd": ".",
+      "exit_code": 0,
+      "elapsed_seconds": 0.21,
+      "stdout": "...........                                                              [100%]\n11 passed in 0.08s\n",
+      "stderr": ""
+    },
+    "CONTRACTS": {
+      "command": [
+        "unshare",
+        "-Urn",
+        "--",
+        "/home/motafeq/.foundry/bin/forge",
+        "test",
+        "--offline",
+        "--use",
+        "/home/motafeq/.solc-select/artifacts/solc-0.8.22/solc-0.8.22",
+        "--skip",
+        "ZKMLVerifierRealProof",
+        "--skip",
+        "AuditRegistryV3GoldenDigest",
+        "--match-contract",
+        "^(AuditRegistryTest|AuditRegistryV2Test|AuditRegistryV3Test|AuditRegistryV3UpgradeTest|SentinelTokenTest)$",
+        "--no-match-test",
+        "^invariant_"
+      ],
+      "cwd": "contracts",
+      "exit_code": 0,
+      "elapsed_seconds": 2.826,
+      "stdout": "Compiling 54 files with Solc 0.8.22\nSolc 0.8.22 finished in 2.29s\nCompiler run successful with warnings:\nWarning (2018): Function state mutability can be restricted to view\n  --> src/ZKMLVerifier.sol:65:5:\n   |\n65 |     function verifyProof(\n   |     ^ (Relevant source part starts here and spans across multiple lines).\n\nWarning (2018): Function state mutability can be restricted to view\n  --> test/mocks/MockZKMLVerifier.sol:15:5:\n   |\n15 |     function verifyProof(\n   |     ^ (Relevant source part starts here and spans across multiple lines).\n\nWarning (2018): Function state mutability can be restricted to pure\n   --> test/AuditRegistryV3.t.sol:121:5:\n    |\n121 |     function _sign(bytes32 digest) internal returns (bytes memory) {\n    |     ^ (Relevant source part starts here and spans across multiple lines).\n\n\nRan 7 tests for test/AuditRegistryV2.t.sol:AuditRegistryV2Test\n[PASS] test_v2_happy_path_records_all_scores_and_identities() (gas: 413214)\n[PASS] test_v2_model_hash_is_caller_metadata_not_proof_bound() (gas: 751351)\n[PASS] test_v2_proof_is_not_bound_to_target_contract() (gas: 776342)\n[PASS] test_v2_rejects_any_class_score_mismatch() (gas: 62338)\n[PASS] test_v2_rejects_invalid_proof() (gas: 61187)\n[PASS] test_v2_requires_exact_public_signal_layout() (gas: 86389)\n[PASS] test_v2_requires_stake() (gas: 51328)\nSuite result: ok. 7 passed; 0 failed; 0 skipped; finished in 1.73ms (1.56ms CPU time)\n\nRan 14 tests for test/SentinelToken.t.sol:SentinelTokenTest\n[PASS] test_initial_supply_minted_to_owner() (gas: 12909)\n[PASS] test_min_stake_constant() (gas: 5570)\n[PASS] test_over_unstake_reverts() (gas: 91000)\n[PASS] test_slash_by_non_owner_reverts() (gas: 95531)\n[PASS] test_slash_by_owner() (gas: 105636)\n[PASS] test_slash_emits_event() (gas: 79087)\n[PASS] test_slash_more_than_staked_reverts() (gas: 93410)\n[PASS] test_stake_and_unstake() (gas: 75856)\n[PASS] test_stake_emits_event() (gas: 91447)\n[PASS] test_stake_zero_reverts() (gas: 11046)\n[PASS] test_staked_balance_of_unstaked_address_is_zero() (gas: 10049)\n[PASS] test_transfer_while_staked() (gas: 116372)\n[PASS] test_unstake_emits_event() (gas: 73348)\n[PASS] test_unstake_without_stake_reverts() (gas: 13242)\nSuite result: ok. 14 passed; 0 failed; 0 skipped; finished in 1.81ms (1.38ms CPU time)\n\nRan 2 tests for test/AuditRegistryV3Upgrade.t.sol:AuditRegistryV3UpgradeTest\n[PASS] test_initialize_v3_cannot_be_replayed_after_upgrade() (gas: 3143097)\n[PASS] test_pre_v3_history_and_core_storage_survive_upgrade() (gas: 3699084)\nSuite result: ok. 2 passed; 0 failed; 0 skipped; finished in 2.12ms (589.76\u00b5s CPU time)\n\nRan 15 tests for test/AuditRegistry.t.sol:AuditRegistryTest\n[PASS] test_audit_count_increments() (gas: 412625)\n[PASS] test_get_audit_history_multiple_submissions() (gas: 407544)\n[PASS] test_get_latest_audit_reverts_when_none() (gas: 19006)\n[PASS] test_guard1_insufficient_stake() (gas: 176086)\n[PASS] test_guard1_partial_stake_reverts() (gas: 244336)\n[PASS] test_guard2_invalid_proof() (gas: 185458)\n[PASS] test_guard3_score_mismatch() (gas: 184662)\n[PASS] test_has_audit_returns_false_for_unknown() (gas: 16978)\n[PASS] test_pause_by_non_owner_reverts() (gas: 18053)\n[PASS] test_pause_halts_submission() (gas: 190282)\n[PASS] test_submit_audit_emits_event() (gas: 300087)\n[PASS] test_submit_audit_happy_path() (gas: 304567)\n[PASS] test_unpause_restores_submission() (gas: 306846)\n[PASS] test_upgrade_by_non_owner_reverts() (gas: 3076241)\n[PASS] test_upgrade_via_uups() (gas: 3366821)\nSuite result: ok. 15 passed; 0 failed; 0 skipped; finished in 2.34ms (3.05ms CPU time)\n\nRan 12 tests for test/AuditRegistryV3.t.sol:AuditRegistryV3Test\n[PASS] test_v3_activation_disables_legacy_writes() (gas: 84649)\n[PASS] test_v3_happy_path_binds_context_and_proof() (gas: 711406)\n[PASS] test_v3_invalid_proof_rolls_back_replay_marker() (gas: 148959)\n[PASS] test_v3_rejects_agent_substitution() (gas: 119304)\n[PASS] test_v3_rejects_cross_registry_replay() (gas: 3412927)\n[PASS] test_v3_rejects_eoa_target() (gas: 93635)\n[PASS] test_v3_rejects_exact_replay() (gas: 709082)\n[PASS] test_v3_rejects_expired_policy_signature() (gas: 94721)\n[PASS] test_v3_rejects_fusion_signal_substitution() (gas: 117464)\n[PASS] test_v3_rejects_proof_substitution() (gas: 117304)\n[PASS] test_v3_rejects_target_substitution() (gas: 121934)\n[PASS] test_v3_rejects_teacher_model_substitution() (gas: 117754)\nSuite result: ok. 12 passed; 0 failed; 0 skipped; finished in 2.34ms (7.79ms CPU time)\n\nRan 5 test suites in 3.21ms (10.34ms CPU time): 50 tests passed, 0 failed, 0 skipped (50 total tests)\n",
+      "stderr": ""
+    }
+  },
+  "attempts": {
+    "AGENTS_initial": {
+      "command": [
+        "unshare",
+        "-Urn",
+        "--",
+        "/home/motafeq/projects/sentinel/agents/.venv/bin/python",
+        "-m",
+        "pytest",
+        "-q",
+        "-c",
+        "/dev/null",
+        "--noconftest",
+        "-p",
+        "no:cacheprovider",
+        "--basetemp",
+        "/tmp/sentinel-s4-002-lcd1fied/pytest-AGENTS",
+        "-p",
+        "pytest_asyncio.plugin",
+        "-o",
+        "asyncio_mode=auto",
+        "tests/test_audit_mcp_readonly.py",
+        "tests/test_audit_server.py",
+        "tests/test_policy_signer_v3.py"
+      ],
+      "cwd": "agents",
+      "exit_code": 2,
+      "elapsed_seconds": 1.112,
+      "stdout": "\n==================================== ERRORS ====================================\n________________________ ERROR collecting test session _________________________\nImportError while importing test module '/tmp/sentinel-s4-002-lcd1fied/source/agents/tests/test_audit_mcp_readonly.py'.\nHint: make sure your test modules/packages have valid Python names.\nTraceback:\n/usr/lib/python3.12/importlib/__init__.py:90: in import_module\n    return _bootstrap._gcd_import(name[level:], package, level)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\ntests/test_audit_mcp_readonly.py:7: in <module>\n    from src.mcp.servers.audit import _readonly_handlers as readonly\nE   ModuleNotFoundError: No module named 'src.mcp'\n________________________ ERROR collecting test session _________________________\nImportError while importing test module '/tmp/sentinel-s4-002-lcd1fied/source/agents/tests/test_audit_server.py'.\nHint: make sure your test modules/packages have valid Python names.\nTraceback:\n/usr/lib/python3.12/importlib/__init__.py:90: in import_module\n    return _bootstrap._gcd_import(name[level:], package, level)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\ntests/test_audit_server.py:14: in <module>\n    from src.mcp.servers.audit._server import _readiness_payload\nE   ModuleNotFoundError: No module named 'src.mcp'\n________________________ ERROR collecting test session _________________________\nImportError while importing test module '/tmp/sentinel-s4-002-lcd1fied/source/agents/tests/test_policy_signer_v3.py'.\nHint: make sure your test modules/packages have valid Python names.\nTraceback:\n/usr/lib/python3.12/importlib/__init__.py:90: in import_module\n    return _bootstrap._gcd_import(name[level:], package, level)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\ntests/test_policy_signer_v3.py:16: in <module>\n    from agents.src.security.policy_signer import (\nsrc/security/__init__.py:12: in <module>\n    from src.security.comment_strip import strip_comments\nE   ModuleNotFoundError: No module named 'src.security'\n=============================== warnings summary ===============================\n../../../../home/motafeq/projects/sentinel/agents/.venv/lib/python3.12/site-packages/websockets/legacy/__init__.py:6\n  /home/motafeq/projects/sentinel/agents/.venv/lib/python3.12/site-packages/websockets/legacy/__init__.py:6: DeprecationWarning: websockets.legacy is deprecated; see https://websockets.readthedocs.io/en/stable/howto/upgrade.html for upgrade instructions\n    warnings.warn(  # deprecated in 14.0 - 2024-11-09\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n=========================== short test summary info ============================\nERROR ../../../../dev\nERROR ../../../../dev\nERROR ../../../../dev\n!!!!!!!!!!!!!!!!!!! Interrupted: 3 errors during collection !!!!!!!!!!!!!!!!!!!!\n1 warning, 3 errors in 0.71s\n",
+      "stderr": ""
+    }
+  },
+  "harness_adjustment": "Initial AGENTS collection included ml/src as top-level src because the ML root was on PYTHONPATH. Retry removes DATA/ML module roots, keeps only AGENTS and snapshot root. No source/dependency change. Initial error preserved.",
+  "foundry_local_library_snapshot": {
+    "forge-std": {
+      "solidity_files": 50,
+      "path_and_content_digest_sha256": "2bb2954e040efdd1b0355d09086148fdb0ff3f3c0bcb974dc7e081a40209e6c0"
+    },
+    "openzeppelin-contracts": {
+      "solidity_files": 433,
+      "path_and_content_digest_sha256": "1d7322745bce24869a80a9f859c43da085c52580515e0d23f1983c46611e43c1"
+    },
+    "openzeppelin-contracts-upgradeable": {
+      "solidity_files": 727,
+      "path_and_content_digest_sha256": "ededb4c115655c87b73a9187927f263e9461a96dba7bece1a8700b0149064174"
+    }
+  }
+}

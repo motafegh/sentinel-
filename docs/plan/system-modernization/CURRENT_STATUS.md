@@ -2,9 +2,9 @@
 
 Date: 2026-11-26
 
-Program: ACTIVE; governing documents established; S4-00 IN_PROGRESS; S4-00-001 completed.
+Program: ACTIVE; governing documents established; S4-00 complete with limitations; S4-G00 PASS_WITH_LIMITATIONS.
 
-Reconnaissance source baseline: 61854a32a2badbcd84b98cef3f3976f070b1341e. The program-establishment commit is the commit containing this record; later evidence must record its own exact source SHA.
+Reconnaissance source baseline: 61854a32a2badbcd84b98cef3f3976f070b1341e. The program-establishment commit is 2c4dd3cee0a1313d1f23d87fdb17e682340cacd6; later evidence must record its own exact source SHA.
 
 ## Governing navigation
 
@@ -17,9 +17,9 @@ Reconnaissance source baseline: 61854a32a2badbcd84b98cef3f3976f070b1341e. The pr
 
 | Stage | State |
 |---|---|
-| S4-00 Baseline | IN_PROGRESS (001 complete; 002 ready) |
-| S4-01 Architecture/usefulness | WAITING on G00 |
-| S4-02 Dependencies/CI | WAITING on G00 |
+| S4-00 Baseline | COMPLETE / G00 PASS_WITH_LIMITATIONS |
+| S4-01 Architecture/usefulness | READY |
+| S4-02 Dependencies/CI | READY (parallel eligible) |
 | S4-03 DATA | NOT_STARTED |
 | S4-04 ML/inference | NOT_STARTED |
 | S4-05 AGENTS/LLM/RAG | NOT_STARTED |
@@ -30,7 +30,7 @@ Reconnaissance source baseline: 61854a32a2badbcd84b98cef3f3976f070b1341e. The pr
 | S4-10 Implementation | NOT_STARTED |
 | S4-11 Integrated acceptance | NOT_STARTED |
 
-No S4 gate has passed; five narrowly scoped findings are CONFIRMED and five remain CANDIDATE in the initial register. No remediation or modernization decision is accepted. Existing historical domain gates retain their own authority.
+G00 passed with limitations; four findings CONFIRMED, one VALIDATING after local repair (F-0004), five CANDIDATE. No modernization decision is accepted. Existing historical domain gates retain their own authority.
 
 ## Completed slice: S4-00-001
 
@@ -43,22 +43,22 @@ Inspected source: 2c4dd3cee0a1313d1f23d87fdb17e682340cacd6 (local and remote mai
 - Six of seven local dependency-light checks passed; exact historical G4 replay failed at line 75. GitHub three triggered workflows at the inspected SHA passed; G4 not triggered there.
 - D2 86 raw rows, 84 unique queued UNVERIFIED, two duplicate tombstones retained. No historical closures asserted.
 
-## Next bounded slice: S4-00-002
+## Completed slice: S4-00-002
 
-Question: can we establish trustworthy safe module baseline coverage and reconcile the historical G4 reference without changing accepted semantic or artifact authority?
+Source: 5d8dd776ad647c0c32778653342f84ab5b5d27df. [Evidence and gate decision](evidence/2026-11-26_s4_00_002/WORKING_RECORD.md). G4 typo traced to b7deb49f6; one-character correction, exact gate now passes locally, remote pending. Five bounded module test slices pass 153 tests; AGENTS initial harness collection failure retained. Full test suites, clean installs, live tools, physical rehash and proof generation remain NOT_RUN/unestablished. Local Foundry library lock conformance unverified. G00 PASS_WITH_LIMITATIONS permits S4-01 and S4-02 research, not product or domain promotion.
 
-1. Trace the original G4 digest/registration history, frozen evidence and current register, then decide a narrow evidence-preserving repair if justified (S4-F-0004). Do not alter frozen sample, bundle, review or gate semantics. If repair, record plan, exact change, replay and applicable regression/CI.
-2. Inspect module test setup, fixtures, markers, service/network/chain calls, file writes, dependency and tool prerequisites. Select isolated dependency-light test slices; run only safe commands, distinguish PASS/FAIL/SKIP/ERROR/NOT_RUN and record exact source/env. No actual inference/training, proving, live RPC, unsafe deserialization or protected-root writes without separately scoped authority.
-3. Reconcile baseline blockers, test coverage and limitations in inventory/register. Evaluate G00 against the master/protocol; retain blocked/limited scope if required evidence unavailable.
+## Next bounded slice: S4-01-001
 
-Budget/stop: one bounded test-safety and G4 investigation/repair slice; stop before dependency migration or larger module refactoring. Stage S4-01/02 begin only once G00 has an explicit admissible disposition permitting them.
+Question: what is the actual executable architecture, who owns state and trust, and which capability claims are currently supported?
+
+Trace gateway/ML/AGENTS/tools/report, DATA-to-ML research and separate proof/attestation/registry paths from source and current policy. Produce source-anchored entry point/ownership/interface/capability map, actual vs intended versus historical tracks, failure boundaries and provisional use-case hypotheses. Inventory-only or static review must be distinguished from runtime evidence. No redesign, live network or production scope change. Stop at bounded map and next comparative utility evaluation. S4-02 dependency/CI can begin independently; F-0005 current-authority drift may receive an early bounded maintenance slice coordinated with R4. Record F-0004 remote CI before final closure.
 
 ## Known initial blockers and independent work
 
-- G4 replay digest-reference assertion failed at reconnaissance baseline; six other triggered workflows passed. Reproduce/trace before repair; do not rewrite frozen evidence.
+- G4 reference repaired and locally replayed successfully; exact-commit remote CI pending. Prior baseline evidence retained.
 - Root Poetry config and AGENTS manifest/lock mismatch observed; actual dependency environment drift. No broad upgrades authorized.
 - Nine pre-existing untracked WSL paths are preserved; their disposition remains unreviewed.
 - R4-GAP-007 isolated independent review remains pending; confirmed negatives zero, M5/full training and G8 not authorized. That separate evidence path can proceed without S4 context.
 - ZKML proof scope, read-only audit MCP, production signing/deployment and accepted DATA/ML roots unchanged.
 
-Next action: execute S4-00-002; do not jump straight to modernization implementation.
+Next action: execute S4-01-001 (S4-02 parallel eligible); do not jump straight to modernization implementation.

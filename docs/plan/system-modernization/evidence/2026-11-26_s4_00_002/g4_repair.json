@@ -1,0 +1,23 @@
+{
+  "source_sha": "5d8dd776ad647c0c32778653342f84ab5b5d27df",
+  "original_registration_commit": "4f1ba632421db6f3ed7e9d66401b505d6357f5ee",
+  "typo_introducing_commit": "b7deb49f629328cef487b96b8106f3321555bb45",
+  "old_reference": "7d7f0cce287f847df2376ac0f580abf6be05b46f6a2c90b5f00f9b34f8fc5473",
+  "correct_reference": "7d7f0cce287c847df2376ac0f580abf6be05b46f6a2c90b5f00f9b34f8fc5473",
+  "actual_review_sha256": "7d7f0cce287c847df2376ac0f580abf6be05b46f6a2c90b5f00f9b34f8fc5473",
+  "workflow_sha256": "041467db6076f886eb5810e58756545ec12b7868b8c4d0c38cf19ca00e21ec33",
+  "embedded_python_sha256": "2a7b46c82d2ec0b55dbd0952fce9c160fd4e3a1615582d7d4f6ad98228deffe9",
+  "before": {
+    "exit_code": 1,
+    "stdout": "",
+    "stderr": "Traceback (most recent call last):\n  File \"<stdin>\", line 75, in <module>\nAssertionError\n",
+    "elapsed_seconds": 0.131
+  },
+  "after": {
+    "exit_code": 0,
+    "stdout": "{\n  \"passed\": true,\n  \"sample_sha256\": \"2899ad5a210ac6e2e2a4e6b43f31cd718afa3b1d603b659cdd6bf0918f34fbe9\",\n  \"bundle_sha256\": \"2b1ce12fdd96819c89bbb9fe1dfb2d9aa992ec0a05ce32f651c6b834b97ddf38\",\n  \"review_sha256\": \"7d7f0cce287c847df2376ac0f580abf6be05b46f6a2c90b5f00f9b34f8fc5473\",\n  \"authorization_path\": \"docs/plan/ml-R4/authorizations/2026-08-11_R4-GAP-002_authorization.md\",\n  \"tasks\": 100,\n  \"phase4\": \"PASSED\",\n  \"phase5_state\": \"PASSED\"\n}\n",
+    "stderr": "",
+    "elapsed_seconds": 0.024
+  },
+  "diff": "diff --git a/docs/plan/ml-R4/EVIDENCE_GAP_REGISTER.md b/docs/plan/ml-R4/EVIDENCE_GAP_REGISTER.md\nindex 1d594b560..15275be57 100644\n--- a/docs/plan/ml-R4/EVIDENCE_GAP_REGISTER.md\n+++ b/docs/plan/ml-R4/EVIDENCE_GAP_REGISTER.md\n@@ -20,7 +20,7 @@ No new contract review is permitted without an approved gap entry.\n - frozen sample SHA-256: `2899ad5a210ac6e2e2a4e6b43f31cd718afa3b1d603b659cdd6bf0918f34fbe9`\n - blind source bundle SHA-256: `2b1ce12fdd96819c89bbb9fe1dfb2d9aa992ec0a05ce32f651c6b834b97ddf38`\n - machine-readable semantic review: `reviews/R4-GAP-002/p4_gap002_blind_semantic_review_v1.jsonl`\n-- review rows SHA-256: `7d7f0cce287f847df2376ac0f580abf6be05b46f6a2c90b5f00f9b34f8fc5473`\n+- review rows SHA-256: `7d7f0cce287c847df2376ac0f580abf6be05b46f6a2c90b5f00f9b34f8fc5473`\n - review report: `findings/06_gap002_blind_semantic_review_report.json`\n - interpretation/role decision: `findings/06_gap002_blind_semantic_review.md`\n \n"
+}

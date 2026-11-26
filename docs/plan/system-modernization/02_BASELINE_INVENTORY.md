@@ -118,3 +118,18 @@ Additional required reconciliation sources: [R0 main integration closeout](../sy
 S4-00-001 establishes a bounded baseline: local/remote SHA matched, five modules inventoried, test prerequisites and unexecuted scope explicit, artifact presence distinguished from integrity, dependency drift reproduced, seven safe checks run, historical queue indexed. New leads and narrow confirmed defects are registered in [03_FINDINGS_REGISTER.md](03_FINDINGS_REGISTER.md).
 
 G00 remains IN_PROGRESS. Next S4-00-002: baseline test safety/coverage and historical G4 registration repair investigation; review test commands/fixtures before running, isolate state, capture available bounded module checks, and decide whether to fix the missing digest reference based on original immutable G4 evidence. No install/upgrade or protected artifact work without explicit scoped decision. Once baseline discrepancies have disposition and adequate coverage, evaluate G00; S4-01/02 may then start.
+
+## 8. S4-00-002 bounded validation addendum (2026-11-26)
+
+Source at slice start: 5d8dd776ad647c0c32778653342f84ab5b5d27df. [Working record and G00 decision](evidence/2026-11-26_s4_00_002/WORKING_RECORD.md); [E-0006 repair](evidence/2026-11-26_s4_00_002/g4_repair.json), [E-0007 module runs](evidence/2026-11-26_s4_00_002/module_baseline.json), [E-0008 post-repair checks](evidence/2026-11-26_s4_00_002/post_repair_checks.json). Earlier E-0001/2 results remain immutable observations.
+
+| Module | Selected tests passed | Boundary |
+|---|---:|---|
+| DATA | 42 | Archive containment, V3 grouping, policy |
+| ML | 10 | Synthetic compatibility/role masks, tracked historical projection |
+| AGENTS | 40 | Read-only MCP, mocked RPC reads, V3 policy; initial harness collection error retained |
+| ZKML | 11 | Structure and lineage; no real proving |
+| Contracts | 50 | Selected local registry/token/V3/upgrade tests; no real proof, invariant or golden digest suite |
+| Total | 153 | Bounded selection, not full module suite |
+
+Network-disabled scratch source, existing local venvs, isolated test environments and local offline compiler. No install, training, live service, external chain, protected-root or real checkpoint use. Library copies fingerprinted but lock conformance unverified. Exact G4 unchanged workflow now passes locally after one-character correction to current digest reference; remote validation pending. Historical artifacts, D-011/D-013 semantics and launch hold preserved. S4-G00 PASS_WITH_LIMITATIONS permits architecture/dependency investigation only; full suites, clean installs, actual runtime and physical integrity remain unestablished.
