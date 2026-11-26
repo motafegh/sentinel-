@@ -1,0 +1,77 @@
+{
+  "omitted_dive_manifest_paths": [
+    "repo/__source__/21802.sol",
+    "repo/__source__/21807.sol",
+    "repo/__source__/21832.sol",
+    "repo/__source__/21889.sol",
+    "repo/__source__/21898.sol",
+    "repo/__source__/21924.sol",
+    "repo/__source__/21925.sol",
+    "repo/__source__/21939.sol",
+    "repo/__source__/21944.sol",
+    "repo/__source__/21974.sol",
+    "repo/__source__/21990.sol",
+    "repo/__source__/22019.sol",
+    "repo/__source__/22073.sol",
+    "repo/__source__/22085.sol",
+    "repo/__source__/22102.sol",
+    "repo/__source__/22107.sol",
+    "repo/__source__/22124.sol",
+    "repo/__source__/22183.sol",
+    "repo/__source__/22187.sol",
+    "repo/__source__/22189.sol",
+    "repo/__source__/22207.sol",
+    "repo/__source__/22253.sol"
+  ],
+  "omitted_reason": "Aggregate reconciles with docs/plan/ml-R4/runs/2026-08-15_PHASE8_repaired_data_acceptance_and_launch_decision.md lines 43-44 (22 normalized_compile_failed drops). Exact per-path rejection linkage not revalidated.",
+  "native_log_literal_categories": {
+    "Re-entrancy": {
+      "Re+AC0-erntrancy": 147,
+      "Re-erntrancy": 1196
+    },
+    "Unhandled-Exceptions": {
+      "Unhandled-Exceptions": 1298,
+      "Unhandled+AC0-Exceptions": 76
+    }
+  },
+  "interpretation": "Re-erntrancy is a spelling difference; +AC0- appears to be an encoding-like variant; semantic equivalence and line coordinate interpretation not established. Do not count literal string mismatch as verified wrong label.",
+  "class_policy": {
+    "GasException": {
+      "class_index": 3,
+      "status": "SUPERVISION_DISABLED_PENDING_EVIDENCE",
+      "approved_strong_positive_sources": [],
+      "approved_weak_positive_sources": [],
+      "reason": "No active first-baseline source has approved class-specific positive authority."
+    },
+    "UnusedReturn": {
+      "class_index": 9,
+      "status": "SUPERVISION_DISABLED_PENDING_EVIDENCE",
+      "approved_strong_positive_sources": [],
+      "approved_weak_positive_sources": [],
+      "reason": "DIVE Unchecked Return Values failed Phase-4 authority threshold and no other active source directly supports this canonical class."
+    },
+    "DenialOfService": {
+      "class_index": 1,
+      "status": "ENABLED",
+      "approved_strong_positive_sources": [
+        "smartbugs_curated:denial_of_service"
+      ],
+      "approved_weak_positive_sources": []
+    }
+  },
+  "prior_ci": {
+    "head_sha": "ca7e47c6ce7a1aeaf49f9ee5689e0862bf0dbf06",
+    "runs": [
+      {
+        "name": "Portfolio showcase",
+        "id": 45867843798,
+        "conclusion": "success"
+      },
+      {
+        "name": "Security hygiene",
+        "id": 45867844339,
+        "conclusion": "success"
+      }
+    ]
+  }
+}

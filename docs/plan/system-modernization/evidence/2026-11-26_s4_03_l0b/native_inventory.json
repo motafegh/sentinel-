@@ -1,0 +1,348 @@
+{
+  "claim_replay": {
+    "actual_rows": 58056,
+    "exact_multiset_match": true,
+    "extra": 0,
+    "missing": 0
+  },
+  "claims": {
+    "by_source": {
+      "dive": {
+        "categories": {
+          "(none)": 2682,
+          "Access Control": 16710,
+          "Arithmetic": 9540,
+          "Bad Randomness": 634,
+          "DoS": 3781,
+          "Front Running": 606,
+          "Reentrancy": 11399,
+          "Time manipulation": 6310,
+          "Unchecked Return Values": 5901
+        },
+        "claims": 57563,
+        "distinct_paths": 22308,
+        "distinct_source_ids": 22308,
+        "positive_claims": 54881
+      },
+      "smartbugs_curated": {
+        "categories": {
+          "access_control": 18,
+          "arithmetic": 15,
+          "bad_randomness": 8,
+          "denial_of_service": 6,
+          "front_running": 4,
+          "other": 3,
+          "reentrancy": 31,
+          "short_addresses": 1,
+          "time_manipulation": 5,
+          "unchecked_low_level_calls": 52
+        },
+        "claims": 143,
+        "distinct_paths": 143,
+        "distinct_source_ids": 143,
+        "positive_claims": 143
+      },
+      "solidifi": {
+        "categories": {
+          "Overflow-Underflow": 50,
+          "Re-entrancy": 50,
+          "TOD": 50,
+          "Timestamp-Dependency": 50,
+          "Unchecked-Send": 50,
+          "Unhandled-Exceptions": 50,
+          "tx.origin": 50
+        },
+        "claims": 350,
+        "distinct_paths": 350,
+        "distinct_source_ids": 350,
+        "positive_claims": 350
+      }
+    },
+    "duplicates": 0,
+    "exact_distinct_rows": 58056,
+    "rows": 58056
+  },
+  "claims_sha256": "987cd2f35bae31121b880e73e3d90e0e73ed56558e4283d65e0a884173cdaaaf",
+  "dive_csv": {
+    "native_positive_counts": {
+      "Access Control": 16723,
+      "Arithmetic": 9542,
+      "Bad Randomness": 634,
+      "DoS": 3781,
+      "Front Running": 606,
+      "Reentrancy": 11400,
+      "Time manipulation": 6322,
+      "Unchecked Return Values": 5911
+    },
+    "no_positive_rows": 2686,
+    "path": "data_module/data/raw_staging/dive_labels/DIVE_Labels.csv",
+    "rows": 22330,
+    "sha256": "a260946ec7741ca4212648a0568f419a32e7cac96c9c0dca1fe3d812bb43f029"
+  },
+  "limitations": [
+    "Compiler counts from historical metadata, not compilation rerun.",
+    "Local Git pin and license notice do not establish external redistributability of all contracts.",
+    "Exact builder replay is reproducibility, not label truth.",
+    "Native source categories and annotation lines are candidate evidence, not independently verified findings.",
+    "DIVE source labels are automated, original archive locator remains unverified; no zero is negative."
+  ],
+  "policy_sha256": "b1cfce9cf85c49e4eea533808005d466e0872e98737d366641e287e2a8cfe094",
+  "smartbugs_native_annotations": {
+    "counts": {
+      "annotation_entries": 207,
+      "category:access_control": 21,
+      "category:arithmetic": 23,
+      "category:bad_randomness": 31,
+      "category:denial_of_service": 7,
+      "category:front_running": 7,
+      "category:other": 3,
+      "category:reentrancy": 32,
+      "category:short_addresses": 1,
+      "category:time_manipulation": 7,
+      "category:unchecked_low_level_calls": 75,
+      "records": 143,
+      "source_present": 143,
+      "with_line_spans": 207
+    },
+    "disagreement_examples": [],
+    "path": "ml/data/smartbugs-curated/vulnerabilities.json",
+    "sha256": "2a7c119406b1c56df6087fbfb041f5d3aacbb07a82ee350e2220b51f429646bc"
+  },
+  "solidifi_native_injection_logs": {
+    "Overflow-Underflow": {
+      "injection_records": 1333,
+      "log_present": 50,
+      "sources": 50
+    },
+    "Re-entrancy": {
+      "category_disagreements": 1343,
+      "injection_records": 1343,
+      "log_present": 50,
+      "sources": 50
+    },
+    "TOD": {
+      "injection_records": 1336,
+      "log_present": 50,
+      "sources": 50
+    },
+    "Timestamp-Dependency": {
+      "injection_records": 1381,
+      "log_present": 50,
+      "sources": 50
+    },
+    "Unchecked-Send": {
+      "injection_records": 1266,
+      "log_present": 50,
+      "sources": 50
+    },
+    "Unhandled-Exceptions": {
+      "category_disagreements": 76,
+      "injection_records": 1374,
+      "log_present": 50,
+      "sources": 50
+    },
+    "tx.origin": {
+      "injection_records": 1336,
+      "log_present": 50,
+      "sources": 50
+    }
+  },
+  "source_sha": "ca7e47c6ce7a1aeaf49f9ee5689e0862bf0dbf06",
+  "sources": {
+    "dive": {
+      "claim_meta_path_difference": 0,
+      "compile_status_metadata_counts": {
+        "ok_normalized_bytes": 22054
+      },
+      "compiler_metadata_counts": {
+        "0.4.0": 20,
+        "0.4.1": 1,
+        "0.4.10": 30,
+        "0.4.11": 393,
+        "0.4.12": 53,
+        "0.4.13": 208,
+        "0.4.14": 13,
+        "0.4.15": 148,
+        "0.4.16": 540,
+        "0.4.17": 138,
+        "0.4.18": 1414,
+        "0.4.19": 467,
+        "0.4.2": 25,
+        "0.4.20": 223,
+        "0.4.21": 461,
+        "0.4.22": 74,
+        "0.4.23": 552,
+        "0.4.24": 1704,
+        "0.4.25": 805,
+        "0.4.26": 1435,
+        "0.4.3": 1,
+        "0.4.4": 136,
+        "0.4.5": 1,
+        "0.4.6": 17,
+        "0.4.7": 2,
+        "0.4.8": 49,
+        "0.4.9": 8,
+        "0.5.0": 87,
+        "0.5.1": 1,
+        "0.5.10": 10,
+        "0.5.11": 5,
+        "0.5.12": 13,
+        "0.5.14": 1,
+        "0.5.15": 6,
+        "0.5.16": 37,
+        "0.5.17": 88,
+        "0.5.2": 4,
+        "0.5.5": 4,
+        "0.5.7": 2,
+        "0.5.8": 6,
+        "0.5.9": 2,
+        "0.6.0": 22,
+        "0.6.10": 5,
+        "0.6.11": 6,
+        "0.6.12": 386,
+        "0.6.2": 7,
+        "0.6.4": 3,
+        "0.6.6": 27,
+        "0.6.7": 10,
+        "0.6.8": 3,
+        "0.6.9": 5,
+        "0.7.0": 35,
+        "0.7.1": 3,
+        "0.7.2": 6,
+        "0.7.3": 4,
+        "0.7.4": 15,
+        "0.7.5": 23,
+        "0.7.6": 125,
+        "0.8.0": 892,
+        "0.8.1": 27,
+        "0.8.10": 806,
+        "0.8.11": 150,
+        "0.8.12": 198,
+        "0.8.13": 224,
+        "0.8.14": 120,
+        "0.8.15": 206,
+        "0.8.16": 418,
+        "0.8.17": 1478,
+        "0.8.18": 378,
+        "0.8.19": 1241,
+        "0.8.2": 38,
+        "0.8.20": 881,
+        "0.8.21": 99,
+        "0.8.22": 86,
+        "0.8.23": 795,
+        "0.8.24": 239,
+        "0.8.25": 3,
+        "0.8.3": 12,
+        "0.8.35": 1534,
+        "0.8.4": 482,
+        "0.8.5": 92,
+        "0.8.6": 55,
+        "0.8.7": 275,
+        "0.8.8": 19,
+        "0.8.9": 1437
+      },
+      "counts": {
+        "meta_files": 22054,
+        "normalized_exact": 22054,
+        "raw_exact": 22330,
+        "source_identity_exact": 22308,
+        "source_record_occurrences": 22308
+      },
+      "meta_mismatch_examples": [],
+      "origin": {
+        "license_scope": "No portable archive locator/license verification established.",
+        "manifest_count": 22330,
+        "manifest_pin": "2025-10-02",
+        "manifest_sha256": "d33dab2df2f149b19d2b978596d765d949facc554320341ab4d2ee5398f00a84"
+      },
+      "raw_mismatch_examples": [],
+      "unique_meta_artifacts": 22054,
+      "unique_meta_paths": 22308,
+      "unrepresented_manifest_paths": 22
+    },
+    "smartbugs_curated": {
+      "claim_meta_path_difference": 0,
+      "compile_status_metadata_counts": {
+        "ok_normalized_bytes": 143
+      },
+      "compiler_metadata_counts": {
+        "0.4.0": 10,
+        "0.4.10": 4,
+        "0.4.11": 4,
+        "0.4.13": 2,
+        "0.4.15": 7,
+        "0.4.16": 6,
+        "0.4.18": 11,
+        "0.4.19": 34,
+        "0.4.2": 2,
+        "0.4.21": 2,
+        "0.4.22": 3,
+        "0.4.23": 10,
+        "0.4.24": 28,
+        "0.4.25": 15,
+        "0.4.9": 4,
+        "0.5.0": 1
+      },
+      "counts": {
+        "meta_files": 143,
+        "normalized_exact": 143,
+        "raw_exact": 143,
+        "source_identity_exact": 143,
+        "source_record_occurrences": 143
+      },
+      "meta_mismatch_examples": [],
+      "origin": {
+        "license_file_sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4",
+        "license_scope": "Repository notice present; per-contract original license obligations not adjudicated.",
+        "local_git_head": "230e649123477eff332742a59a1c7cc6dc286cab",
+        "manifest_count": 143,
+        "manifest_pin": "2025-01-01",
+        "manifest_sha256": "e7eae8d3d336b16012e1b0d16e2637eb4ee23bf0cca0314b756bf612a7544336",
+        "tracked_dirty": false
+      },
+      "raw_mismatch_examples": [],
+      "unique_meta_artifacts": 143,
+      "unique_meta_paths": 143,
+      "unrepresented_manifest_paths": 0
+    },
+    "solidifi": {
+      "claim_meta_path_difference": 0,
+      "compile_status_metadata_counts": {
+        "ok_normalized_bytes": 343
+      },
+      "compiler_metadata_counts": {
+        "0.5.0": 56,
+        "0.5.1": 35,
+        "0.5.10": 14,
+        "0.5.11": 105,
+        "0.5.17": 77,
+        "0.5.2": 14,
+        "0.5.6": 7,
+        "0.5.7": 14,
+        "0.5.8": 14,
+        "0.5.9": 7
+      },
+      "counts": {
+        "meta_files": 343,
+        "normalized_exact": 343,
+        "raw_exact": 350,
+        "source_identity_exact": 350,
+        "source_record_occurrences": 350
+      },
+      "meta_mismatch_examples": [],
+      "origin": {
+        "license_file_sha256": "0c1813a9f99f7bb49f88c6f102437dfd8bc8e44c232fc5e91d50a9b3cc0c1b01",
+        "license_scope": "Repository notice present; per-contract original license obligations not adjudicated.",
+        "local_git_head": "4b0573e1b3f7031396de6f48f7f3e7380222ad3a",
+        "manifest_count": 350,
+        "manifest_pin": "4b0573e1b3f7031396de6f48f7f3e7380222ad3a",
+        "manifest_sha256": "54399c115f77b53f461d7accbe352a91c8c5c464d1faa9eafb633b0ed76e4bb3",
+        "tracked_dirty": false
+      },
+      "raw_mismatch_examples": [],
+      "unique_meta_artifacts": 343,
+      "unique_meta_paths": 350,
+      "unrepresented_manifest_paths": 0
+    }
+  }
+}

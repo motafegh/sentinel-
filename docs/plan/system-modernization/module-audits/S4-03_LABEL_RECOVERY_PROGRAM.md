@@ -77,3 +77,28 @@ This is an early, independent DATA priority: S4-03-L0 can start alongside S4-01/
 Priority: first investigate GasException and UnusedReturn (no target-positive or metric support), then DenialOfService (only six strong positives). TOD has 633/932 effective loss cells, 601 from weak DIVE claims, so measure source/label shortcuts and bias before acquiring more TOD examples. ExternalBug has 16,605 NOT_REVIEWED cells; prioritize stratified review for evidence yield, not automatic relabeling. Negative acquisition remains class-specific under R4; these counts do not authorize training, threshold fitting or new labels. Counts of distinct recorded groups do not prove statistical independence.
 
 L0A complete; L0B next: native claim state/crosswalk/unique source records and actual source/license/compiler availability, deduplicated by source identity, verify representative raw source hashes and trace historical-state projection. Then select bounded pilot for L1/L2/L3, prioritizing under-supported classes and negative evaluation coverage. L-G0 remains open.
+
+## 7. L0B original native evidence reconciliation
+
+[Working record and evidence](../evidence/2026-11-26_s4_03_l0b/WORKING_RECORD.md), exact baseline ca7e47c6ce7a1aeaf49f9ee5689e0862bf0dbf06.
+
+| Source | Raw manifest files matched | Normalized identities matched | Distinct native claim rows |
+|---|---:|---:|---:|
+| DIVE | 22,330 | 22,054 | 57,563 |
+| SmartBugs Curated | 143 | 143 | 143 |
+| SolidiFI | 350 | 343 | 350 |
+| Total | 22,823 | 22,540 | 58,056 |
+
+All 58,056 native claim rows replay exactly from protected source metadata and original CSV under accepted policy. No duplicate exact claim rows. 22 DIVE omitted paths match historical compile-failure count; exact per-path rejection linkage not revalidated. Source identity hashes and metadata ingestion references reconcile. Historical-state projection is intentionally HISTORICAL_MISSING; native claims exist separately.
+
+Native evidence inventory: DIVE 5,911 Unchecked Return Values (5,901 represented claims), 3,781 DoS (all retained) are available for triage, not confirmed positives. Current UnusedReturn and GasException supervision explicitly disabled; DIVE DoS masks remain. SmartBugs 143 annotated files / 207 entries, all line lists in bounds and category-folder consistent. SolidiFI 350 injection logs, literal spelling/encoding variants need semantic verification. Local exact pins and license notice hashes recorded; DIVE portable archive and original license unresolved; individual contract rights unverified. Existing source acquisition spec remains historical; the full SmartBugs pin is now recorded as observed local evidence, not a newly tested external reacquisition.
+
+L-G0 PASS_WITH_LIMITATIONS: accepted logical label and source provenance inventory reconciled, local bounded recovery research may proceed. No new label or source publication authorization; no claim of independent truth, recompile or physical representation revalidation.
+
+### L1A bounded recovery pilot design
+
+- Verify current canonical class definitions before review; isolate UnusedReturn from MishandledException and CallToUnknown, and DenialOfService from GasException. Do not silently change D-016 or other taxonomy.
+- Validate line coordinate conventions of SmartBugs JSON and SolidiFI BugLog CSV against exact raw and normalized source on small non-blind calibration samples; preserve literal strings, use mapping only after evidence. Compare locations with source structure and explicit semantics rather than trust filenames.
+- For UnusedReturn and DoS, design a small stratified DIVE candidate pilot using randomized controls, compiler era, source family/group, native claim and analyzer disagreement. Freeze case list and rubric before execution. Reserve groups for review; do not inspect or re-adjudicate GAP-007 blind candidates. Use source-grounded evidence, tool capability and independence rules; no automatic promotion or training target.
+- For GasException, first define class-specific evidence requirements and identify licensed candidate source families that actually support that class. Separate gas failure from generic DoS; no crosswalk by keyword. External source availability/licensing research is L3, not yet performed.
+- Measure candidate-review yield, disagreement, scope failures, source locations, cost and class/group support. If native evidence is insufficient, keep UNKNOWN; seek other sources rather than weakening acceptance. L-G1 requires pilot evidence. No negative/optimizer/threshold authority.
