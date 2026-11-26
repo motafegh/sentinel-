@@ -1,0 +1,298 @@
+{
+  "source_sha": "2c4dd3cee0a1313d1f23d87fdb17e682340cacd6",
+  "method": "AST broad Exception/BaseException or bare except containing direct pass; lexical sensitive load call site leads; no reachability/exposure conclusions",
+  "modules": {
+    "AGENTS": {
+      "broad_except_pass": [],
+      "sensitive_load_sites": [
+        {
+          "path": "agents/src/ingestion/feedback_loop.py",
+          "line": 415,
+          "call": "pickle.load",
+          "weights_only": null
+        },
+        {
+          "path": "agents/src/ingestion/pipeline.py",
+          "line": 280,
+          "call": "pickle.load",
+          "weights_only": null
+        },
+        {
+          "path": "agents/src/ingestion/pipeline.py",
+          "line": 213,
+          "call": "pickle.load",
+          "weights_only": null
+        },
+        {
+          "path": "agents/src/mcp/servers/audit/_submit.py",
+          "line": 661,
+          "call": "torch.load",
+          "weights_only": "False"
+        },
+        {
+          "path": "agents/src/rag/retriever.py",
+          "line": 94,
+          "call": "pickle.load",
+          "weights_only": null
+        },
+        {
+          "path": "agents/src/rag/retriever.py",
+          "line": 98,
+          "call": "pickle.load",
+          "weights_only": null
+        }
+      ]
+    },
+    "DATA": {
+      "broad_except_pass": [
+        {
+          "path": "data_module/sentinel_data/export/export.py",
+          "line": 171
+        },
+        {
+          "path": "data_module/sentinel_data/ingestion/freshness.py",
+          "line": 74
+        },
+        {
+          "path": "data_module/sentinel_data/representation/cfg_builder.py",
+          "line": 151
+        },
+        {
+          "path": "data_module/sentinel_data/representation/cfg_builder.py",
+          "line": 149
+        },
+        {
+          "path": "data_module/sentinel_data/representation/graph_extractor.py",
+          "line": 491
+        },
+        {
+          "path": "data_module/sentinel_data/representation/graph_extractor.py",
+          "line": 560
+        },
+        {
+          "path": "data_module/sentinel_data/representation/graph_extractor.py",
+          "line": 568
+        },
+        {
+          "path": "data_module/sentinel_data/representation/graph_extractor.py",
+          "line": 599
+        },
+        {
+          "path": "data_module/sentinel_data/representation/graph_extractor.py",
+          "line": 723
+        },
+        {
+          "path": "data_module/sentinel_data/representation/graph_extractor.py",
+          "line": 746
+        },
+        {
+          "path": "data_module/sentinel_data/representation/graph_extractor.py",
+          "line": 783
+        },
+        {
+          "path": "data_module/sentinel_data/representation/graph_extractor.py",
+          "line": 800
+        },
+        {
+          "path": "data_module/sentinel_data/representation/graph_extractor.py",
+          "line": 2254
+        },
+        {
+          "path": "data_module/sentinel_data/representation/graph_extractor.py",
+          "line": 2228
+        },
+        {
+          "path": "data_module/sentinel_data/representation/graph_extractor.py",
+          "line": 2243
+        }
+      ],
+      "sensitive_load_sites": [
+        {
+          "path": "data_module/sentinel_data/export/token_writer.py",
+          "line": 77,
+          "call": "torch.load",
+          "weights_only": "False"
+        },
+        {
+          "path": "data_module/sentinel_data/verification/semantic_checker.py",
+          "line": 100,
+          "call": "torch.load",
+          "weights_only": "False"
+        },
+        {
+          "path": "data_module/sentinel_data/vnext/r4_binding.py",
+          "line": 299,
+          "call": "torch.load",
+          "weights_only": "False"
+        },
+        {
+          "path": "data_module/sentinel_data/vnext/r4_v10_binding.py",
+          "line": 187,
+          "call": "torch.load",
+          "weights_only": "False"
+        }
+      ]
+    },
+    "ML": {
+      "broad_except_pass": [
+        {
+          "path": "ml/src/training/training_logger.py",
+          "line": 681
+        },
+        {
+          "path": "ml/src/training/training_logger.py",
+          "line": 675
+        }
+      ],
+      "sensitive_load_sites": [
+        {
+          "path": "ml/src/datasets/sentinel_dataset.py",
+          "line": 49,
+          "call": "torch.load",
+          "weights_only": "False"
+        },
+        {
+          "path": "ml/src/datasets/vnext_dataset.py",
+          "line": 311,
+          "call": "torch.load",
+          "weights_only": "False"
+        },
+        {
+          "path": "ml/src/datasets/vnext_logical_v3_guarded_dataset.py",
+          "line": 278,
+          "call": "torch.load",
+          "weights_only": "False"
+        },
+        {
+          "path": "ml/src/datasets/vnext_repaired_dataset.py",
+          "line": 223,
+          "call": "torch.load",
+          "weights_only": "False"
+        },
+        {
+          "path": "ml/src/inference/predictor.py",
+          "line": 197,
+          "call": "torch.load",
+          "weights_only": "False"
+        },
+        {
+          "path": "ml/src/training/trainer.py",
+          "line": 1223,
+          "call": "torch.load",
+          "weights_only": "False"
+        },
+        {
+          "path": "ml/src/training/vnext_checkpoint.py",
+          "line": 190,
+          "call": "torch.load",
+          "weights_only": "False"
+        }
+      ]
+    },
+    "ZKML": {
+      "broad_except_pass": [],
+      "sensitive_load_sites": [
+        {
+          "path": "zkml/src/distillation/export_onnx.py",
+          "line": 48,
+          "call": "torch.load",
+          "weights_only": "False"
+        },
+        {
+          "path": "zkml/src/distillation/generate_calibration.py",
+          "line": 46,
+          "call": "torch.load",
+          "weights_only": "False"
+        },
+        {
+          "path": "zkml/src/distillation/train_proxy.py",
+          "line": 72,
+          "call": "torch.load",
+          "weights_only": "False"
+        },
+        {
+          "path": "zkml/src/ezkl/run_proof.py",
+          "line": 72,
+          "call": "torch.load",
+          "weights_only": "False"
+        }
+      ]
+    }
+  },
+  "authority": {
+    "data_module/CLAUDE.md": {
+      "decision_mentions": {
+        "R4-D-013": false,
+        "R4-D-015": false,
+        "R4-D-016": false
+      },
+      "sha256": "2d55afe0a300e7c0a897deb6fce95e3cfbdbaa97da81729f09e74e5690e50883",
+      "relevant_lines": [
+        {
+          "line": 78,
+          "text": "The hardened V3 queue is current review authority. Candidate #1 is durably"
+        },
+        {
+          "line": 98,
+          "text": "- historical-control equivalence passes 22,540/22,540, and R4-D-012 promotes the target-aware guarded selector only for a fresh candidate; its physical build/acceptance remains pending;"
+        }
+      ]
+    },
+    "ml/CLAUDE.md": {
+      "decision_mentions": {
+        "R4-D-013": false,
+        "R4-D-015": false,
+        "R4-D-016": false
+      },
+      "sha256": "2402ec8837b1e3a9f6043f0fbf8ba6a9779e01b18a5aed007c52c390f20748d7",
+      "relevant_lines": []
+    },
+    "docs/handbook/16_current_status.md": {
+      "decision_mentions": {
+        "R4-D-013": true,
+        "R4-D-015": false,
+        "R4-D-016": false
+      },
+      "sha256": "3adfcd17b56a1fd8449f12778e5c47b28d39ff51c141edf9d93e1e16a2778c5b",
+      "relevant_lines": [
+        {
+          "line": 19,
+          "text": "There are still **zero confirmed-negative examples**. R4-GAP-007 is **pilot in progress** using the hardened 200-cell / 200-group queue. Candidate #1 (`CallToUnknown`) is `NOT_CONFIRMED`. Candidate #2's source-first primary review supports `CONFIRMED_NEGATIVE`, but it remains `UNKNOWN` / `PENDING_REVIEW` with target `None` until a genuinely independent reviewer agrees."
+        },
+        {
+          "line": 52,
+          "text": "  IN PROGRESS / candidate #1 NOT_CONFIRMED"
+        },
+        {
+          "line": 88,
+          "text": "| 8 | IN_PROGRESS | repaired-v2 physical DATA, logical V3, exact V2.6 graph authority (R4-D-011), and the guarded-token physical successor (R4-D-013) are accepted; candidate #1 is `NOT_CONFIRMED`; candidate #2 primary supports a negative pending independent review; full training unauthorized |"
+        },
+        {
+          "line": 256,
+          "text": "The pilot started with deterministic candidate #1 for `CallToUnknown`. Complete whole-source and bound-representation primary review found no raw/unchecked low-level call, and Solidity 0.4.18 semantics plus targeted Slither analysis corroborated that the legacy `msg.sender.transfer(...)` reverts on failure. However, the typed callback to caller-supplied `_spender` (`spender.receiveApproval(...)`) is a real call to an unverified external target, which conflicts with the governing taxonomy's broader class definition. Candidate #1 was therefore adjudicated `NOT_CONFIRMED` and remains `UNKNOWN` / `PENDING_REVIEW`, target `None`. Validation passed with zero accepted negatives and no new authorization. Independent verification is required only for a primary `CONFIRMED_NEGATIVE`, so none was needed here."
+        },
+        {
+          "line": 300,
+          "text": "| confirmed-negative review | R4-GAP-007 / candidate #1 `NOT_CONFIRMED` / candidate #2 primary-support only, independent pending |"
+        },
+        {
+          "line": 411,
+          "text": "- [Current GAP-007 candidate #1 primary-review closeout](../plan/ml-R4/runs/2026-08-21_PHASE8_gap007_candidate1_primary_review.md)"
+        },
+        {
+          "line": 412,
+          "text": "- [Prior GAP-007 candidate #1 local handoff](../plan/ml-R4/runs/2026-08-21_PHASE8_gap007_candidate1_local_handoff.md)"
+        }
+      ]
+    },
+    "docs/handbook/_meta/current_r4.json": {
+      "decision_mentions": {
+        "R4-D-013": true,
+        "R4-D-015": false,
+        "R4-D-016": false
+      },
+      "sha256": "46a0b166cc67ecf9bc373a25eaaeb22a028c889ec6b7885de27416da5c1d8e81",
+      "relevant_lines": []
+    }
+  }
+}

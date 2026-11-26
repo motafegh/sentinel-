@@ -1,0 +1,3983 @@
+{
+  "artifacts": [
+    {
+      "acceptance_record": "docs/plan/ml-R4/evidence/2026-09-02_v10_v26_physical_acceptance/acceptance.json",
+      "acceptance_record_sha256": "5fc83eff39d4a28db9a5b6b5255a95ad64ee75ca88a948ba99dadb2bc03ee165",
+      "exists": true,
+      "id": "D-011",
+      "path": "data_module/data/v10-v26-full-candidate-attempt-2026-09-01-a/representations-r4-v3-candidate",
+      "recorded_binding_digest": "d9f925588913e66476cfbc097bace7daa7e673295fe2a243760313d0bef5ebdd",
+      "verification": "existence_only_no_rehash"
+    },
+    {
+      "acceptance_record": "docs/plan/ml-R4/evidence/2026-09-29_guarded_token_physical_acceptance/acceptance.json",
+      "acceptance_record_sha256": "5a85a3d658dc4866cb5ab65270988e9294da889d15907d475384671d20cbd24f",
+      "exists": true,
+      "id": "D-013",
+      "path": "data_module/data/r4-guarded-d5-full-2026-09-29-a/representations-r4-v10-v26-guarded-v1-candidate",
+      "recorded_binding_digest": "9885d7b88a46aff4102741d63eeaa0bd6968f0857f7bca6a389662bfaa158881",
+      "verification": "existence_only_no_rehash"
+    },
+    {
+      "exists": true,
+      "path": "ml/checkpoints/GCB-P1-Run12-v3dospatched-20260613_FINAL.pt",
+      "sha256": null,
+      "size_bytes": 281562156,
+      "tracked": false,
+      "verification": "presence; small tracked file hash only"
+    },
+    {
+      "exists": true,
+      "path": "agents/data/index/faiss.index",
+      "sha256": null,
+      "size_bytes": 2310189,
+      "tracked": false,
+      "verification": "presence; small tracked file hash only"
+    },
+    {
+      "exists": true,
+      "path": "agents/data/index/bm25.pkl",
+      "sha256": null,
+      "size_bytes": 537197,
+      "tracked": false,
+      "verification": "presence; small tracked file hash only"
+    },
+    {
+      "exists": true,
+      "path": "agents/data/index/chunks.pkl",
+      "sha256": null,
+      "size_bytes": 589984,
+      "tracked": false,
+      "verification": "presence; small tracked file hash only"
+    },
+    {
+      "exists": true,
+      "path": "agents/data/index/index_metadata.json",
+      "sha256": null,
+      "size_bytes": 1519,
+      "tracked": false,
+      "verification": "presence; small tracked file hash only"
+    },
+    {
+      "exists": true,
+      "path": "zkml/models/proxy_best.pt",
+      "sha256": "5117809b3480fb3ad77fb5e454f2e4179d7027634dac353e6adfb8b9c0303749",
+      "size_bytes": 45414,
+      "tracked": true,
+      "verification": "presence; small tracked file hash only"
+    },
+    {
+      "exists": true,
+      "path": "zkml/ezkl/model.compiled",
+      "sha256": "a2d257ddcbef98e6f1f3ef9fd00a5d35d3c6bdbde8202d6763a18f93dea31953",
+      "size_bytes": 348587,
+      "tracked": true,
+      "verification": "presence; small tracked file hash only"
+    },
+    {
+      "exists": true,
+      "path": "zkml/ezkl/settings.json",
+      "sha256": "a3b6b450cc172f8dc13bc0599df693a7c5375fe44fd7ee7c0dd13d04a02e096b",
+      "size_bytes": 1620,
+      "tracked": true,
+      "verification": "presence; small tracked file hash only"
+    },
+    {
+      "exists": true,
+      "path": "zkml/ezkl/srs.params",
+      "sha256": null,
+      "size_bytes": 4194564,
+      "tracked": false,
+      "verification": "presence; small tracked file hash only"
+    },
+    {
+      "exists": true,
+      "path": "zkml/ezkl/proving_key.pk",
+      "sha256": null,
+      "size_bytes": 138479371,
+      "tracked": false,
+      "verification": "presence; small tracked file hash only"
+    },
+    {
+      "exists": true,
+      "path": "zkml/ezkl/verification_key.vk",
+      "sha256": "dcc999cbec2174d0c28472c3ab1a90d518fea852378c3319932efef2176d45d2",
+      "size_bytes": 66823,
+      "tracked": true,
+      "verification": "presence; small tracked file hash only"
+    },
+    {
+      "exists": true,
+      "path": "docs/plan/ml-R4/review_bundles/r4_gap007_candidate2_independent_review_v2.zip",
+      "sha256": "9036d5744ef903f7ba1204edb3a248f234ca1675349b8b8d19a0e6f9bab4fc36",
+      "size_bytes": 18498,
+      "tracked": true,
+      "verification": "presence; small tracked file hash only"
+    },
+    {
+      "exists": true,
+      "path": "contracts/foundry.lock",
+      "sha256": "ac6997d1268a82d598809e91b58657486a25a4a426327f8fbfcac6c2e0f84ca6",
+      "size_bytes": 426,
+      "tracked": true,
+      "verification": "presence; small tracked file hash only"
+    }
+  ],
+  "branch": "main",
+  "docs_bin_paths": 86168,
+  "environments": {
+    ".": {
+      "declared_python": ">=3.11,<3.12.0 || >3.12.0,<3.13",
+      "lock": "poetry.lock",
+      "lock_sha256": "8c2d5dab098036bd8e7f72ce0d179eb53f9c9642a5d31ca470f6f0042605dabf",
+      "locked_packages": {
+        "aiohappyeyeballs": "2.6.1",
+        "aiohttp": "3.13.3",
+        "aiosignal": "1.4.0",
+        "alembic": "1.18.4",
+        "annotated-doc": "0.0.4",
+        "annotated-types": "0.7.0",
+        "anyio": "4.12.1",
+        "attrs": "25.4.0",
+        "bitarray": "3.8.0",
+        "black": "24.10.0",
+        "blinker": "1.9.0",
+        "cachetools": "7.0.1",
+        "cbor2": "5.8.0",
+        "certifi": "2026.2.25",
+        "cffi": "2.0.0",
+        "cfgv": "3.5.0",
+        "charset-normalizer": "3.4.4",
+        "ckzg": "2.1.5",
+        "click": "8.3.1",
+        "cloudpickle": "3.1.2",
+        "colorama": "0.4.6",
+        "contourpy": "1.3.3",
+        "coverage": "7.13.4",
+        "cryptography": "46.0.5",
+        "crytic-compile": "0.3.11",
+        "cuda-bindings": "12.9.4",
+        "cuda-pathfinder": "1.3.5",
+        "cycler": "0.12.1",
+        "cytoolz": "1.1.0",
+        "databricks-sdk": "0.93.0",
+        "datasets": "4.6.0",
+        "dill": "0.4.0",
+        "distlib": "0.4.0",
+        "docker": "7.1.0",
+        "eth-abi": "5.2.0",
+        "eth-account": "0.13.7",
+        "eth-hash": "0.7.1",
+        "eth-keyfile": "0.8.1",
+        "eth-keys": "0.7.0",
+        "eth-rlp": "2.2.0",
+        "eth-typing": "5.2.1",
+        "eth-utils": "5.3.1",
+        "ezkl": "23.0.5",
+        "fastapi": "0.133.1",
+        "filelock": "3.24.3",
+        "flake8": "7.3.0",
+        "flask": "3.1.3",
+        "flask-cors": "6.0.2",
+        "flatbuffers": "25.12.19",
+        "fonttools": "4.61.1",
+        "frozenlist": "1.8.0",
+        "fsspec": "2026.2.0",
+        "gitdb": "4.0.12",
+        "gitpython": "3.1.46",
+        "google-auth": "2.48.0",
+        "graphene": "3.4.3",
+        "graphql-core": "3.2.7",
+        "graphql-relay": "3.2.0",
+        "greenlet": "3.3.2",
+        "gunicorn": "25.1.0",
+        "h11": "0.16.0",
+        "hexbytes": "1.3.1",
+        "hf-xet": "1.3.1",
+        "httpcore": "1.0.9",
+        "httpx": "0.28.1",
+        "huey": "2.6.0",
+        "huggingface-hub": "1.4.1",
+        "identify": "2.6.16",
+        "idna": "3.11",
+        "importlib-metadata": "8.7.1",
+        "iniconfig": "2.3.0",
+        "isort": "5.13.2",
+        "itsdangerous": "2.2.0",
+        "jinja2": "3.1.6",
+        "joblib": "1.5.3",
+        "kiwisolver": "1.4.9",
+        "librt": "0.8.1",
+        "loguru": "0.7.3",
+        "mako": "1.3.10",
+        "markdown-it-py": "4.0.0",
+        "markupsafe": "3.0.3",
+        "matplotlib": "3.10.8",
+        "mccabe": "0.7.0",
+        "mdurl": "0.1.2",
+        "ml-dtypes": "0.5.4",
+        "mlflow": "3.10.0",
+        "mlflow-skinny": "3.10.0",
+        "mlflow-tracing": "3.10.0",
+        "mpmath": "1.3.0",
+        "multidict": "6.7.1",
+        "multiprocess": "0.70.18",
+        "mypy": "1.19.1",
+        "mypy-extensions": "1.1.0",
+        "networkx": "3.6.1",
+        "nodeenv": "1.10.0",
+        "numpy": "1.26.4",
+        "nvidia-cublas-cu12": "12.8.4.1",
+        "nvidia-cuda-cupti-cu12": "12.8.90",
+        "nvidia-cuda-nvrtc-cu12": "12.8.93",
+        "nvidia-cuda-runtime-cu12": "12.8.90",
+        "nvidia-cudnn-cu12": "9.10.2.21",
+        "nvidia-cufft-cu12": "11.3.3.83",
+        "nvidia-cufile-cu12": "1.13.1.3",
+        "nvidia-curand-cu12": "10.3.9.90",
+        "nvidia-cusolver-cu12": "11.7.3.90",
+        "nvidia-cusparse-cu12": "12.5.8.93",
+        "nvidia-cusparselt-cu12": "0.7.1",
+        "nvidia-nccl-cu12": "2.27.5",
+        "nvidia-nvjitlink-cu12": "12.8.93",
+        "nvidia-nvshmem-cu12": "3.4.5",
+        "nvidia-nvtx-cu12": "12.8.90",
+        "onnx": "1.21.0",
+        "onnx-ir": "0.2.0",
+        "onnxruntime": "1.24.4",
+        "onnxscript": "0.6.2",
+        "opentelemetry-api": "1.39.1",
+        "opentelemetry-proto": "1.39.1",
+        "opentelemetry-sdk": "1.39.1",
+        "opentelemetry-semantic-conventions": "0.60b1",
+        "packaging": "26.0",
+        "pandas": "2.3.3",
+        "parsimonious": "0.10.0",
+        "pathspec": "1.0.4",
+        "pillow": "12.1.1",
+        "platformdirs": "4.9.2",
+        "pluggy": "1.6.0",
+        "pre-commit": "3.8.0",
+        "prettytable": "3.17.0",
+        "propcache": "0.4.1",
+        "protobuf": "6.33.5",
+        "psutil": "7.2.2",
+        "pyarrow": "23.0.1",
+        "pyasn1": "0.6.2",
+        "pyasn1-modules": "0.4.2",
+        "pycodestyle": "2.14.0",
+        "pycparser": "3.0",
+        "pycryptodome": "3.23.0",
+        "pydantic": "2.12.5",
+        "pydantic-core": "2.41.5",
+        "pyflakes": "3.4.0",
+        "pygments": "2.19.2",
+        "pyparsing": "3.3.2",
+        "pytest": "8.4.2",
+        "pytest-cov": "4.1.0",
+        "python-dateutil": "2.9.0.post0",
+        "python-dotenv": "1.2.1",
+        "pytz": "2025.2",
+        "pyunormalize": "17.0.0",
+        "pywin32": "311",
+        "pyyaml": "6.0.3",
+        "regex": "2026.2.19",
+        "requests": "2.32.5",
+        "rich": "14.3.3",
+        "rlp": "4.1.0",
+        "rsa": "4.9.1",
+        "safetensors": "0.7.0",
+        "scikit-learn": "1.8.0",
+        "scipy": "1.17.1",
+        "seaborn": "0.13.2",
+        "setuptools": "82.0.0",
+        "shellingham": "1.5.4",
+        "six": "1.17.0",
+        "skops": "0.13.0",
+        "slither-analyzer": "0.11.5",
+        "smmap": "5.0.2",
+        "solc-select": "1.2.0",
+        "sqlalchemy": "2.0.47",
+        "sqlparse": "0.5.5",
+        "starlette": "0.52.1",
+        "sympy": "1.14.0",
+        "threadpoolctl": "3.6.0",
+        "tokenizers": "0.22.2",
+        "toolz": "1.1.0",
+        "torch": "2.10.0",
+        "torch-geometric": "2.7.0",
+        "torchvision": "0.25.0",
+        "tqdm": "4.67.3",
+        "transformers": "5.2.0",
+        "triton": "3.6.0",
+        "typer": "0.24.1",
+        "typer-slim": "0.24.0",
+        "types-requests": "2.32.4.20260107",
+        "typing-extensions": "4.15.0",
+        "typing-inspection": "0.4.2",
+        "tzdata": "2025.3",
+        "urllib3": "2.6.3",
+        "uvicorn": "0.41.0",
+        "virtualenv": "20.39.0",
+        "waitress": "3.0.2",
+        "wcwidth": "0.6.0",
+        "web3": "7.14.1",
+        "websockets": "15.0.1",
+        "werkzeug": "3.1.6",
+        "win32-setctime": "1.2.0",
+        "xxhash": "3.6.0",
+        "yarl": "1.22.0",
+        "zipp": "3.23.0"
+      },
+      "manifest": "pyproject.toml",
+      "manifest_sha256": "fc0797cc6501fcf0b59d4856b9ad753fc67c0738b163b5c6a7aa3e4654aab561",
+      "poetry_check": {
+        "command": [
+          "poetry",
+          "check",
+          "--lock"
+        ],
+        "cwd": ".",
+        "elapsed_seconds": 0.453,
+        "exit_code": 1,
+        "stderr": "\nThe Poetry configuration is invalid:\n  - tool.poetry.source[0].priority must be one of ['primary', 'supplemental', 'explicit']\n\n",
+        "stdout": ""
+      }
+    },
+    "agents": {
+      "declared_python": ">=3.11,<3.15",
+      "different_common_versions": {
+        "langchain": {
+          "installed": "1.3.1",
+          "locked": "0.3.28"
+        },
+        "langchain-core": {
+          "installed": "1.4.0",
+          "locked": "0.3.83"
+        },
+        "langchain-openai": {
+          "installed": "0.3.34",
+          "locked": "0.2.14"
+        },
+        "langgraph": {
+          "installed": "1.2.0",
+          "locked": "0.2.76"
+        },
+        "langgraph-checkpoint": {
+          "installed": "4.1.0",
+          "locked": "2.1.2"
+        },
+        "langgraph-sdk": {
+          "installed": "0.3.14",
+          "locked": "0.1.74"
+        },
+        "rich": {
+          "installed": "14.0.0",
+          "locked": "14.3.3"
+        },
+        "sse-starlette": {
+          "installed": "2.1.3",
+          "locked": "3.3.4"
+        },
+        "starlette": {
+          "installed": "0.46.2",
+          "locked": "1.0.0"
+        },
+        "uvicorn": {
+          "installed": "0.32.1",
+          "locked": "0.44.0"
+        }
+      },
+      "installed": {
+        "packages": {
+          "aiohappyeyeballs": "2.6.1",
+          "aiohttp": "3.13.5",
+          "aiosignal": "1.4.0",
+          "aiosqlite": "0.22.1",
+          "alembic": "1.18.4",
+          "annotated-doc": "0.0.4",
+          "annotated-types": "0.7.0",
+          "antlr4-python3-runtime": "4.13.2",
+          "anyio": "4.13.0",
+          "attrs": "26.1.0",
+          "backoff": "2.2.1",
+          "bitarray": "3.8.1",
+          "cbor2": "6.1.1",
+          "certifi": "2026.2.25",
+          "cffi": "2.0.0",
+          "charset-normalizer": "3.4.7",
+          "ckzg": "2.1.7",
+          "click": "8.3.2",
+          "coloredlogs": "14.0",
+          "cryptography": "46.0.6",
+          "crytic-compile": "0.3.11",
+          "cuda-bindings": "13.2.0",
+          "cuda-pathfinder": "1.5.3",
+          "cuda-toolkit": "13.0.2",
+          "cytoolz": "1.1.0",
+          "dagster": "1.12.22",
+          "dagster-graphql": "1.12.22",
+          "dagster-pipes": "1.12.22",
+          "dagster-shared": "1.12.22",
+          "dagster-webserver": "1.12.22",
+          "dataclasses-json": "0.6.7",
+          "distro": "1.9.0",
+          "docstring_parser": "0.17.0",
+          "eth-account": "0.13.7",
+          "eth-hash": "0.8.0",
+          "eth-keyfile": "0.8.1",
+          "eth-keys": "0.7.0",
+          "eth-rlp": "2.2.0",
+          "eth-typing": "6.0.0",
+          "eth-utils": "6.0.0",
+          "eth_abi": "5.2.0",
+          "faiss-cpu": "1.11.0.post1",
+          "fastapi": "0.116.2",
+          "filelock": "3.25.2",
+          "frozenlist": "1.8.0",
+          "fsspec": "2026.3.0",
+          "gql": "4.0.0",
+          "graphene": "3.4.3",
+          "graphql-core": "3.2.8",
+          "graphql-relay": "3.2.0",
+          "greenlet": "3.3.2",
+          "grpcio": "1.80.0",
+          "grpcio-health-checking": "1.80.0",
+          "h11": "0.16.0",
+          "halmos": "0.3.3",
+          "hexbytes": "1.3.1",
+          "hf-xet": "1.5.0",
+          "httpcore": "1.0.9",
+          "httptools": "0.7.1",
+          "httpx": "0.27.2",
+          "httpx-sse": "0.4.3",
+          "huggingface_hub": "1.15.0",
+          "humanfriendly": "10.0",
+          "idna": "3.11",
+          "iniconfig": "2.3.0",
+          "jinja2": "3.1.6",
+          "jiter": "0.13.0",
+          "joblib": "1.5.3",
+          "jsonpatch": "1.33",
+          "jsonpointer": "3.1.1",
+          "jsonschema": "4.26.0",
+          "jsonschema-specifications": "2025.9.1",
+          "langchain": "1.3.1",
+          "langchain-community": "0.3.31",
+          "langchain-core": "1.4.0",
+          "langchain-openai": "0.3.34",
+          "langchain-protocol": "0.0.15",
+          "langchain-text-splitters": "0.3.11",
+          "langgraph": "1.2.0",
+          "langgraph-checkpoint": "4.1.0",
+          "langgraph-checkpoint-sqlite": "3.1.0",
+          "langgraph-prebuilt": "1.1.0",
+          "langgraph-sdk": "0.3.14",
+          "langsmith": "0.7.26",
+          "loguru": "0.7.3",
+          "mako": "1.3.10",
+          "markdown-it-py": "4.0.0",
+          "markupsafe": "3.0.3",
+          "marshmallow": "3.26.2",
+          "mcp": "1.27.0",
+          "mdurl": "0.1.2",
+          "mpmath": "1.3.0",
+          "multidict": "6.7.1",
+          "mypy_extensions": "1.1.0",
+          "networkx": "3.6",
+          "numpy": "2.4.4",
+          "nvidia-cublas": "13.1.0.3",
+          "nvidia-cuda-cupti": "13.0.85",
+          "nvidia-cuda-nvrtc": "13.0.88",
+          "nvidia-cuda-runtime": "13.0.96",
+          "nvidia-cudnn-cu13": "9.19.0.56",
+          "nvidia-cufft": "12.0.0.61",
+          "nvidia-cufile": "1.15.1.6",
+          "nvidia-curand": "10.4.0.35",
+          "nvidia-cusolver": "12.0.4.66",
+          "nvidia-cusparse": "12.6.3.3",
+          "nvidia-cusparselt-cu13": "0.8.0",
+          "nvidia-nccl-cu13": "2.28.9",
+          "nvidia-nvjitlink": "13.0.88",
+          "nvidia-nvshmem-cu13": "3.4.5",
+          "nvidia-nvtx": "13.0.85",
+          "openai": "1.109.1",
+          "orjson": "3.11.8",
+          "ormsgpack": "1.12.2",
+          "packaging": "25.0",
+          "pandas": "3.0.3",
+          "parsimonious": "0.10.0",
+          "pathlib_abc": "0.5.2",
+          "pip": "24.0",
+          "platformdirs": "4.9.6",
+          "pluggy": "1.6.0",
+          "prettytable": "3.17.0",
+          "propcache": "0.4.1",
+          "protobuf": "6.33.6",
+          "psutil": "7.2.2",
+          "pyarrow": "25.0.0",
+          "pycparser": "3.0",
+          "pycryptodome": "3.23.0",
+          "pydantic": "2.12.5",
+          "pydantic-settings": "2.13.1",
+          "pydantic_core": "2.41.5",
+          "pygments": "2.20.0",
+          "pyjwt": "2.12.1",
+          "pyparsing": "3.3.2",
+          "pytest": "8.4.2",
+          "pytest-asyncio": "0.23.8",
+          "python-dateutil": "2.9.0.post0",
+          "python-dotenv": "1.2.2",
+          "python-multipart": "0.0.24",
+          "pytz": "2026.1.post1",
+          "pyunormalize": "17.0.0",
+          "pyyaml": "6.0.3",
+          "rank-bm25": "0.2.2",
+          "referencing": "0.37.0",
+          "regex": "2026.4.4",
+          "requests": "2.33.1",
+          "requests-toolbelt": "1.0.0",
+          "rich": "14.0.0",
+          "rlp": "4.1.0",
+          "rpds-py": "0.30.0",
+          "safe-pysha3": "1.0.5",
+          "safetensors": "0.7.0",
+          "scikit-learn": "1.8.0",
+          "scipy": "1.17.1",
+          "sentence-transformers": "5.5.0",
+          "setuptools": "81.0.0",
+          "shellingham": "1.5.4",
+          "six": "1.17.0",
+          "slither-analyzer": "0.11.5",
+          "sniffio": "1.3.1",
+          "solc-select": "1.2.0",
+          "sortedcontainers": "2.4.0",
+          "sqlalchemy": "2.0.49",
+          "sqlite-vec": "0.1.9",
+          "sse-starlette": "2.1.3",
+          "starlette": "0.46.2",
+          "structlog": "25.5.0",
+          "sympy": "1.14.0",
+          "tabulate": "0.10.0",
+          "tenacity": "9.1.4",
+          "threadpoolctl": "3.6.0",
+          "tiktoken": "0.12.0",
+          "tokenizers": "0.22.2",
+          "toml": "0.10.2",
+          "tomli": "2.4.1",
+          "tomlkit": "0.14.0",
+          "toolz": "1.1.0",
+          "toposort": "1.10",
+          "torch": "2.11.0",
+          "torch-geometric": "2.8.0",
+          "tqdm": "4.67.3",
+          "transformers": "5.8.1",
+          "triton": "3.6.0",
+          "typer": "0.25.1",
+          "types-requests": "2.33.0.20260408",
+          "typing-inspect": "0.9.0",
+          "typing-inspection": "0.4.2",
+          "typing_extensions": "4.15.0",
+          "tzdata": "2026.1",
+          "universal_pathlib": "0.3.10",
+          "urllib3": "2.6.3",
+          "uuid_utils": "0.14.1",
+          "uvicorn": "0.32.1",
+          "uvloop": "0.22.1",
+          "watchdog": "6.0.0",
+          "watchfiles": "1.1.1",
+          "wcwidth": "0.7.0",
+          "web3": "7.15.0",
+          "websockets": "15.0.1",
+          "xxhash": "3.6.0",
+          "yarl": "1.23.0",
+          "yices-solver": "2.6.4.post23",
+          "z3-solver": "4.12.6.0",
+          "zstandard": "0.25.0"
+        },
+        "python": "3.12.3"
+      },
+      "lock": "agents/poetry.lock",
+      "lock_sha256": "75a363634ef1951ac12c4823f6871adad50c6de66f6b390afef7e1372fbb3068",
+      "locked_packages": {
+        "aiohappyeyeballs": "2.6.1",
+        "aiohttp": "3.13.5",
+        "aiosignal": "1.4.0",
+        "alembic": "1.18.4",
+        "annotated-types": "0.7.0",
+        "antlr4-python3-runtime": "4.13.2",
+        "anyio": "4.13.0",
+        "attrs": "26.1.0",
+        "backoff": "2.2.1",
+        "bitarray": "3.8.1",
+        "certifi": "2026.2.25",
+        "cffi": "2.0.0",
+        "charset-normalizer": "3.4.7",
+        "ckzg": "2.1.7",
+        "click": "8.3.2",
+        "colorama": "0.4.6",
+        "coloredlogs": "14.0",
+        "cryptography": "46.0.6",
+        "cuda-bindings": "13.2.0",
+        "cuda-pathfinder": "1.5.3",
+        "cuda-toolkit": "13.0.2",
+        "cytoolz": "1.1.0",
+        "dagster": "1.12.22",
+        "dagster-graphql": "1.12.22",
+        "dagster-pipes": "1.12.22",
+        "dagster-shared": "1.12.22",
+        "dagster-webserver": "1.12.22",
+        "dataclasses-json": "0.6.7",
+        "distro": "1.9.0",
+        "docstring-parser": "0.17.0",
+        "eth-abi": "5.2.0",
+        "eth-account": "0.13.7",
+        "eth-hash": "0.8.0",
+        "eth-keyfile": "0.8.1",
+        "eth-keys": "0.7.0",
+        "eth-rlp": "2.2.0",
+        "eth-typing": "6.0.0",
+        "eth-utils": "6.0.0",
+        "faiss-cpu": "1.11.0.post1",
+        "filelock": "3.25.2",
+        "frozenlist": "1.8.0",
+        "fsspec": "2026.3.0",
+        "gql": "4.0.0",
+        "graphene": "3.4.3",
+        "graphql-core": "3.2.8",
+        "graphql-relay": "3.2.0",
+        "greenlet": "3.3.2",
+        "grpcio": "1.80.0",
+        "grpcio-health-checking": "1.80.0",
+        "h11": "0.16.0",
+        "hexbytes": "1.3.1",
+        "httpcore": "1.0.9",
+        "httptools": "0.7.1",
+        "httpx": "0.27.2",
+        "httpx-sse": "0.4.3",
+        "humanfriendly": "10.0",
+        "idna": "3.11",
+        "iniconfig": "2.3.0",
+        "jinja2": "3.1.6",
+        "jiter": "0.13.0",
+        "jsonpatch": "1.33",
+        "jsonpointer": "3.1.1",
+        "jsonschema": "4.26.0",
+        "jsonschema-specifications": "2025.9.1",
+        "langchain": "0.3.28",
+        "langchain-community": "0.3.31",
+        "langchain-core": "0.3.83",
+        "langchain-openai": "0.2.14",
+        "langchain-text-splitters": "0.3.11",
+        "langgraph": "0.2.76",
+        "langgraph-checkpoint": "2.1.2",
+        "langgraph-sdk": "0.1.74",
+        "langsmith": "0.7.26",
+        "loguru": "0.7.3",
+        "mako": "1.3.10",
+        "markdown-it-py": "4.0.0",
+        "markupsafe": "3.0.3",
+        "marshmallow": "3.26.2",
+        "mcp": "1.27.0",
+        "mdurl": "0.1.2",
+        "mpmath": "1.3.0",
+        "multidict": "6.7.1",
+        "mypy-extensions": "1.1.0",
+        "networkx": "3.6",
+        "numpy": "2.4.4",
+        "nvidia-cublas": "13.1.0.3",
+        "nvidia-cuda-cupti": "13.0.85",
+        "nvidia-cuda-nvrtc": "13.0.88",
+        "nvidia-cuda-runtime": "13.0.96",
+        "nvidia-cudnn-cu13": "9.19.0.56",
+        "nvidia-cufft": "12.0.0.61",
+        "nvidia-cufile": "1.15.1.6",
+        "nvidia-curand": "10.4.0.35",
+        "nvidia-cusolver": "12.0.4.66",
+        "nvidia-cusparse": "12.6.3.3",
+        "nvidia-cusparselt-cu13": "0.8.0",
+        "nvidia-nccl-cu13": "2.28.9",
+        "nvidia-nvjitlink": "13.0.88",
+        "nvidia-nvshmem-cu13": "3.4.5",
+        "nvidia-nvtx": "13.0.85",
+        "openai": "1.109.1",
+        "orjson": "3.11.8",
+        "ormsgpack": "1.12.2",
+        "packaging": "25.0",
+        "parsimonious": "0.10.0",
+        "pathlib-abc": "0.5.2",
+        "platformdirs": "4.9.6",
+        "pluggy": "1.6.0",
+        "propcache": "0.4.1",
+        "protobuf": "6.33.6",
+        "psutil": "7.2.2",
+        "pycparser": "3.0",
+        "pycryptodome": "3.23.0",
+        "pydantic": "2.12.5",
+        "pydantic-core": "2.41.5",
+        "pydantic-settings": "2.13.1",
+        "pygments": "2.20.0",
+        "pyjwt": "2.12.1",
+        "pyreadline3": "3.5.4",
+        "pytest": "8.4.2",
+        "pytest-asyncio": "0.23.8",
+        "python-dateutil": "2.9.0.post0",
+        "python-dotenv": "1.2.2",
+        "python-multipart": "0.0.24",
+        "pytz": "2026.1.post1",
+        "pyunormalize": "17.0.0",
+        "pywin32": "311",
+        "pyyaml": "6.0.3",
+        "rank-bm25": "0.2.2",
+        "referencing": "0.37.0",
+        "regex": "2026.4.4",
+        "requests": "2.33.1",
+        "requests-toolbelt": "1.0.0",
+        "rich": "14.3.3",
+        "rlp": "4.1.0",
+        "rpds-py": "0.30.0",
+        "setuptools": "81.0.0",
+        "six": "1.17.0",
+        "sniffio": "1.3.1",
+        "sqlalchemy": "2.0.49",
+        "sse-starlette": "3.3.4",
+        "starlette": "1.0.0",
+        "structlog": "25.5.0",
+        "sympy": "1.14.0",
+        "tabulate": "0.10.0",
+        "tenacity": "9.1.4",
+        "tiktoken": "0.12.0",
+        "tomli": "2.4.1",
+        "tomlkit": "0.14.0",
+        "toolz": "1.1.0",
+        "toposort": "1.10",
+        "torch": "2.11.0",
+        "tqdm": "4.67.3",
+        "triton": "3.6.0",
+        "types-requests": "2.33.0.20260408",
+        "typing-extensions": "4.15.0",
+        "typing-inspect": "0.9.0",
+        "typing-inspection": "0.4.2",
+        "tzdata": "2026.1",
+        "universal-pathlib": "0.3.10",
+        "urllib3": "2.6.3",
+        "uuid-utils": "0.14.1",
+        "uvicorn": "0.44.0",
+        "uvloop": "0.22.1",
+        "watchdog": "6.0.0",
+        "watchfiles": "1.1.1",
+        "web3": "7.15.0",
+        "websockets": "15.0.1",
+        "win32-setctime": "1.2.0",
+        "xxhash": "3.6.0",
+        "yarl": "1.23.0",
+        "zstandard": "0.25.0"
+      },
+      "manifest": "agents/pyproject.toml",
+      "manifest_sha256": "a425e0655e85d64fb899b12c5ab822771cd2a6ad1b2dc14e37be959a1864155b",
+      "poetry_check": {
+        "command": [
+          "poetry",
+          "check",
+          "--lock"
+        ],
+        "cwd": "agents",
+        "elapsed_seconds": 0.294,
+        "exit_code": 1,
+        "stderr": "Error: pyproject.toml changed significantly since poetry.lock was last generated. Run `poetry lock` to fix the lock file.\nWarning: [tool.poetry.name] is deprecated. Use [project.name] instead.\nWarning: [tool.poetry.version] is set but 'version' is not in [project.dynamic]. If it is static use [project.version]. If it is dynamic, add 'version' to [project.dynamic].\nIf you want to set the version dynamically via `poetry build --local-version` or you are using a plugin, which sets the version dynamically, you should define the version in [tool.poetry] and add 'version' to [project.dynamic].\nWarning: [tool.poetry.description] is deprecated. Use [project.description] instead.\nWarning: [tool.poetry.authors] is deprecated. Use [project.authors] instead.\n",
+        "stdout": ""
+      }
+    },
+    "data_module": {
+      "declared_python": ">=3.12,<3.13",
+      "different_common_versions": {
+        "aiohappyeyeballs": {
+          "installed": "2.6.2",
+          "locked": "2.7.1"
+        },
+        "aiohttp": {
+          "installed": "3.14.1",
+          "locked": "3.14.3"
+        },
+        "annotated-doc": {
+          "installed": "0.0.4",
+          "locked": "0.0.5"
+        },
+        "annotated-types": {
+          "installed": "0.7.0",
+          "locked": "0.8.0"
+        },
+        "anyio": {
+          "installed": "4.13.0",
+          "locked": "4.15.1"
+        },
+        "asyncssh": {
+          "installed": "2.23.1",
+          "locked": "2.24.0"
+        },
+        "bitarray": {
+          "installed": "3.8.1",
+          "locked": "3.11.0"
+        },
+        "cbor2": {
+          "installed": "6.1.2",
+          "locked": "6.1.4"
+        },
+        "certifi": {
+          "installed": "2026.5.20",
+          "locked": "2026.7.22"
+        },
+        "cffi": {
+          "installed": "2.0.0",
+          "locked": "2.1.1"
+        },
+        "charset-normalizer": {
+          "installed": "3.4.7",
+          "locked": "3.5.1"
+        },
+        "ckzg": {
+          "installed": "2.1.7",
+          "locked": "2.1.8"
+        },
+        "click": {
+          "installed": "8.4.1",
+          "locked": "8.5.0"
+        },
+        "coverage": {
+          "installed": "7.14.1",
+          "locked": "7.16.0"
+        },
+        "cryptography": {
+          "installed": "48.0.0",
+          "locked": "50.0.1"
+        },
+        "crytic-compile": {
+          "installed": "0.3.11",
+          "locked": "0.3.5"
+        },
+        "cuda-pathfinder": {
+          "installed": "1.5.5",
+          "locked": "1.8.1"
+        },
+        "cuda-toolkit": {
+          "installed": "13.0.2",
+          "locked": "13.0.3"
+        },
+        "dictdiffer": {
+          "installed": "0.9.0",
+          "locked": "0.10.0"
+        },
+        "dulwich": {
+          "installed": "1.2.6",
+          "locked": "1.2.14"
+        },
+        "eth-account": {
+          "installed": "0.13.7",
+          "locked": "0.14.0"
+        },
+        "eth-keyfile": {
+          "installed": "0.8.1",
+          "locked": "0.10.0"
+        },
+        "eth-keys": {
+          "installed": "0.7.0",
+          "locked": "0.8.0"
+        },
+        "eth-rlp": {
+          "installed": "2.2.0",
+          "locked": "3.0.0"
+        },
+        "filelock": {
+          "installed": "3.29.1",
+          "locked": "3.32.5"
+        },
+        "fsspec": {
+          "installed": "2026.4.0",
+          "locked": "2026.7.0"
+        },
+        "gitpython": {
+          "installed": "3.1.50",
+          "locked": "3.1.61"
+        },
+        "hexbytes": {
+          "installed": "1.3.1",
+          "locked": "2.0.0"
+        },
+        "hf-xet": {
+          "installed": "1.5.1",
+          "locked": "1.6.0"
+        },
+        "idna": {
+          "installed": "3.18",
+          "locked": "3.19"
+        },
+        "numpy": {
+          "installed": "2.4.6",
+          "locked": "2.5.2"
+        },
+        "nvidia-cublas": {
+          "installed": "13.1.1.3",
+          "locked": "13.6.1.10"
+        },
+        "nvidia-cuda-nvrtc": {
+          "installed": "13.0.88",
+          "locked": "13.3.33"
+        },
+        "nvidia-cudnn-cu13": {
+          "installed": "9.20.0.48",
+          "locked": "9.24.0.43"
+        },
+        "nvidia-cusparse": {
+          "installed": "12.6.3.3",
+          "locked": "12.8.2.51"
+        },
+        "nvidia-nccl-cu13": {
+          "installed": "2.29.7",
+          "locked": "2.30.7"
+        },
+        "nvidia-nvjitlink": {
+          "installed": "13.0.88",
+          "locked": "13.3.33"
+        },
+        "omegaconf": {
+          "installed": "2.3.0",
+          "locked": "2.3.1"
+        },
+        "orjson": {
+          "installed": "3.11.9",
+          "locked": "3.12.0"
+        },
+        "packaging": {
+          "installed": "26.2",
+          "locked": "26.3"
+        },
+        "pandas": {
+          "installed": "3.0.3",
+          "locked": "3.0.5"
+        },
+        "prettytable": {
+          "installed": "3.17.0",
+          "locked": "3.18.0"
+        },
+        "pydantic": {
+          "installed": "2.13.4",
+          "locked": "2.13.5"
+        },
+        "pydantic-settings": {
+          "installed": "2.14.1",
+          "locked": "2.15.0"
+        },
+        "pygit2": {
+          "installed": "1.19.2",
+          "locked": "1.20.0"
+        },
+        "pygments": {
+          "installed": "2.20.0",
+          "locked": "2.21.0"
+        },
+        "pygtrie": {
+          "installed": "2.5.0",
+          "locked": "2.6.1"
+        },
+        "pytest": {
+          "installed": "9.0.3",
+          "locked": "9.1.1"
+        },
+        "python-dotenv": {
+          "installed": "1.2.2",
+          "locked": "1.2.3"
+        },
+        "regex": {
+          "installed": "2026.5.9",
+          "locked": "2026.9.3"
+        },
+        "rlp": {
+          "installed": "4.1.0",
+          "locked": "5.0.0"
+        },
+        "setuptools": {
+          "installed": "81.0.0",
+          "locked": "84.0.0"
+        },
+        "slither-analyzer": {
+          "installed": "0.11.5",
+          "locked": "0.10.0"
+        },
+        "sqltrie": {
+          "installed": "0.11.2",
+          "locked": "0.11.3"
+        },
+        "tokenizers": {
+          "installed": "0.22.2",
+          "locked": "0.23.2"
+        },
+        "torch": {
+          "installed": "2.12.0",
+          "locked": "2.14.0"
+        },
+        "torch-geometric": {
+          "installed": "2.8.0",
+          "locked": "2.8.0.post1"
+        },
+        "tqdm": {
+          "installed": "4.68.1",
+          "locked": "4.70.0"
+        },
+        "transformers": {
+          "installed": "5.11.0",
+          "locked": "5.16.1"
+        },
+        "triton": {
+          "installed": "3.7.0",
+          "locked": "3.8.0"
+        },
+        "typer": {
+          "installed": "0.25.1",
+          "locked": "0.27.2"
+        },
+        "typing-inspection": {
+          "installed": "0.4.2",
+          "locked": "0.4.4"
+        },
+        "tzdata": {
+          "installed": "2026.2",
+          "locked": "2026.3"
+        },
+        "tzlocal": {
+          "installed": "5.3.1",
+          "locked": "5.4.4"
+        },
+        "wcwidth": {
+          "installed": "0.8.1",
+          "locked": "0.8.3"
+        },
+        "web3": {
+          "installed": "7.16.0",
+          "locked": "8.0.0"
+        },
+        "websockets": {
+          "installed": "15.0.1",
+          "locked": "17.1"
+        },
+        "xxhash": {
+          "installed": "3.7.0",
+          "locked": "4.0.1"
+        },
+        "yarl": {
+          "installed": "1.24.2",
+          "locked": "1.24.5"
+        }
+      },
+      "installed": {
+        "packages": {
+          "aiohappyeyeballs": "2.6.2",
+          "aiohttp": "3.14.1",
+          "aiohttp-retry": "2.9.1",
+          "aiosignal": "1.4.0",
+          "amqp": "5.3.1",
+          "annotated-doc": "0.0.4",
+          "annotated-types": "0.7.0",
+          "antlr4-python3-runtime": "4.9.3",
+          "anyio": "4.13.0",
+          "appdirs": "1.4.4",
+          "asyncssh": "2.23.1",
+          "atpublic": "7.0.0",
+          "attrs": "26.1.0",
+          "billiard": "4.2.4",
+          "bitarray": "3.8.1",
+          "cbor2": "6.1.2",
+          "celery": "5.6.3",
+          "certifi": "2026.5.20",
+          "cffi": "2.0.0",
+          "charset-normalizer": "3.4.7",
+          "ckzg": "2.1.7",
+          "click": "8.4.1",
+          "click-didyoumean": "0.3.1",
+          "click-plugins": "1.1.1.2",
+          "click-repl": "0.3.0",
+          "coverage": "7.14.1",
+          "cryptography": "48.0.0",
+          "crytic-compile": "0.3.11",
+          "cuda-bindings": "13.3.1",
+          "cuda-pathfinder": "1.5.5",
+          "cuda-toolkit": "13.0.2",
+          "cytoolz": "1.1.0",
+          "dictdiffer": "0.9.0",
+          "diskcache": "5.6.3",
+          "distro": "1.9.0",
+          "dulwich": "1.2.6",
+          "dvc-objects": "5.2.0",
+          "entrypoints": "0.4",
+          "eth-account": "0.13.7",
+          "eth-hash": "0.8.0",
+          "eth-keyfile": "0.8.1",
+          "eth-keys": "0.7.0",
+          "eth-rlp": "2.2.0",
+          "eth-typing": "6.0.0",
+          "eth-utils": "6.0.0",
+          "eth_abi": "5.2.0",
+          "filelock": "3.29.1",
+          "frozenlist": "1.8.0",
+          "fsspec": "2026.4.0",
+          "funcy": "2.0",
+          "gitdb": "4.0.12",
+          "gitpython": "3.1.50",
+          "h11": "0.16.0",
+          "hexbytes": "1.3.1",
+          "hf-xet": "1.5.1",
+          "httpcore": "1.0.9",
+          "httpx": "0.28.1",
+          "huggingface_hub": "1.18.0",
+          "idna": "3.18",
+          "iniconfig": "2.3.0",
+          "jinja2": "3.1.6",
+          "kombu": "5.6.2",
+          "markdown-it-py": "4.2.0",
+          "markupsafe": "3.0.3",
+          "mdurl": "0.1.2",
+          "mpmath": "1.3.0",
+          "multidict": "6.7.1",
+          "networkx": "3.6.1",
+          "numpy": "2.4.6",
+          "nvidia-cublas": "13.1.1.3",
+          "nvidia-cuda-cupti": "13.0.85",
+          "nvidia-cuda-nvrtc": "13.0.88",
+          "nvidia-cuda-runtime": "13.0.96",
+          "nvidia-cudnn-cu13": "9.20.0.48",
+          "nvidia-cufft": "12.0.0.61",
+          "nvidia-cufile": "1.15.1.6",
+          "nvidia-curand": "10.4.0.35",
+          "nvidia-cusolver": "12.0.4.66",
+          "nvidia-cusparse": "12.6.3.3",
+          "nvidia-cusparselt-cu13": "0.8.1",
+          "nvidia-nccl-cu13": "2.29.7",
+          "nvidia-nvjitlink": "13.0.88",
+          "nvidia-nvshmem-cu13": "3.4.5",
+          "nvidia-nvtx": "13.0.85",
+          "omegaconf": "2.3.0",
+          "orjson": "3.11.9",
+          "packaging": "26.2",
+          "pandas": "3.0.3",
+          "parsimonious": "0.10.0",
+          "pathspec": "1.1.1",
+          "pip": "24.0",
+          "pluggy": "1.6.0",
+          "prettytable": "3.17.0",
+          "prompt_toolkit": "3.0.52",
+          "propcache": "0.5.2",
+          "psutil": "7.2.2",
+          "pyarrow": "24.0.0",
+          "pycparser": "3.0",
+          "pycryptodome": "3.23.0",
+          "pydantic": "2.13.4",
+          "pydantic-settings": "2.14.1",
+          "pydantic_core": "2.46.4",
+          "pygit2": "1.19.2",
+          "pygments": "2.20.0",
+          "pygtrie": "2.5.0",
+          "pyparsing": "3.3.2",
+          "pytest": "9.0.3",
+          "pytest-cov": "7.1.0",
+          "python-dateutil": "2.9.0.post0",
+          "python-dotenv": "1.2.2",
+          "pyunormalize": "17.0.0",
+          "pyyaml": "6.0.3",
+          "regex": "2026.5.9",
+          "requests": "2.34.2",
+          "rich": "15.0.0",
+          "rlp": "4.1.0",
+          "ruamel.yaml": "0.19.1",
+          "safetensors": "0.8.0",
+          "scmrepo": "3.6.2",
+          "semver": "3.0.4",
+          "sentinel-data": "0.1.0",
+          "setuptools": "81.0.0",
+          "shellingham": "1.5.4",
+          "shortuuid": "1.0.13",
+          "six": "1.17.0",
+          "slither-analyzer": "0.11.5",
+          "smmap": "5.0.3",
+          "solc-select": "1.2.0",
+          "sqltrie": "0.11.2",
+          "sympy": "1.14.0",
+          "tabulate": "0.10.0",
+          "tokenizers": "0.22.2",
+          "toml": "0.10.2",
+          "toolz": "1.1.0",
+          "torch": "2.12.0",
+          "torch-geometric": "2.8.0",
+          "tqdm": "4.68.1",
+          "transformers": "5.11.0",
+          "triton": "3.7.0",
+          "typer": "0.25.1",
+          "types-requests": "2.33.0.20260518",
+          "typing-inspection": "0.4.2",
+          "typing_extensions": "4.15.0",
+          "tzdata": "2026.2",
+          "tzlocal": "5.3.1",
+          "urllib3": "2.7.0",
+          "vine": "5.1.0",
+          "voluptuous": "0.16.0",
+          "wcwidth": "0.8.1",
+          "web3": "7.16.0",
+          "websockets": "15.0.1",
+          "xxhash": "3.7.0",
+          "yarl": "1.24.2"
+        },
+        "python": "3.12.3"
+      },
+      "lock": "data_module/poetry.lock",
+      "lock_sha256": "77029f495e88d7f43132a1db4a4282342fcfc739e8c7380083859e7b7d8ecd1f",
+      "locked_packages": {
+        "aiohappyeyeballs": "2.7.1",
+        "aiohttp": "3.14.3",
+        "aiohttp-retry": "2.9.1",
+        "aiosignal": "1.4.0",
+        "amqp": "5.3.1",
+        "annotated-doc": "0.0.5",
+        "annotated-types": "0.8.0",
+        "antlr4-python3-runtime": "4.9.3",
+        "anyio": "4.15.1",
+        "appdirs": "1.4.4",
+        "asyncssh": "2.24.0",
+        "atpublic": "7.0.0",
+        "attrs": "26.1.0",
+        "billiard": "4.2.4",
+        "bitarray": "3.11.0",
+        "black": "26.5.1",
+        "cbor2": "6.1.4",
+        "celery": "5.6.3",
+        "certifi": "2026.7.22",
+        "cffi": "2.1.1",
+        "charset-normalizer": "3.5.1",
+        "ckzg": "2.1.8",
+        "click": "8.5.0",
+        "click-didyoumean": "0.3.1",
+        "click-plugins": "1.1.1.2",
+        "click-repl": "0.3.0",
+        "colorama": "0.4.6",
+        "configobj": "5.0.9",
+        "coverage": "7.16.0",
+        "cryptography": "50.0.1",
+        "crytic-compile": "0.3.5",
+        "cuda-bindings": "13.3.1",
+        "cuda-pathfinder": "1.8.1",
+        "cuda-toolkit": "13.0.3",
+        "cytoolz": "1.1.0",
+        "dictdiffer": "0.10.0",
+        "diskcache": "5.6.3",
+        "distro": "1.9.0",
+        "dpath": "2.2.0",
+        "dulwich": "1.2.14",
+        "dvc": "3.67.1",
+        "dvc-data": "3.18.3",
+        "dvc-http": "2.32.0",
+        "dvc-objects": "5.2.0",
+        "dvc-render": "1.0.2",
+        "dvc-studio-client": "0.23.0",
+        "dvc-task": "0.40.2",
+        "entrypoints": "0.4",
+        "eth-abi": "6.0.0",
+        "eth-account": "0.14.0",
+        "eth-hash": "0.8.0",
+        "eth-keyfile": "0.10.0",
+        "eth-keys": "0.8.0",
+        "eth-rlp": "3.0.0",
+        "eth-typing": "6.0.0",
+        "eth-utils": "6.0.0",
+        "filelock": "3.32.5",
+        "flatten-dict": "0.5.0",
+        "flufl-lock": "9.1.0",
+        "frozenlist": "1.8.0",
+        "fsspec": "2026.7.0",
+        "funcy": "2.0",
+        "gitdb": "4.0.12",
+        "gitpython": "3.1.61",
+        "grandalf": "0.8",
+        "gto": "1.10.1",
+        "h11": "0.16.0",
+        "hexbytes": "2.0.0",
+        "hf-xet": "1.6.0",
+        "httpcore": "1.0.9",
+        "httpx": "0.28.1",
+        "huggingface-hub": "1.30.0",
+        "hydra-core": "1.3.6",
+        "idna": "3.19",
+        "iniconfig": "2.3.0",
+        "iterative-telemetry": "0.0.10",
+        "jinja2": "3.1.6",
+        "kombu": "5.6.2",
+        "loguru": "0.7.3",
+        "markdown-it-py": "4.2.0",
+        "markupsafe": "3.0.3",
+        "mdurl": "0.1.2",
+        "mpmath": "1.3.0",
+        "multidict": "6.7.1",
+        "mypy-extensions": "1.1.0",
+        "networkx": "3.6.1",
+        "numpy": "2.5.2",
+        "nvidia-cublas": "13.6.1.10",
+        "nvidia-cuda-cupti": "13.0.85",
+        "nvidia-cuda-nvrtc": "13.3.33",
+        "nvidia-cuda-runtime": "13.0.96",
+        "nvidia-cudnn-cu13": "9.24.0.43",
+        "nvidia-cufft": "12.0.0.61",
+        "nvidia-cufile": "1.15.1.6",
+        "nvidia-curand": "10.4.0.35",
+        "nvidia-cusolver": "12.0.4.66",
+        "nvidia-cusparse": "12.8.2.51",
+        "nvidia-cusparselt-cu13": "0.8.1",
+        "nvidia-nccl-cu13": "2.30.7",
+        "nvidia-nvjitlink": "13.3.33",
+        "nvidia-nvshmem-cu13": "3.4.5",
+        "nvidia-nvtx": "13.0.85",
+        "omegaconf": "2.3.1",
+        "orjson": "3.12.0",
+        "packaging": "26.3",
+        "pandas": "3.0.5",
+        "parsimonious": "0.10.0",
+        "pathspec": "1.1.1",
+        "platformdirs": "4.11.7",
+        "pluggy": "1.6.0",
+        "prettytable": "3.18.0",
+        "prompt-toolkit": "3.0.53",
+        "propcache": "0.5.2",
+        "psutil": "7.2.2",
+        "py-ecc": "8.0.0",
+        "pycparser": "3.0",
+        "pycryptodome": "3.23.0",
+        "pydantic": "2.13.5",
+        "pydantic-core": "2.46.5",
+        "pydantic-settings": "2.15.0",
+        "pydot": "4.0.1",
+        "pygit2": "1.20.0",
+        "pygments": "2.21.0",
+        "pygtrie": "2.6.1",
+        "pyparsing": "3.3.2",
+        "pytest": "9.1.1",
+        "pytest-cov": "7.1.0",
+        "python-dateutil": "2.9.0.post0",
+        "python-dotenv": "1.2.3",
+        "pytokens": "0.4.1",
+        "pyunormalize": "17.0.0",
+        "pywin32": "312",
+        "pyyaml": "6.0.3",
+        "regex": "2026.9.3",
+        "requests": "2.34.2",
+        "rich": "15.0.0",
+        "rlp": "5.0.0",
+        "ruamel-yaml": "0.19.1",
+        "ruff": "0.16.6",
+        "safetensors": "0.8.0",
+        "scmrepo": "3.6.2",
+        "semver": "3.0.4",
+        "setuptools": "84.0.0",
+        "shellingham": "1.5.4",
+        "shortuuid": "1.0.13",
+        "shtab": "1.12.1",
+        "six": "1.17.0",
+        "slither-analyzer": "0.10.0",
+        "smmap": "5.0.3",
+        "solc-select": "1.2.0",
+        "sqltrie": "0.11.3",
+        "sympy": "1.14.0",
+        "tabulate": "0.10.0",
+        "tokenizers": "0.23.2",
+        "toml": "0.10.2",
+        "tomlkit": "0.15.1",
+        "toolz": "1.1.0",
+        "torch": "2.14.0",
+        "torch-geometric": "2.8.0.post1",
+        "tqdm": "4.70.0",
+        "transformers": "5.16.1",
+        "triton": "3.8.0",
+        "typer": "0.27.2",
+        "typing-extensions": "4.16.0",
+        "typing-inspection": "0.4.4",
+        "tzdata": "2026.3",
+        "tzlocal": "5.4.4",
+        "urllib3": "2.7.0",
+        "vine": "5.1.0",
+        "voluptuous": "0.16.0",
+        "wcwidth": "0.8.3",
+        "web3": "8.0.0",
+        "websockets": "17.1",
+        "win32-setctime": "1.2.0",
+        "xxhash": "4.0.1",
+        "yarl": "1.24.5",
+        "zc-lockfile": "4.0"
+      },
+      "manifest": "data_module/pyproject.toml",
+      "manifest_sha256": "2a4f66fa60fcd1c261cd159472568c21d3a353413a68dcb867977a94e5edbb04",
+      "poetry_check": {
+        "command": [
+          "poetry",
+          "check",
+          "--lock"
+        ],
+        "cwd": "data_module",
+        "elapsed_seconds": 0.29,
+        "exit_code": 0,
+        "stderr": "Warning: [tool.poetry.name] is deprecated. Use [project.name] instead.\nWarning: [tool.poetry.version] is set but 'version' is not in [project.dynamic]. If it is static use [project.version]. If it is dynamic, add 'version' to [project.dynamic].\nIf you want to set the version dynamically via `poetry build --local-version` or you are using a plugin, which sets the version dynamically, you should define the version in [tool.poetry] and add 'version' to [project.dynamic].\nWarning: [tool.poetry.description] is deprecated. Use [project.description] instead.\nWarning: [tool.poetry.readme] is set but 'readme' is not in [project.dynamic]. If it is static use [project.readme]. If it is dynamic, add 'readme' to [project.dynamic].\nIf you want to define multiple readmes, you should define them in [tool.poetry] and add 'readme' to [project.dynamic].\nWarning: [tool.poetry.authors] is deprecated. Use [project.authors] instead.\nWarning: Defining console scripts in [tool.poetry.scripts] is deprecated. Use [project.scripts] instead. ([tool.poetry.scripts] should only be used for scripts of type 'file').\n",
+        "stdout": ""
+      }
+    },
+    "ml": {
+      "declared_python": ">=3.12.1,<3.13",
+      "different_common_versions": {},
+      "installed": {
+        "packages": {
+          "absl-py": "2.4.0",
+          "accelerate": "1.14.0",
+          "aiohappyeyeballs": "2.6.1",
+          "aiohttp": "3.13.3",
+          "aiohttp-retry": "2.9.1",
+          "aiosignal": "1.4.0",
+          "alabaster": "1.0.0",
+          "alembic": "1.18.4",
+          "amqp": "5.3.1",
+          "annotated-doc": "0.0.4",
+          "annotated-types": "0.7.0",
+          "antlr4-python3-runtime": "4.9.3",
+          "anyio": "4.12.1",
+          "appdirs": "1.4.4",
+          "argon2-cffi": "25.1.0",
+          "argon2-cffi-bindings": "25.1.0",
+          "argparse": "1.4.0",
+          "arrow": "1.4.0",
+          "asttokens": "3.0.1",
+          "async-lru": "2.1.0",
+          "asyncssh": "2.22.0",
+          "atpublic": "7.0.0",
+          "attrs": "25.4.0",
+          "babel": "2.18.0",
+          "beautifulsoup4": "4.14.3",
+          "billiard": "4.2.4",
+          "bitarray": "3.8.0",
+          "black": "24.10.0",
+          "bleach": "6.3.0",
+          "blinker": "1.9.0",
+          "bump2version": "1.0.1",
+          "bumpversion": "0.6.0",
+          "cachetools": "5.5.2",
+          "cbor2": "5.8.0",
+          "celery": "5.6.2",
+          "certifi": "2026.1.4",
+          "cffi": "2.0.0",
+          "chardet": "5.2.0",
+          "charset-normalizer": "3.4.4",
+          "ckzg": "2.1.5",
+          "click": "8.3.1",
+          "click-didyoumean": "0.3.1",
+          "click-plugins": "1.1.1.2",
+          "click-repl": "0.3.0",
+          "cloudpickle": "3.1.2",
+          "colorama": "0.4.6",
+          "comm": "0.2.3",
+          "configobj": "5.0.9",
+          "contourpy": "1.3.3",
+          "coverage": "7.13.4",
+          "cryptography": "46.0.5",
+          "crytic-compile": "0.3.11",
+          "cycler": "0.12.1",
+          "cytoolz": "1.1.0",
+          "databricks-sdk": "0.87.0",
+          "datasets": "3.6.0",
+          "debugpy": "1.8.20",
+          "decorator": "5.2.1",
+          "defusedxml": "0.7.1",
+          "dictdiffer": "0.9.0",
+          "dill": "0.3.8",
+          "diskcache": "5.6.3",
+          "distlib": "0.4.0",
+          "distro": "1.9.0",
+          "dnspython": "2.8.0",
+          "docker": "7.1.0",
+          "docker-pycreds": "0.4.0",
+          "docutils": "0.22.4",
+          "dominate": "2.9.1",
+          "dpath": "2.2.0",
+          "dulwich": "1.1.0",
+          "dvc": "3.66.1",
+          "dvc-data": "3.18.2",
+          "dvc-http": "2.32.0",
+          "dvc-objects": "5.2.0",
+          "dvc-render": "1.0.2",
+          "dvc-studio-client": "0.22.0",
+          "dvc-task": "0.40.2",
+          "einops": "0.8.2",
+          "entrypoints": "0.4",
+          "eth-account": "0.13.7",
+          "eth-hash": "0.7.1",
+          "eth-keyfile": "0.8.1",
+          "eth-keys": "0.7.0",
+          "eth-rlp": "2.2.0",
+          "eth-typing": "5.2.1",
+          "eth-utils": "5.3.1",
+          "eth_abi": "5.2.0",
+          "executing": "2.2.1",
+          "ezkl": "23.0.5",
+          "fastapi": "0.115.14",
+          "fastjsonschema": "2.21.2",
+          "filelock": "3.20.3",
+          "flake8": "7.3.0",
+          "flash_attn": "2.8.3",
+          "flask": "3.1.2",
+          "flask-admin": "2.0.2",
+          "flask-bootstrap": "3.3.7.1",
+          "flask-cache": "0.13.1",
+          "flask-flatpages": "0.9.0",
+          "flask-gravatar": "0.5.0",
+          "flask-login": "0.6.3",
+          "flask-mail": "0.10.0",
+          "flask-pymongo": "3.0.1",
+          "flask-restless": "0.17.0",
+          "flask-sqlalchemy": "3.1.1",
+          "flask-themes": "0.1.3",
+          "flask-uploads": "0.2.1",
+          "flask-wtf": "1.2.2",
+          "flatbuffers": "25.12.19",
+          "flatten-dict": "0.4.2",
+          "flufl.lock": "9.0.0",
+          "fonttools": "4.61.1",
+          "fqdn": "1.5.1",
+          "frozen-flask": "1.0.2",
+          "frozenlist": "1.8.0",
+          "fsspec": "2025.3.0",
+          "funcy": "2.0",
+          "gitdb": "4.0.12",
+          "gitpython": "3.1.46",
+          "google-auth": "2.48.0",
+          "grandalf": "0.8",
+          "graphene": "3.4.3",
+          "graphql-core": "3.2.7",
+          "graphql-relay": "3.2.0",
+          "greenlet": "3.3.1",
+          "grpcio": "1.78.0",
+          "gto": "1.9.0",
+          "gunicorn": "23.0.0",
+          "h11": "0.16.0",
+          "hexbytes": "1.3.1",
+          "hf-xet": "1.2.0",
+          "httpcore": "1.0.9",
+          "httptools": "0.8.0",
+          "httpx": "0.27.2",
+          "huggingface_hub": "0.36.2",
+          "hydra-core": "1.3.2",
+          "idna": "3.11",
+          "imagesize": "1.4.1",
+          "importlib_metadata": "8.7.1",
+          "iniconfig": "2.3.0",
+          "ipykernel": "6.31.0",
+          "ipython": "9.10.0",
+          "ipython_pygments_lexers": "1.1.1",
+          "ipywidgets": "8.1.8",
+          "isoduration": "20.11.0",
+          "isort": "5.13.2",
+          "iterative-telemetry": "0.0.10",
+          "itsdangerous": "2.2.0",
+          "jedi": "0.19.2",
+          "jinja2": "3.1.6",
+          "joblib": "1.5.3",
+          "json5": "0.13.0",
+          "jsonpointer": "3.0.0",
+          "jsonschema": "4.26.0",
+          "jsonschema-specifications": "2025.9.1",
+          "jupyter": "1.1.1",
+          "jupyter-console": "6.6.3",
+          "jupyter-events": "0.12.0",
+          "jupyter-lsp": "2.3.0",
+          "jupyter_client": "8.8.0",
+          "jupyter_core": "5.9.1",
+          "jupyter_server": "2.17.0",
+          "jupyter_server_terminals": "0.5.4",
+          "jupyterlab": "4.5.4",
+          "jupyterlab_pygments": "0.3.0",
+          "jupyterlab_server": "2.28.0",
+          "jupyterlab_widgets": "3.0.16",
+          "kiwisolver": "1.4.9",
+          "kombu": "5.6.2",
+          "lark": "1.3.1",
+          "librt": "0.7.8",
+          "loguru": "0.7.3",
+          "mako": "1.3.10",
+          "markdown": "3.10.2",
+          "markdown-it-py": "4.0.0",
+          "markupsafe": "3.0.3",
+          "matplotlib": "3.10.8",
+          "matplotlib-inline": "0.2.1",
+          "mccabe": "0.7.0",
+          "mdurl": "0.1.2",
+          "mimerender": "0.6.0",
+          "mistune": "3.2.0",
+          "ml_dtypes": "0.5.4",
+          "mlflow": "2.22.4",
+          "mlflow-skinny": "2.22.4",
+          "mpmath": "1.3.0",
+          "multidict": "6.7.1",
+          "multiprocess": "0.70.16",
+          "mypy": "1.19.1",
+          "mypy_extensions": "1.1.0",
+          "nbclient": "0.10.4",
+          "nbconvert": "7.17.0",
+          "nbformat": "5.10.4",
+          "nest-asyncio": "1.6.0",
+          "networkx": "3.6.1",
+          "notebook": "7.5.3",
+          "notebook_shim": "0.2.4",
+          "numpy": "1.26.4",
+          "nvidia-cublas-cu12": "12.4.5.8",
+          "nvidia-cuda-cupti-cu12": "12.4.127",
+          "nvidia-cuda-nvrtc-cu12": "12.4.127",
+          "nvidia-cuda-runtime-cu12": "12.4.127",
+          "nvidia-cudnn-cu12": "9.1.0.70",
+          "nvidia-cufft-cu12": "11.2.1.3",
+          "nvidia-curand-cu12": "10.3.5.147",
+          "nvidia-cusolver-cu12": "11.6.1.9",
+          "nvidia-cusparse-cu12": "12.3.1.170",
+          "nvidia-nccl-cu12": "2.21.5",
+          "nvidia-nvjitlink-cu12": "12.4.127",
+          "nvidia-nvtx-cu12": "12.4.127",
+          "omegaconf": "2.3.0",
+          "onnx": "1.21.0",
+          "onnx-ir": "0.2.1",
+          "onnxruntime": "1.26.0",
+          "onnxscript": "0.1.0",
+          "opentelemetry-api": "1.39.1",
+          "opentelemetry-sdk": "1.39.1",
+          "opentelemetry-semantic-conventions": "0.60b1",
+          "orjson": "3.11.7",
+          "packaging": "24.2",
+          "pandas": "2.3.3",
+          "pandocfilters": "1.5.1",
+          "parsimonious": "0.10.0",
+          "parso": "0.8.6",
+          "pathspec": "0.12.1",
+          "pdfminer.six": "20260107",
+          "peft": "0.15.2",
+          "pexpect": "4.9.0",
+          "pillow": "12.1.1",
+          "pip": "24.0",
+          "platformdirs": "4.5.1",
+          "pluggy": "1.6.0",
+          "polars": "1.38.1",
+          "polars-runtime-32": "1.38.1",
+          "prettytable": "3.17.0",
+          "prometheus-fastapi-instrumentator": "7.1.0",
+          "prometheus_client": "0.24.1",
+          "prompt_toolkit": "3.0.52",
+          "propcache": "0.4.1",
+          "protobuf": "5.29.6",
+          "psutil": "7.2.2",
+          "ptyprocess": "0.7.0",
+          "pure_eval": "0.2.3",
+          "py-solc-ast": "1.2.10",
+          "pyarrow": "19.0.1",
+          "pyasn1": "0.6.2",
+          "pyasn1_modules": "0.4.2",
+          "pycodestyle": "2.14.0",
+          "pycparser": "3.0",
+          "pycryptodome": "3.23.0",
+          "pydantic": "2.12.5",
+          "pydantic-settings": "2.13.1",
+          "pydantic_core": "2.41.5",
+          "pydot": "4.0.1",
+          "pyflakes": "3.4.0",
+          "pygit2": "1.19.1",
+          "pygments": "2.19.2",
+          "pygtrie": "2.5.0",
+          "pymongo": "4.15.5",
+          "pyparsing": "3.3.2",
+          "pyproject-api": "1.9.0",
+          "pytest": "8.4.2",
+          "pytest-cov": "4.1.0",
+          "python-dateutil": "2.9.0.post0",
+          "python-dotenv": "1.2.1",
+          "python-json-logger": "4.0.0",
+          "python-mimeparse": "2.0.0",
+          "pytz": "2025.2",
+          "pyunormalize": "17.0.0",
+          "pyyaml": "6.0.3",
+          "pyzmq": "27.1.0",
+          "referencing": "0.37.0",
+          "regex": "2026.1.15",
+          "requests": "2.32.5",
+          "rfc3339-validator": "0.1.4",
+          "rfc3986-validator": "0.1.1",
+          "rfc3987-syntax": "1.1.0",
+          "rich": "14.3.3",
+          "rlp": "4.1.0",
+          "roman-numerals": "4.1.0",
+          "rpds-py": "0.30.0",
+          "rsa": "4.9.1",
+          "ruamel.yaml": "0.19.1",
+          "safetensors": "0.7.0",
+          "scikit-learn": "1.8.0",
+          "scipy": "1.17.0",
+          "scmrepo": "3.6.1",
+          "seaborn": "0.13.2",
+          "semver": "3.0.4",
+          "send2trash": "2.1.0",
+          "sentinel-data": "0.1.0",
+          "sentinel-ml": "0.1.0",
+          "sentry-sdk": "2.52.0",
+          "setproctitle": "1.3.7",
+          "setuptools": "82.0.0",
+          "shellingham": "1.5.4",
+          "shortuuid": "1.0.13",
+          "shtab": "1.8.0",
+          "six": "1.17.0",
+          "slither-analyzer": "0.10.0",
+          "smmap": "5.0.2",
+          "sniffio": "1.3.1",
+          "snowballstemmer": "3.0.1",
+          "solc": "0.0.0a0",
+          "solc-select": "1.2.0",
+          "soupsieve": "2.8.3",
+          "sphinx": "9.0.4",
+          "sphinxcontrib-applehelp": "2.0.0",
+          "sphinxcontrib-devhelp": "2.0.0",
+          "sphinxcontrib-htmlhelp": "2.1.0",
+          "sphinxcontrib-jsmath": "1.0.1",
+          "sphinxcontrib-qthelp": "2.0.0",
+          "sphinxcontrib-serializinghtml": "2.0.0",
+          "sqlalchemy": "2.0.46",
+          "sqlparse": "0.5.5",
+          "sqltrie": "0.11.2",
+          "stack-data": "0.6.3",
+          "starlette": "0.46.2",
+          "sympy": "1.13.1",
+          "tabulate": "0.9.0",
+          "tensorboard": "2.20.0",
+          "tensorboard-data-server": "0.7.2",
+          "terminado": "0.18.1",
+          "threadpoolctl": "3.6.0",
+          "tinycss2": "1.4.0",
+          "tokenizers": "0.20.3",
+          "tomlkit": "0.14.0",
+          "toolz": "1.1.0",
+          "torch": "2.5.1",
+          "torch-geometric": "2.7.0",
+          "torch_scatter": "2.1.2+pt25cu124",
+          "torchaudio": "2.5.1",
+          "torchvision": "0.20.1",
+          "tornado": "6.5.4",
+          "tox": "4.27.0",
+          "tqdm": "4.67.3",
+          "traitlets": "5.14.3",
+          "transformers": "4.46.3",
+          "triton": "3.1.0",
+          "typer": "0.24.1",
+          "types-requests": "2.32.4.20260107",
+          "typing-inspection": "0.4.2",
+          "typing_extensions": "4.15.0",
+          "tzdata": "2025.3",
+          "tzlocal": "5.3.1",
+          "unzip": "1.0.0",
+          "uri-template": "1.3.0",
+          "urllib3": "2.6.3",
+          "uvicorn": "0.30.6",
+          "uvloop": "0.22.1",
+          "vine": "5.1.0",
+          "virtualenv": "20.35.4",
+          "visitor": "0.1.3",
+          "voluptuous": "0.16.0",
+          "wandb": "0.18.7",
+          "watchdog": "6.0.0",
+          "watchfiles": "1.2.0",
+          "wcwidth": "0.6.0",
+          "web3": "7.14.1",
+          "webcolors": "25.10.0",
+          "webencodings": "0.5.1",
+          "websocket-client": "1.9.0",
+          "websockets": "16.0",
+          "werkzeug": "3.1.5",
+          "wheel": "0.45.1",
+          "widgetsnbextension": "4.0.15",
+          "wtforms": "3.2.1",
+          "xxhash": "3.6.0",
+          "yarl": "1.22.0",
+          "zc.lockfile": "4.0",
+          "zipp": "3.23.0"
+        },
+        "python": "3.12.3"
+      },
+      "lock": "ml/poetry.lock",
+      "lock_sha256": "43069e3b9cf0973855ca111cc57138318347b5b1d1fd5a0495467dda49989c18",
+      "locked_packages": {
+        "absl-py": "2.4.0",
+        "accelerate": "1.14.0",
+        "aiohappyeyeballs": "2.6.1",
+        "aiohttp": "3.13.3",
+        "aiohttp-retry": "2.9.1",
+        "aiosignal": "1.4.0",
+        "alembic": "1.18.4",
+        "amqp": "5.3.1",
+        "annotated-doc": "0.0.4",
+        "annotated-types": "0.7.0",
+        "antlr4-python3-runtime": "4.9.3",
+        "anyio": "4.12.1",
+        "appdirs": "1.4.4",
+        "appnope": "0.1.4",
+        "argon2-cffi": "25.1.0",
+        "argon2-cffi-bindings": "25.1.0",
+        "arrow": "1.4.0",
+        "asttokens": "3.0.1",
+        "async-lru": "2.1.0",
+        "asyncssh": "2.22.0",
+        "atpublic": "7.0.0",
+        "attrs": "25.4.0",
+        "babel": "2.18.0",
+        "beautifulsoup4": "4.14.3",
+        "billiard": "4.2.4",
+        "black": "24.10.0",
+        "bleach": "6.3.0",
+        "blinker": "1.9.0",
+        "cachetools": "5.5.2",
+        "celery": "5.6.2",
+        "certifi": "2026.1.4",
+        "cffi": "2.0.0",
+        "charset-normalizer": "3.4.4",
+        "click": "8.3.1",
+        "click-didyoumean": "0.3.1",
+        "click-plugins": "1.1.1.2",
+        "click-repl": "0.3.0",
+        "cloudpickle": "3.1.2",
+        "colorama": "0.4.6",
+        "comm": "0.2.3",
+        "configobj": "5.0.9",
+        "contourpy": "1.3.3",
+        "coverage": "7.13.4",
+        "cryptography": "46.0.5",
+        "cycler": "0.12.1",
+        "databricks-sdk": "0.87.0",
+        "datasets": "3.6.0",
+        "debugpy": "1.8.20",
+        "decorator": "5.2.1",
+        "defusedxml": "0.7.1",
+        "dictdiffer": "0.9.0",
+        "dill": "0.3.8",
+        "diskcache": "5.6.3",
+        "distro": "1.9.0",
+        "docker": "7.1.0",
+        "docker-pycreds": "0.4.0",
+        "dpath": "2.2.0",
+        "dulwich": "1.1.0",
+        "dvc": "3.66.1",
+        "dvc-data": "3.18.2",
+        "dvc-http": "2.32.0",
+        "dvc-objects": "5.2.0",
+        "dvc-render": "1.0.2",
+        "dvc-studio-client": "0.22.0",
+        "dvc-task": "0.40.2",
+        "entrypoints": "0.4",
+        "executing": "2.2.1",
+        "ezkl": "23.0.5",
+        "fastapi": "0.115.14",
+        "fastjsonschema": "2.21.2",
+        "filelock": "3.20.3",
+        "flake8": "7.3.0",
+        "flask": "3.1.2",
+        "flatbuffers": "25.12.19",
+        "flatten-dict": "0.4.2",
+        "flufl-lock": "9.0.0",
+        "fonttools": "4.61.1",
+        "fqdn": "1.5.1",
+        "frozenlist": "1.8.0",
+        "fsspec": "2025.3.0",
+        "funcy": "2.0",
+        "gitdb": "4.0.12",
+        "gitpython": "3.1.46",
+        "google-auth": "2.48.0",
+        "grandalf": "0.8",
+        "graphene": "3.4.3",
+        "graphql-core": "3.2.7",
+        "graphql-relay": "3.2.0",
+        "greenlet": "3.3.1",
+        "grpcio": "1.78.0",
+        "gto": "1.9.0",
+        "gunicorn": "23.0.0",
+        "h11": "0.16.0",
+        "hf-xet": "1.2.0",
+        "httpcore": "1.0.9",
+        "httptools": "0.8.0",
+        "httpx": "0.27.2",
+        "huggingface-hub": "0.36.2",
+        "hydra-core": "1.3.2",
+        "idna": "3.11",
+        "importlib-metadata": "8.7.1",
+        "iniconfig": "2.3.0",
+        "ipykernel": "6.31.0",
+        "ipython": "9.10.0",
+        "ipython-pygments-lexers": "1.1.1",
+        "ipywidgets": "8.1.8",
+        "isoduration": "20.11.0",
+        "isort": "5.13.2",
+        "iterative-telemetry": "0.0.10",
+        "itsdangerous": "2.2.0",
+        "jedi": "0.19.2",
+        "jinja2": "3.1.6",
+        "joblib": "1.5.3",
+        "json5": "0.13.0",
+        "jsonpointer": "3.0.0",
+        "jsonschema": "4.26.0",
+        "jsonschema-specifications": "2025.9.1",
+        "jupyter": "1.1.1",
+        "jupyter-client": "8.8.0",
+        "jupyter-console": "6.6.3",
+        "jupyter-core": "5.9.1",
+        "jupyter-events": "0.12.0",
+        "jupyter-lsp": "2.3.0",
+        "jupyter-server": "2.17.0",
+        "jupyter-server-terminals": "0.5.4",
+        "jupyterlab": "4.5.4",
+        "jupyterlab-pygments": "0.3.0",
+        "jupyterlab-server": "2.28.0",
+        "jupyterlab-widgets": "3.0.16",
+        "kiwisolver": "1.4.9",
+        "kombu": "5.6.2",
+        "lark": "1.3.1",
+        "librt": "0.7.8",
+        "loguru": "0.7.3",
+        "mako": "1.3.10",
+        "markdown": "3.10.2",
+        "markdown-it-py": "4.0.0",
+        "markupsafe": "3.0.3",
+        "matplotlib": "3.10.8",
+        "matplotlib-inline": "0.2.1",
+        "mccabe": "0.7.0",
+        "mdurl": "0.1.2",
+        "mistune": "3.2.0",
+        "ml-dtypes": "0.5.4",
+        "mlflow": "2.22.4",
+        "mlflow-skinny": "2.22.4",
+        "mpmath": "1.3.0",
+        "multidict": "6.7.1",
+        "multiprocess": "0.70.16",
+        "mypy": "1.19.1",
+        "mypy-extensions": "1.1.0",
+        "nbclient": "0.10.4",
+        "nbconvert": "7.17.0",
+        "nbformat": "5.10.4",
+        "nest-asyncio": "1.6.0",
+        "networkx": "3.6.1",
+        "notebook": "7.5.3",
+        "notebook-shim": "0.2.4",
+        "numpy": "1.26.4",
+        "nvidia-cublas-cu12": "12.4.5.8",
+        "nvidia-cuda-cupti-cu12": "12.4.127",
+        "nvidia-cuda-nvrtc-cu12": "12.4.127",
+        "nvidia-cuda-runtime-cu12": "12.4.127",
+        "nvidia-cudnn-cu12": "9.1.0.70",
+        "nvidia-cufft-cu12": "11.2.1.3",
+        "nvidia-curand-cu12": "10.3.5.147",
+        "nvidia-cusolver-cu12": "11.6.1.9",
+        "nvidia-cusparse-cu12": "12.3.1.170",
+        "nvidia-nccl-cu12": "2.21.5",
+        "nvidia-nvjitlink-cu12": "12.4.127",
+        "nvidia-nvtx-cu12": "12.4.127",
+        "omegaconf": "2.3.0",
+        "onnx": "1.21.0",
+        "onnxruntime": "1.26.0",
+        "onnxscript": "0.1.0",
+        "opentelemetry-api": "1.39.1",
+        "opentelemetry-sdk": "1.39.1",
+        "opentelemetry-semantic-conventions": "0.60b1",
+        "orjson": "3.11.7",
+        "packaging": "24.2",
+        "pandas": "2.3.3",
+        "pandocfilters": "1.5.1",
+        "parso": "0.8.6",
+        "pathspec": "0.12.1",
+        "peft": "0.15.2",
+        "pexpect": "4.9.0",
+        "pillow": "12.1.1",
+        "platformdirs": "4.5.1",
+        "pluggy": "1.6.0",
+        "polars": "1.38.1",
+        "polars-runtime-32": "1.38.1",
+        "prometheus-client": "0.24.1",
+        "prometheus-fastapi-instrumentator": "7.1.0",
+        "prompt-toolkit": "3.0.52",
+        "propcache": "0.4.1",
+        "protobuf": "5.29.6",
+        "psutil": "7.2.2",
+        "ptyprocess": "0.7.0",
+        "pure-eval": "0.2.3",
+        "pyarrow": "19.0.1",
+        "pyasn1": "0.6.2",
+        "pyasn1-modules": "0.4.2",
+        "pycodestyle": "2.14.0",
+        "pycparser": "3.0",
+        "pydantic": "2.12.5",
+        "pydantic-core": "2.41.5",
+        "pydantic-settings": "2.13.1",
+        "pydot": "4.0.1",
+        "pyflakes": "3.4.0",
+        "pygit2": "1.19.1",
+        "pygments": "2.19.2",
+        "pygtrie": "2.5.0",
+        "pyparsing": "3.3.2",
+        "pytest": "8.4.2",
+        "pytest-cov": "4.1.0",
+        "python-dateutil": "2.9.0.post0",
+        "python-dotenv": "1.2.1",
+        "python-json-logger": "4.0.0",
+        "pytz": "2025.2",
+        "pywin32": "311",
+        "pywinpty": "3.0.3",
+        "pyyaml": "6.0.3",
+        "pyzmq": "27.1.0",
+        "referencing": "0.37.0",
+        "regex": "2026.1.15",
+        "requests": "2.32.5",
+        "rfc3339-validator": "0.1.4",
+        "rfc3986-validator": "0.1.1",
+        "rfc3987-syntax": "1.1.0",
+        "rich": "14.3.3",
+        "rpds-py": "0.30.0",
+        "rsa": "4.9.1",
+        "ruamel-yaml": "0.19.1",
+        "safetensors": "0.7.0",
+        "scikit-learn": "1.8.0",
+        "scipy": "1.17.0",
+        "scmrepo": "3.6.1",
+        "seaborn": "0.13.2",
+        "semver": "3.0.4",
+        "send2trash": "2.1.0",
+        "sentinel-data": "0.1.0",
+        "sentry-sdk": "2.52.0",
+        "setproctitle": "1.3.7",
+        "setuptools": "82.0.0",
+        "shellingham": "1.5.4",
+        "shortuuid": "1.0.13",
+        "shtab": "1.8.0",
+        "six": "1.17.0",
+        "smmap": "5.0.2",
+        "sniffio": "1.3.1",
+        "soupsieve": "2.8.3",
+        "sqlalchemy": "2.0.46",
+        "sqlparse": "0.5.5",
+        "sqltrie": "0.11.2",
+        "stack-data": "0.6.3",
+        "starlette": "0.46.2",
+        "sympy": "1.13.1",
+        "tabulate": "0.9.0",
+        "tensorboard": "2.20.0",
+        "tensorboard-data-server": "0.7.2",
+        "terminado": "0.18.1",
+        "threadpoolctl": "3.6.0",
+        "tinycss2": "1.4.0",
+        "tokenizers": "0.20.3",
+        "tomlkit": "0.14.0",
+        "torch": "2.5.1",
+        "torch-geometric": "2.7.0",
+        "torchaudio": "2.5.1",
+        "torchvision": "0.20.1",
+        "tornado": "6.5.4",
+        "tqdm": "4.67.3",
+        "traitlets": "5.14.3",
+        "transformers": "4.46.3",
+        "triton": "3.1.0",
+        "typer": "0.24.1",
+        "typing-extensions": "4.15.0",
+        "typing-inspection": "0.4.2",
+        "tzdata": "2025.3",
+        "tzlocal": "5.3.1",
+        "unzip": "1.0.0",
+        "uri-template": "1.3.0",
+        "urllib3": "2.6.3",
+        "uvicorn": "0.30.6",
+        "uvloop": "0.22.1",
+        "vine": "5.1.0",
+        "voluptuous": "0.16.0",
+        "waitress": "3.0.2",
+        "wandb": "0.18.7",
+        "watchfiles": "1.2.0",
+        "wcwidth": "0.6.0",
+        "webcolors": "25.10.0",
+        "webencodings": "0.5.1",
+        "websocket-client": "1.9.0",
+        "websockets": "16.0",
+        "werkzeug": "3.1.5",
+        "widgetsnbextension": "4.0.15",
+        "win32-setctime": "1.2.0",
+        "xxhash": "3.6.0",
+        "yarl": "1.22.0",
+        "zc-lockfile": "4.0",
+        "zipp": "3.23.0"
+      },
+      "manifest": "ml/pyproject.toml",
+      "manifest_sha256": "94bf80daa7c5208ea1afc42498a25f008c61ae5254fc733352b2add3de0c07ed",
+      "poetry_check": {
+        "command": [
+          "poetry",
+          "check",
+          "--lock"
+        ],
+        "cwd": "ml",
+        "elapsed_seconds": 0.34,
+        "exit_code": 0,
+        "stderr": "Warning: [tool.poetry.name] is deprecated. Use [project.name] instead.\nWarning: [tool.poetry.version] is set but 'version' is not in [project.dynamic]. If it is static use [project.version]. If it is dynamic, add 'version' to [project.dynamic].\nIf you want to set the version dynamically via `poetry build --local-version` or you are using a plugin, which sets the version dynamically, you should define the version in [tool.poetry] and add 'version' to [project.dynamic].\nWarning: [tool.poetry.description] is deprecated. Use [project.description] instead.\nWarning: [tool.poetry.readme] is set but 'readme' is not in [project.dynamic]. If it is static use [project.readme]. If it is dynamic, add 'readme' to [project.dynamic].\nIf you want to define multiple readmes, you should define them in [tool.poetry] and add 'readme' to [project.dynamic].\nWarning: [tool.poetry.authors] is deprecated. Use [project.authors] instead.\n",
+        "stdout": ""
+      }
+    }
+  },
+  "modules": {
+    "AGENTS": {
+      "source_files": 114,
+      "source_inventory": [
+        {
+          "lines": 66,
+          "path": "agents/src/api/__init__.py"
+        },
+        {
+          "lines": 635,
+          "path": "agents/src/api/gateway.py"
+        },
+        {
+          "lines": 234,
+          "path": "agents/src/api/job_store.py"
+        },
+        {
+          "lines": 193,
+          "path": "agents/src/api/models.py"
+        },
+        {
+          "lines": 256,
+          "path": "agents/src/api/sqlite_job_store.py"
+        },
+        {
+          "lines": 38,
+          "path": "agents/src/config/__init__.py"
+        },
+        {
+          "lines": 67,
+          "path": "agents/src/config/loader.py"
+        },
+        {
+          "lines": 287,
+          "path": "agents/src/config/runtime.py"
+        },
+        {
+          "lines": 100,
+          "path": "agents/src/config/schema.py"
+        },
+        {
+          "lines": 28,
+          "path": "agents/src/contracts/__init__.py"
+        },
+        {
+          "lines": 228,
+          "path": "agents/src/contracts/execution.py"
+        },
+        {
+          "lines": 40,
+          "path": "agents/src/contracts/submission.py"
+        },
+        {
+          "lines": 179,
+          "path": "agents/src/contracts/submission_v3.py"
+        },
+        {
+          "lines": 81,
+          "path": "agents/src/eval/__init__.py"
+        },
+        {
+          "lines": 249,
+          "path": "agents/src/eval/benchmarks.py"
+        },
+        {
+          "lines": 234,
+          "path": "agents/src/eval/gates.py"
+        },
+        {
+          "lines": 319,
+          "path": "agents/src/eval/pipeline_metrics.py"
+        },
+        {
+          "lines": 46,
+          "path": "agents/src/eval/provenance.py"
+        },
+        {
+          "lines": 196,
+          "path": "agents/src/eval/regression.py"
+        },
+        {
+          "lines": 357,
+          "path": "agents/src/eval/reliability_fit.py"
+        },
+        {
+          "lines": 229,
+          "path": "agents/src/eval/reliability_matrix.py"
+        },
+        {
+          "lines": 420,
+          "path": "agents/src/eval/run_benchmark.py"
+        },
+        {
+          "lines": 0,
+          "path": "agents/src/ingestion/__init__.py"
+        },
+        {
+          "lines": 149,
+          "path": "agents/src/ingestion/audit_observation.py"
+        },
+        {
+          "lines": 136,
+          "path": "agents/src/ingestion/deduplicator.py"
+        },
+        {
+          "lines": 497,
+          "path": "agents/src/ingestion/feedback_loop.py"
+        },
+        {
+          "lines": 206,
+          "path": "agents/src/ingestion/feedback_observer.py"
+        },
+        {
+          "lines": 73,
+          "path": "agents/src/ingestion/feedback_policy.py"
+        },
+        {
+          "lines": 203,
+          "path": "agents/src/ingestion/feedback_runtime.py"
+        },
+        {
+          "lines": 313,
+          "path": "agents/src/ingestion/pipeline.py"
+        },
+        {
+          "lines": 200,
+          "path": "agents/src/ingestion/scheduler_cron.py"
+        },
+        {
+          "lines": 140,
+          "path": "agents/src/ingestion/scheduler_dagster.py"
+        },
+        {
+          "lines": 230,
+          "path": "agents/src/llm/client.py"
+        },
+        {
+          "lines": 0,
+          "path": "agents/src/mcp/__init__.py"
+        },
+        {
+          "lines": 0,
+          "path": "agents/src/mcp/servers/__init__.py"
+        },
+        {
+          "lines": 16,
+          "path": "agents/src/mcp/servers/audit/__init__.py"
+        },
+        {
+          "lines": 118,
+          "path": "agents/src/mcp/servers/audit/_config.py"
+        },
+        {
+          "lines": 120,
+          "path": "agents/src/mcp/servers/audit/_decode.py"
+        },
+        {
+          "lines": 586,
+          "path": "agents/src/mcp/servers/audit/_handlers.py"
+        },
+        {
+          "lines": 152,
+          "path": "agents/src/mcp/servers/audit/_lifecycle.py"
+        },
+        {
+          "lines": 445,
+          "path": "agents/src/mcp/servers/audit/_readonly_handlers.py"
+        },
+        {
+          "lines": 109,
+          "path": "agents/src/mcp/servers/audit/_server.py"
+        },
+        {
+          "lines": 108,
+          "path": "agents/src/mcp/servers/audit/_status.py"
+        },
+        {
+          "lines": 888,
+          "path": "agents/src/mcp/servers/audit/_submit.py"
+        },
+        {
+          "lines": 193,
+          "path": "agents/src/mcp/servers/audit/_versioned_reads.py"
+        },
+        {
+          "lines": 56,
+          "path": "agents/src/mcp/servers/audit_server.py"
+        },
+        {
+          "lines": 544,
+          "path": "agents/src/mcp/servers/graph_inspector_server.py"
+        },
+        {
+          "lines": 5,
+          "path": "agents/src/mcp/servers/inference/__init__.py"
+        },
+        {
+          "lines": 200,
+          "path": "agents/src/mcp/servers/inference/runtime.py"
+        },
+        {
+          "lines": 447,
+          "path": "agents/src/mcp/servers/inference_server.py"
+        },
+        {
+          "lines": 355,
+          "path": "agents/src/mcp/servers/rag_server.py"
+        },
+        {
+          "lines": 436,
+          "path": "agents/src/mcp/servers/representation_server.py"
+        },
+        {
+          "lines": 10,
+          "path": "agents/src/orchestration/__init__.py"
+        },
+        {
+          "lines": 56,
+          "path": "agents/src/orchestration/attribution.py"
+        },
+        {
+          "lines": 86,
+          "path": "agents/src/orchestration/confidence.py"
+        },
+        {
+          "lines": 137,
+          "path": "agents/src/orchestration/consensus.py"
+        },
+        {
+          "lines": 304,
+          "path": "agents/src/orchestration/graph.py"
+        },
+        {
+          "lines": 41,
+          "path": "agents/src/orchestration/nodes/__init__.py"
+        },
+        {
+          "lines": 266,
+          "path": "agents/src/orchestration/nodes/_helpers.py"
+        },
+        {
+          "lines": 128,
+          "path": "agents/src/orchestration/nodes/audit_check.py"
+        },
+        {
+          "lines": 105,
+          "path": "agents/src/orchestration/nodes/consensus_engine.py"
+        },
+        {
+          "lines": 545,
+          "path": "agents/src/orchestration/nodes/cross_validator.py"
+        },
+        {
+          "lines": 56,
+          "path": "agents/src/orchestration/nodes/evidence_router.py"
+        },
+        {
+          "lines": 54,
+          "path": "agents/src/orchestration/nodes/explainer.py"
+        },
+        {
+          "lines": 310,
+          "path": "agents/src/orchestration/nodes/formal_verification.py"
+        },
+        {
+          "lines": 108,
+          "path": "agents/src/orchestration/nodes/graph_explain.py"
+        },
+        {
+          "lines": 187,
+          "path": "agents/src/orchestration/nodes/ml_assessment.py"
+        },
+        {
+          "lines": 212,
+          "path": "agents/src/orchestration/nodes/quick_screen.py"
+        },
+        {
+          "lines": 149,
+          "path": "agents/src/orchestration/nodes/rag_research.py"
+        },
+        {
+          "lines": 170,
+          "path": "agents/src/orchestration/nodes/reflection.py"
+        },
+        {
+          "lines": 265,
+          "path": "agents/src/orchestration/nodes/static_analysis.py"
+        },
+        {
+          "lines": 514,
+          "path": "agents/src/orchestration/nodes/synthesizer.py"
+        },
+        {
+          "lines": 41,
+          "path": "agents/src/orchestration/nodes/visualizer.py"
+        },
+        {
+          "lines": 29,
+          "path": "agents/src/orchestration/provenance.py"
+        },
+        {
+          "lines": 244,
+          "path": "agents/src/orchestration/routing.py"
+        },
+        {
+          "lines": 255,
+          "path": "agents/src/orchestration/state.py"
+        },
+        {
+          "lines": 87,
+          "path": "agents/src/orchestration/timeouts.py"
+        },
+        {
+          "lines": 74,
+          "path": "agents/src/orchestration/timing.py"
+        },
+        {
+          "lines": 19,
+          "path": "agents/src/orchestration/verdict/__init__.py"
+        },
+        {
+          "lines": 332,
+          "path": "agents/src/orchestration/verdict/emit.py"
+        },
+        {
+          "lines": 184,
+          "path": "agents/src/orchestration/verdict/evidence.py"
+        },
+        {
+          "lines": 177,
+          "path": "agents/src/orchestration/verdict/fuse.py"
+        },
+        {
+          "lines": 140,
+          "path": "agents/src/orchestration/verdict/reliability.py"
+        },
+        {
+          "lines": 20,
+          "path": "agents/src/orchestration/verdict/verdict.py"
+        },
+        {
+          "lines": 163,
+          "path": "agents/src/orchestration/visualizer.py"
+        },
+        {
+          "lines": 38,
+          "path": "agents/src/persistence/__init__.py"
+        },
+        {
+          "lines": 67,
+          "path": "agents/src/persistence/legacy_adapter.py"
+        },
+        {
+          "lines": 86,
+          "path": "agents/src/persistence/paths.py"
+        },
+        {
+          "lines": 163,
+          "path": "agents/src/persistence/report_writer.py"
+        },
+        {
+          "lines": 19,
+          "path": "agents/src/rag/build_index/__init__.py"
+        },
+        {
+          "lines": 18,
+          "path": "agents/src/rag/build_index/__main__.py"
+        },
+        {
+          "lines": 173,
+          "path": "agents/src/rag/build_index/_io.py"
+        },
+        {
+          "lines": 152,
+          "path": "agents/src/rag/build_index/_metadata.py"
+        },
+        {
+          "lines": 235,
+          "path": "agents/src/rag/build_index/_orchestrator.py"
+        },
+        {
+          "lines": 54,
+          "path": "agents/src/rag/build_index/_paths.py"
+        },
+        {
+          "lines": 170,
+          "path": "agents/src/rag/build_index/_pipeline.py"
+        },
+        {
+          "lines": 199,
+          "path": "agents/src/rag/chunker.py"
+        },
+        {
+          "lines": 228,
+          "path": "agents/src/rag/embedder.py"
+        },
+        {
+          "lines": 95,
+          "path": "agents/src/rag/fetchers/base_fetcher.py"
+        },
+        {
+          "lines": 17,
+          "path": "agents/src/rag/fetchers/code4rena_fetcher.py"
+        },
+        {
+          "lines": 478,
+          "path": "agents/src/rag/fetchers/github_fetcher.py"
+        },
+        {
+          "lines": 15,
+          "path": "agents/src/rag/fetchers/immunefi_fetcher.py"
+        },
+        {
+          "lines": 131,
+          "path": "agents/src/rag/fetchers/json_corpus_fetcher.py"
+        },
+        {
+          "lines": 15,
+          "path": "agents/src/rag/fetchers/sherlock_fetcher.py"
+        },
+        {
+          "lines": 15,
+          "path": "agents/src/rag/fetchers/solodit_fetcher.py"
+        },
+        {
+          "lines": 18,
+          "path": "agents/src/rag/fetchers/swc_registry_fetcher.py"
+        },
+        {
+          "lines": 334,
+          "path": "agents/src/rag/retriever.py"
+        },
+        {
+          "lines": 23,
+          "path": "agents/src/security/__init__.py"
+        },
+        {
+          "lines": 163,
+          "path": "agents/src/security/auth.py"
+        },
+        {
+          "lines": 141,
+          "path": "agents/src/security/comment_strip.py"
+        },
+        {
+          "lines": 287,
+          "path": "agents/src/security/injection_detect.py"
+        },
+        {
+          "lines": 479,
+          "path": "agents/src/security/policy_signer.py"
+        },
+        {
+          "lines": 35,
+          "path": "agents/src/security/prompt_delimit.py"
+        },
+        {
+          "lines": 38,
+          "path": "agents/src/security/prompt_sanitize.py"
+        }
+      ],
+      "source_physical_lines": 20761,
+      "source_root": "agents/src",
+      "source_subareas": {
+        "api": 5,
+        "config": 4,
+        "contracts": 4,
+        "eval": 9,
+        "ingestion": 10,
+        "llm": 1,
+        "mcp": 19,
+        "orchestration": 33,
+        "persistence": 4,
+        "rag": 18,
+        "security": 7
+      },
+      "test_root": "agents/tests",
+      "test_source_files": 66,
+      "tracked_subareas": {
+        "AGENTS_STATE_AND_REDESIGN_2026-06-14.md": 1,
+        "DIAGRAM.md": 1,
+        "DIAGRAM.mmd": 1,
+        "README.md": 1,
+        "configs": 6,
+        "eval": 628,
+        "poetry.lock": 1,
+        "pyproject.toml": 1,
+        "scripts": 11,
+        "src": 135,
+        "test_audit_reports": 25,
+        "test_audit_reports_p0_BROKEN_ADERYN": 83,
+        "test_audit_reports_post_aderyn_fix": 83,
+        "test_audit_reports_post_aderyn_fix_rule5c_v2": 83,
+        "test_audit_reports_post_quarantine_no_llm": 79,
+        "test_audit_reports_with_cascade": 4,
+        "test_contracts": 15,
+        "tests": 67
+      }
+    },
+    "CONTRACTS": {
+      "source_files": 4,
+      "source_inventory": [
+        {
+          "lines": 530,
+          "path": "contracts/src/AuditRegistry.sol"
+        },
+        {
+          "lines": 14,
+          "path": "contracts/src/IZKMLVerifier.sol"
+        },
+        {
+          "lines": 61,
+          "path": "contracts/src/SentinelToken.sol"
+        },
+        {
+          "lines": 1427,
+          "path": "contracts/src/ZKMLVerifier.sol"
+        }
+      ],
+      "source_physical_lines": 2032,
+      "source_root": "contracts/src",
+      "source_subareas": {
+        "(root files)": 4
+      },
+      "test_root": "contracts/test",
+      "test_source_files": 11,
+      "tracked_subareas": {
+        ".github": 1,
+        ".gitignore": 1,
+        ".gitmodules": 1,
+        "CONTRACTS_STATE_AND_REDESIGN_2026-06-14.md": 1,
+        "README.md": 1,
+        "foundry.lock": 1,
+        "foundry.toml": 1,
+        "remappings.txt": 1,
+        "script": 2,
+        "scripts": 1,
+        "src": 4,
+        "test": 11
+      }
+    },
+    "DATA": {
+      "source_files": 111,
+      "source_inventory": [
+        {
+          "lines": 57,
+          "path": "data_module/sentinel_data/__init__.py"
+        },
+        {
+          "lines": 26,
+          "path": "data_module/sentinel_data/analysis/__init__.py"
+        },
+        {
+          "lines": 134,
+          "path": "data_module/sentinel_data/analysis/balance_viz.py"
+        },
+        {
+          "lines": 187,
+          "path": "data_module/sentinel_data/analysis/cooccurrence.py"
+        },
+        {
+          "lines": 298,
+          "path": "data_module/sentinel_data/analysis/drift_monitor.py"
+        },
+        {
+          "lines": 436,
+          "path": "data_module/sentinel_data/analysis/feature_dist.py"
+        },
+        {
+          "lines": 267,
+          "path": "data_module/sentinel_data/analysis/overlap_detector.py"
+        },
+        {
+          "lines": 22,
+          "path": "data_module/sentinel_data/analysis/probe_dataset.py"
+        },
+        {
+          "lines": 1053,
+          "path": "data_module/sentinel_data/cli.py"
+        },
+        {
+          "lines": 52,
+          "path": "data_module/sentinel_data/export/__init__.py"
+        },
+        {
+          "lines": 248,
+          "path": "data_module/sentinel_data/export/chunker.py"
+        },
+        {
+          "lines": 253,
+          "path": "data_module/sentinel_data/export/export.py"
+        },
+        {
+          "lines": 106,
+          "path": "data_module/sentinel_data/export/graph_writer.py"
+        },
+        {
+          "lines": 150,
+          "path": "data_module/sentinel_data/export/label_writer.py"
+        },
+        {
+          "lines": 200,
+          "path": "data_module/sentinel_data/export/metadata_writer.py"
+        },
+        {
+          "lines": 130,
+          "path": "data_module/sentinel_data/export/pickle_safe.py"
+        },
+        {
+          "lines": 191,
+          "path": "data_module/sentinel_data/export/release_descriptor.py"
+        },
+        {
+          "lines": 95,
+          "path": "data_module/sentinel_data/export/token_writer.py"
+        },
+        {
+          "lines": 6,
+          "path": "data_module/sentinel_data/ingestion/__init__.py"
+        },
+        {
+          "lines": 352,
+          "path": "data_module/sentinel_data/ingestion/archive_safety.py"
+        },
+        {
+          "lines": 38,
+          "path": "data_module/sentinel_data/ingestion/connectors/__init__.py"
+        },
+        {
+          "lines": 95,
+          "path": "data_module/sentinel_data/ingestion/connectors/base.py"
+        },
+        {
+          "lines": 13,
+          "path": "data_module/sentinel_data/ingestion/connectors/etherscan_connector.py"
+        },
+        {
+          "lines": 89,
+          "path": "data_module/sentinel_data/ingestion/connectors/git_connector.py"
+        },
+        {
+          "lines": 13,
+          "path": "data_module/sentinel_data/ingestion/connectors/huggingface_connector.py"
+        },
+        {
+          "lines": 177,
+          "path": "data_module/sentinel_data/ingestion/connectors/manual_connector.py"
+        },
+        {
+          "lines": 13,
+          "path": "data_module/sentinel_data/ingestion/connectors/zenodo_connector.py"
+        },
+        {
+          "lines": 120,
+          "path": "data_module/sentinel_data/ingestion/freshness.py"
+        },
+        {
+          "lines": 113,
+          "path": "data_module/sentinel_data/ingestion/ingest.py"
+        },
+        {
+          "lines": 173,
+          "path": "data_module/sentinel_data/ingestion/label_folderize.py"
+        },
+        {
+          "lines": 111,
+          "path": "data_module/sentinel_data/ingestion/manifest.py"
+        },
+        {
+          "lines": 7,
+          "path": "data_module/sentinel_data/labeling/__init__.py"
+        },
+        {
+          "lines": 139,
+          "path": "data_module/sentinel_data/labeling/gate.py"
+        },
+        {
+          "lines": 240,
+          "path": "data_module/sentinel_data/labeling/merger.py"
+        },
+        {
+          "lines": 7,
+          "path": "data_module/sentinel_data/labeling/parsers/__init__.py"
+        },
+        {
+          "lines": 167,
+          "path": "data_module/sentinel_data/labeling/parsers/dive.py"
+        },
+        {
+          "lines": 165,
+          "path": "data_module/sentinel_data/labeling/parsers/smartbugs_curated.py"
+        },
+        {
+          "lines": 162,
+          "path": "data_module/sentinel_data/labeling/parsers/solidifi.py"
+        },
+        {
+          "lines": 31,
+          "path": "data_module/sentinel_data/labeling/schema/__init__.py"
+        },
+        {
+          "lines": 5,
+          "path": "data_module/sentinel_data/preprocessing/__init__.py"
+        },
+        {
+          "lines": 104,
+          "path": "data_module/sentinel_data/preprocessing/_transitive_strip.py"
+        },
+        {
+          "lines": 252,
+          "path": "data_module/sentinel_data/preprocessing/compiler.py"
+        },
+        {
+          "lines": 157,
+          "path": "data_module/sentinel_data/preprocessing/deduplicator.py"
+        },
+        {
+          "lines": 311,
+          "path": "data_module/sentinel_data/preprocessing/flattener.py"
+        },
+        {
+          "lines": 134,
+          "path": "data_module/sentinel_data/preprocessing/normalizer.py"
+        },
+        {
+          "lines": 156,
+          "path": "data_module/sentinel_data/preprocessing/parallel.py"
+        },
+        {
+          "lines": 246,
+          "path": "data_module/sentinel_data/preprocessing/pipeline.py"
+        },
+        {
+          "lines": 264,
+          "path": "data_module/sentinel_data/preprocessing/preprocess.py"
+        },
+        {
+          "lines": 128,
+          "path": "data_module/sentinel_data/preprocessing/r4_completeness.py"
+        },
+        {
+          "lines": 259,
+          "path": "data_module/sentinel_data/preprocessing/r4_grouping.py"
+        },
+        {
+          "lines": 222,
+          "path": "data_module/sentinel_data/preprocessing/r4_grouping_audit.py"
+        },
+        {
+          "lines": 285,
+          "path": "data_module/sentinel_data/preprocessing/r4_grouping_v3.py"
+        },
+        {
+          "lines": 470,
+          "path": "data_module/sentinel_data/preprocessing/r4_pipeline.py"
+        },
+        {
+          "lines": 189,
+          "path": "data_module/sentinel_data/preprocessing/r4_raw_verifier.py"
+        },
+        {
+          "lines": 66,
+          "path": "data_module/sentinel_data/preprocessing/r4_versions.py"
+        },
+        {
+          "lines": 68,
+          "path": "data_module/sentinel_data/preprocessing/segmenter.py"
+        },
+        {
+          "lines": 21,
+          "path": "data_module/sentinel_data/registry/__init__.py"
+        },
+        {
+          "lines": 541,
+          "path": "data_module/sentinel_data/registry/catalog.py"
+        },
+        {
+          "lines": 161,
+          "path": "data_module/sentinel_data/registry/dataset_diff.py"
+        },
+        {
+          "lines": 98,
+          "path": "data_module/sentinel_data/registry/lineage_tracker.py"
+        },
+        {
+          "lines": 69,
+          "path": "data_module/sentinel_data/representation/__init__.py"
+        },
+        {
+          "lines": 119,
+          "path": "data_module/sentinel_data/representation/cache_manager.py"
+        },
+        {
+          "lines": 35,
+          "path": "data_module/sentinel_data/representation/call_graph.py"
+        },
+        {
+          "lines": 309,
+          "path": "data_module/sentinel_data/representation/cfg_builder.py"
+        },
+        {
+          "lines": 2327,
+          "path": "data_module/sentinel_data/representation/graph_extractor.py"
+        },
+        {
+          "lines": 251,
+          "path": "data_module/sentinel_data/representation/graph_schema.py"
+        },
+        {
+          "lines": 126,
+          "path": "data_module/sentinel_data/representation/graph_schema_versions.py"
+        },
+        {
+          "lines": 36,
+          "path": "data_module/sentinel_data/representation/opcode_extractor.py"
+        },
+        {
+          "lines": 344,
+          "path": "data_module/sentinel_data/representation/orchestrator.py"
+        },
+        {
+          "lines": 34,
+          "path": "data_module/sentinel_data/representation/pdg_builder.py"
+        },
+        {
+          "lines": 672,
+          "path": "data_module/sentinel_data/representation/r4_compatibility.py"
+        },
+        {
+          "lines": 865,
+          "path": "data_module/sentinel_data/representation/r4_guarded_token_candidate.py"
+        },
+        {
+          "lines": 757,
+          "path": "data_module/sentinel_data/representation/r4_orchestrator.py"
+        },
+        {
+          "lines": 240,
+          "path": "data_module/sentinel_data/representation/r4_sensitivity.py"
+        },
+        {
+          "lines": 77,
+          "path": "data_module/sentinel_data/representation/r4_target_spans.py"
+        },
+        {
+          "lines": 246,
+          "path": "data_module/sentinel_data/representation/target_selector.py"
+        },
+        {
+          "lines": 72,
+          "path": "data_module/sentinel_data/representation/tokenizer.py"
+        },
+        {
+          "lines": 234,
+          "path": "data_module/sentinel_data/representation/v10_cfg_determinism.py"
+        },
+        {
+          "lines": 100,
+          "path": "data_module/sentinel_data/representation/versioner.py"
+        },
+        {
+          "lines": 39,
+          "path": "data_module/sentinel_data/splitting/__init__.py"
+        },
+        {
+          "lines": 116,
+          "path": "data_module/sentinel_data/splitting/dedup_enforcer.py"
+        },
+        {
+          "lines": 163,
+          "path": "data_module/sentinel_data/splitting/leakage_auditor.py"
+        },
+        {
+          "lines": 163,
+          "path": "data_module/sentinel_data/splitting/nonvulnerable_cap.py"
+        },
+        {
+          "lines": 441,
+          "path": "data_module/sentinel_data/splitting/splitters.py"
+        },
+        {
+          "lines": 7,
+          "path": "data_module/sentinel_data/verification/__init__.py"
+        },
+        {
+          "lines": 237,
+          "path": "data_module/sentinel_data/verification/aderyn_runner.py"
+        },
+        {
+          "lines": 189,
+          "path": "data_module/sentinel_data/verification/class_auditor.py"
+        },
+        {
+          "lines": 336,
+          "path": "data_module/sentinel_data/verification/fp_estimator.py"
+        },
+        {
+          "lines": 286,
+          "path": "data_module/sentinel_data/verification/gate.py"
+        },
+        {
+          "lines": 235,
+          "path": "data_module/sentinel_data/verification/negative_checker.py"
+        },
+        {
+          "lines": 361,
+          "path": "data_module/sentinel_data/verification/probe_dataset.py"
+        },
+        {
+          "lines": 226,
+          "path": "data_module/sentinel_data/verification/probe_trivials.py"
+        },
+        {
+          "lines": 272,
+          "path": "data_module/sentinel_data/verification/report_generator.py"
+        },
+        {
+          "lines": 347,
+          "path": "data_module/sentinel_data/verification/semantic_checker.py"
+        },
+        {
+          "lines": 250,
+          "path": "data_module/sentinel_data/verification/slither_runner.py"
+        },
+        {
+          "lines": 273,
+          "path": "data_module/sentinel_data/verification/tool_validator.py"
+        },
+        {
+          "lines": 17,
+          "path": "data_module/sentinel_data/vnext/__init__.py"
+        },
+        {
+          "lines": 409,
+          "path": "data_module/sentinel_data/vnext/builder.py"
+        },
+        {
+          "lines": 208,
+          "path": "data_module/sentinel_data/vnext/cli.py"
+        },
+        {
+          "lines": 523,
+          "path": "data_module/sentinel_data/vnext/confirmed_negative_evaluation.py"
+        },
+        {
+          "lines": 123,
+          "path": "data_module/sentinel_data/vnext/loader.py"
+        },
+        {
+          "lines": 227,
+          "path": "data_module/sentinel_data/vnext/policy.py"
+        },
+        {
+          "lines": 183,
+          "path": "data_module/sentinel_data/vnext/publication.py"
+        },
+        {
+          "lines": 426,
+          "path": "data_module/sentinel_data/vnext/r4_binding.py"
+        },
+        {
+          "lines": 715,
+          "path": "data_module/sentinel_data/vnext/r4_builder.py"
+        },
+        {
+          "lines": 673,
+          "path": "data_module/sentinel_data/vnext/r4_logical_v3.py"
+        },
+        {
+          "lines": 333,
+          "path": "data_module/sentinel_data/vnext/r4_source_claims.py"
+        },
+        {
+          "lines": 289,
+          "path": "data_module/sentinel_data/vnext/r4_v10_binding.py"
+        },
+        {
+          "lines": 20,
+          "path": "data_module/sentinel_data/vnext/r4_v3_versions.py"
+        },
+        {
+          "lines": 232,
+          "path": "data_module/sentinel_data/vnext/representations.py"
+        },
+        {
+          "lines": 367,
+          "path": "data_module/sentinel_data/vnext/validator.py"
+        }
+      ],
+      "source_physical_lines": 25872,
+      "source_root": "data_module/sentinel_data",
+      "source_subareas": {
+        "(root files)": 2,
+        "analysis": 7,
+        "export": 9,
+        "ingestion": 13,
+        "labeling": 8,
+        "preprocessing": 17,
+        "registry": 4,
+        "representation": 19,
+        "splitting": 5,
+        "verification": 12,
+        "vnext": 15
+      },
+      "test_root": "data_module/tests",
+      "test_source_files": 82,
+      "tracked_subareas": {
+        ".dvc": 2,
+        ".dvcignore": 1,
+        ".gitignore": 1,
+        "2026-06-13_DATA_MODULE_AUDIT_v2_45pct_leakage_finding.md": 1,
+        "CLAUDE.md": 1,
+        "README.md": 1,
+        "audit": 28,
+        "benchmarks": 147,
+        "config.yaml": 1,
+        "data": 10,
+        "docker": 2,
+        "docs": 219,
+        "dvc.yaml": 1,
+        "poetry.lock": 1,
+        "pyproject.toml": 1,
+        "pytest.ini": 1,
+        "sentinel_data": 144,
+        "temp": 19,
+        "tests": 83
+      }
+    },
+    "ML": {
+      "source_files": 50,
+      "source_inventory": [
+        {
+          "lines": 0,
+          "path": "ml/src/__init__.py"
+        },
+        {
+          "lines": 12,
+          "path": "ml/src/data_extraction/__init__.py"
+        },
+        {
+          "lines": 384,
+          "path": "ml/src/data_extraction/bounded_window_selector.py"
+        },
+        {
+          "lines": 292,
+          "path": "ml/src/data_extraction/windowed_tokenizer.py"
+        },
+        {
+          "lines": 37,
+          "path": "ml/src/datasets/__init__.py"
+        },
+        {
+          "lines": 51,
+          "path": "ml/src/datasets/collate.py"
+        },
+        {
+          "lines": 197,
+          "path": "ml/src/datasets/sentinel_dataset.py"
+        },
+        {
+          "lines": 366,
+          "path": "ml/src/datasets/vnext_dataset.py"
+        },
+        {
+          "lines": 76,
+          "path": "ml/src/datasets/vnext_logical_v3_dataset.py"
+        },
+        {
+          "lines": 337,
+          "path": "ml/src/datasets/vnext_logical_v3_guarded_dataset.py"
+        },
+        {
+          "lines": 140,
+          "path": "ml/src/datasets/vnext_logical_v3_v10_dataset.py"
+        },
+        {
+          "lines": 241,
+          "path": "ml/src/datasets/vnext_repaired_dataset.py"
+        },
+        {
+          "lines": 0,
+          "path": "ml/src/inference/__init__.py"
+        },
+        {
+          "lines": 584,
+          "path": "ml/src/inference/api.py"
+        },
+        {
+          "lines": 161,
+          "path": "ml/src/inference/cache.py"
+        },
+        {
+          "lines": 253,
+          "path": "ml/src/inference/drift_detector.py"
+        },
+        {
+          "lines": 42,
+          "path": "ml/src/inference/execution_status.py"
+        },
+        {
+          "lines": 931,
+          "path": "ml/src/inference/predictor.py"
+        },
+        {
+          "lines": 625,
+          "path": "ml/src/inference/preprocess.py"
+        },
+        {
+          "lines": 0,
+          "path": "ml/src/models/__init__.py"
+        },
+        {
+          "lines": 282,
+          "path": "ml/src/models/fusion_layer.py"
+        },
+        {
+          "lines": 676,
+          "path": "ml/src/models/gnn_encoder.py"
+        },
+        {
+          "lines": 673,
+          "path": "ml/src/models/sentinel_model.py"
+        },
+        {
+          "lines": 388,
+          "path": "ml/src/models/transformer_encoder.py"
+        },
+        {
+          "lines": 44,
+          "path": "ml/src/preprocessing/__init__.py"
+        },
+        {
+          "lines": 28,
+          "path": "ml/src/preprocessing/graph_extractor.py"
+        },
+        {
+          "lines": 22,
+          "path": "ml/src/preprocessing/graph_schema.py"
+        },
+        {
+          "lines": 0,
+          "path": "ml/src/training/__init__.py"
+        },
+        {
+          "lines": 143,
+          "path": "ml/src/training/focalloss.py"
+        },
+        {
+          "lines": 45,
+          "path": "ml/src/training/group_sampler.py"
+        },
+        {
+          "lines": 126,
+          "path": "ml/src/training/losses.py"
+        },
+        {
+          "lines": 2091,
+          "path": "ml/src/training/trainer.py"
+        },
+        {
+          "lines": 729,
+          "path": "ml/src/training/training_logger.py"
+        },
+        {
+          "lines": 271,
+          "path": "ml/src/training/vnext_binding.py"
+        },
+        {
+          "lines": 278,
+          "path": "ml/src/training/vnext_checkpoint.py"
+        },
+        {
+          "lines": 223,
+          "path": "ml/src/training/vnext_epoch.py"
+        },
+        {
+          "lines": 291,
+          "path": "ml/src/training/vnext_guarded_binding.py"
+        },
+        {
+          "lines": 137,
+          "path": "ml/src/training/vnext_guarded_run_control.py"
+        },
+        {
+          "lines": 599,
+          "path": "ml/src/training/vnext_guarded_runner.py"
+        },
+        {
+          "lines": 150,
+          "path": "ml/src/training/vnext_losses.py"
+        },
+        {
+          "lines": 24,
+          "path": "ml/src/training/vnext_model_factory.py"
+        },
+        {
+          "lines": 52,
+          "path": "ml/src/training/vnext_param_groups.py"
+        },
+        {
+          "lines": 70,
+          "path": "ml/src/training/vnext_phase8_config.py"
+        },
+        {
+          "lines": 121,
+          "path": "ml/src/training/vnext_repaired_binding.py"
+        },
+        {
+          "lines": 318,
+          "path": "ml/src/training/vnext_run_control.py"
+        },
+        {
+          "lines": 467,
+          "path": "ml/src/training/vnext_run_io.py"
+        },
+        {
+          "lines": 496,
+          "path": "ml/src/training/vnext_runner.py"
+        },
+        {
+          "lines": 3,
+          "path": "ml/src/training/vnext_smoke_core.py"
+        },
+        {
+          "lines": 0,
+          "path": "ml/src/utils/__init__.py"
+        },
+        {
+          "lines": 315,
+          "path": "ml/src/utils/hash_utils.py"
+        }
+      ],
+      "source_physical_lines": 13791,
+      "source_root": "ml/src",
+      "source_subareas": {
+        "(root files)": 1,
+        "data_extraction": 3,
+        "datasets": 8,
+        "inference": 7,
+        "models": 5,
+        "preprocessing": 3,
+        "training": 21,
+        "utils": 2
+      },
+      "test_root": "ml/tests",
+      "test_source_files": 22,
+      "tracked_subareas": {
+        ".gitignore": 1,
+        "CLAUDE.md": 1,
+        "DIAGRAMS.md": 1,
+        "MLOPS_STATE_AND_REDESIGN_2026-06-14.md": 1,
+        "README.md": 1,
+        "__init__.py": 1,
+        "_archive": 37,
+        "audit_docs": 13,
+        "autoresearch": 2,
+        "calibration": 13,
+        "data": 117,
+        "deploy": 4,
+        "docker": 2,
+        "interpretability_results": 60,
+        "locked_files.sha256": 1,
+        "ml_learning_with_claude": 19,
+        "mlops_config.json": 1,
+        "notebooks": 1,
+        "poetry.lock": 1,
+        "pyproject.toml": 1,
+        "reports": 5,
+        "scripts": 243,
+        "src": 58,
+        "testing_specs": 41,
+        "tests": 23,
+        "training_snapshots": 17
+      }
+    },
+    "ZKML": {
+      "source_files": 13,
+      "source_inventory": [
+        {
+          "lines": 0,
+          "path": "zkml/src/__init__.py"
+        },
+        {
+          "lines": 0,
+          "path": "zkml/src/distillation/__init__.py"
+        },
+        {
+          "lines": 256,
+          "path": "zkml/src/distillation/corpus_distill.py"
+        },
+        {
+          "lines": 185,
+          "path": "zkml/src/distillation/export_onnx.py"
+        },
+        {
+          "lines": 194,
+          "path": "zkml/src/distillation/generate_calibration.py"
+        },
+        {
+          "lines": 142,
+          "path": "zkml/src/distillation/proxy_model.py"
+        },
+        {
+          "lines": 336,
+          "path": "zkml/src/distillation/train_proxy.py"
+        },
+        {
+          "lines": 0,
+          "path": "zkml/src/ezkl/__init__.py"
+        },
+        {
+          "lines": 130,
+          "path": "zkml/src/ezkl/export_foundry_fixture.py"
+        },
+        {
+          "lines": 154,
+          "path": "zkml/src/ezkl/extract_calldata.py"
+        },
+        {
+          "lines": 293,
+          "path": "zkml/src/ezkl/run_proof.py"
+        },
+        {
+          "lines": 370,
+          "path": "zkml/src/ezkl/setup_circuit.py"
+        },
+        {
+          "lines": 222,
+          "path": "zkml/src/ezkl/validate_bundle.py"
+        }
+      ],
+      "source_physical_lines": 2282,
+      "source_root": "zkml/src",
+      "source_subareas": {
+        "(root files)": 1,
+        "distillation": 6,
+        "ezkl": 6
+      },
+      "test_root": "zkml/tests",
+      "test_source_files": 8,
+      "tracked_subareas": {
+        "README.md": 1,
+        "ZKML_STATE_AND_REDESIGN_2026-06-14.md": 1,
+        "__init__.py": 1,
+        "ezkl": 10,
+        "models": 3,
+        "src": 13,
+        "tests": 8
+      }
+    }
+  },
+  "observed_utc": "2026-11-26T13:03:08.604283+00:00",
+  "remote_main": "2c4dd3cee0a1313d1f23d87fdb17e682340cacd6",
+  "schema": "s4-baseline-inventory-v1",
+  "slice": "S4-00-001",
+  "source_sha": "2c4dd3cee0a1313d1f23d87fdb17e682340cacd6",
+  "tools": {
+    "docker": {
+      "command": [
+        "docker",
+        "--version"
+      ],
+      "cwd": ".",
+      "elapsed_seconds": 0.189,
+      "exit_code": 0,
+      "stderr": "",
+      "stdout": "Docker version 29.9.3, build 5457199\n"
+    },
+    "forge": {
+      "command": [
+        "/home/motafeq/.foundry/bin/forge",
+        "--version"
+      ],
+      "cwd": ".",
+      "elapsed_seconds": 0.033,
+      "exit_code": 0,
+      "stderr": "",
+      "stdout": "forge Version: 1.5.1-stable\nCommit SHA: b0a9dd9ceda36f63e2326ce530c10e6916f4b8a2\nBuild Timestamp: 2025-12-22T11:39:01.425730780Z (1766403541)\nBuild Profile: maxperf\n"
+    },
+    "git": {
+      "command": [
+        "git",
+        "--version"
+      ],
+      "cwd": ".",
+      "elapsed_seconds": 0.001,
+      "exit_code": 0,
+      "stderr": "",
+      "stdout": "git version 2.43.0\n"
+    },
+    "nvidia-smi": {
+      "command": [
+        "nvidia-smi",
+        "--query-gpu=name,memory.total,driver_version",
+        "--format=csv,noheader"
+      ],
+      "cwd": ".",
+      "elapsed_seconds": 0.083,
+      "exit_code": 0,
+      "stderr": "",
+      "stdout": "NVIDIA GeForce RTX 3070 Laptop GPU, 8192 MiB, 621.24\n"
+    },
+    "poetry": {
+      "command": [
+        "poetry",
+        "--version"
+      ],
+      "cwd": ".",
+      "elapsed_seconds": 0.251,
+      "exit_code": 0,
+      "stderr": "",
+      "stdout": "Poetry (version 2.2.1)\n"
+    },
+    "python3": {
+      "command": [
+        "python3",
+        "--version"
+      ],
+      "cwd": ".",
+      "elapsed_seconds": 0.001,
+      "exit_code": 0,
+      "stderr": "",
+      "stdout": "Python 3.12.3\n"
+    },
+    "ruff": {
+      "command": [
+        "ruff",
+        "--version"
+      ],
+      "cwd": ".",
+      "elapsed_seconds": 0.129,
+      "error": "FileNotFoundError",
+      "exit_code": null
+    },
+    "uv": {
+      "command": [
+        "uv",
+        "--version"
+      ],
+      "cwd": ".",
+      "elapsed_seconds": 0.138,
+      "error": "FileNotFoundError",
+      "exit_code": null
+    }
+  },
+  "top_level_counts": {
+    ".dvc": 2,
+    ".dvcignore": 1,
+    ".github": 25,
+    ".gitignore": 1,
+    "CLAUDE.md": 1,
+    "DEVELOPMENT.md": 1,
+    "LICENSE": 1,
+    "README.md": 1,
+    "SECURITY.md": 1,
+    "SHOWCASE.md": 1,
+    "THIRD_PARTY_NOTICES.md": 1,
+    "VALIDATION.md": 1,
+    "agents": 1225,
+    "contracts": 26,
+    "data_module": 664,
+    "docs": 87226,
+    "manual_hand_written_contracts": 169,
+    "ml": 665,
+    "poetry.lock": 1,
+    "pyproject.toml": 1,
+    "pyrightconfig.json": 1,
+    "schemas": 3,
+    "scripts": 8,
+    "test_contracts": 1,
+    "tests": 1,
+    "tools": 3,
+    "verifier_abi.json": 1,
+    "zkml": 37
+  },
+  "tracked_clean": true,
+  "tracked_paths": 90069,
+  "untracked_paths": [
+    {
+      "disposition": "PRESERVE_UNREVIEWED",
+      "kind": "file",
+      "path": "Data audit.md",
+      "size_bytes": 22848
+    },
+    {
+      "disposition": "PRESERVE_UNREVIEWED",
+      "kind": "file",
+      "path": "Ml audit.md",
+      "size_bytes": 880
+    },
+    {
+      "disposition": "PRESERVE_UNREVIEWED",
+      "kind": "file",
+      "path": "Zk contracts audit.md",
+      "size_bytes": 23759
+    },
+    {
+      "disposition": "PRESERVE_UNREVIEWED",
+      "kind": "file",
+      "path": "docs/plan/ml-R4/reviews/R4-GAP-008/v10_structural_drift_repeat_probe_v1.json",
+      "size_bytes": 408911
+    },
+    {
+      "disposition": "PRESERVE_UNREVIEWED",
+      "kind": "file",
+      "path": "docs/plan/ml-R4/reviews/R4-GAP-008/v10_v25_reproducibility_probe_v1.json",
+      "size_bytes": 159890
+    },
+    {
+      "disposition": "PRESERVE_UNREVIEWED",
+      "kind": "file",
+      "path": "docs/plan/ml-R4/reviews/R4-GAP-008/v10_v25_reproducibility_probe_v2.json",
+      "size_bytes": 132683
+    },
+    {
+      "disposition": "PRESERVE_UNREVIEWED",
+      "kind": "file",
+      "path": "docs/plan/system-finalization/2026-07-15_SYSTEM_R0_PLAN_final_containment_recovery.md",
+      "size_bytes": 25249
+    },
+    {
+      "disposition": "PRESERVE_UNREVIEWED",
+      "kind": "file",
+      "path": "docs/plan/system-finalization/2026-07-15_SYSTEM_R4_PLAN_data_ml_label_reality.md",
+      "size_bytes": 34443
+    },
+    {
+      "disposition": "PRESERVE_UNREVIEWED",
+      "kind": "file",
+      "path": "ml/deploy/.env.example",
+      "size_bytes": 3337
+    }
+  ],
+  "workflows": [
+    {
+      "path": ".github/workflows/data-reproducibility.yml",
+      "sha256": "e6f180279c74e7dc11aefec3c7c3458fa7e089e77f45df65d63494b54b5b9019",
+      "triggers": [
+        "pull_request",
+        "push"
+      ],
+      "uses": [
+        "actions/checkout@v4",
+        "actions/setup-python@v5"
+      ]
+    },
+    {
+      "path": ".github/workflows/handbook.yml",
+      "sha256": "ec55869d76701199887e681bc7fcc7dab70851094f00f3ae377e8bf922552497",
+      "triggers": [
+        "pull_request",
+        "push"
+      ],
+      "uses": [
+        "actions/checkout@v4",
+        "actions/setup-python@v5"
+      ]
+    },
+    {
+      "path": ".github/workflows/r4-phase3-framework.yml",
+      "sha256": "0e3f0dcdf5c7c20e85f6d3a475881166fb4fe0796f8adf3c7d170de83477c7fe",
+      "triggers": [
+        "push",
+        "pull_request"
+      ],
+      "uses": [
+        "actions/checkout@v4",
+        "actions/setup-python@v5"
+      ]
+    },
+    {
+      "path": ".github/workflows/r4-phase4-closeout.yml",
+      "sha256": "6559a53b1fb0f79d0b36c80323c4ed22b5fa2f0a052c5195efb280a63c5d7bd1",
+      "triggers": [
+        "push",
+        "workflow_dispatch"
+      ],
+      "uses": [
+        "actions/checkout@v4",
+        "actions/setup-python@v5"
+      ]
+    },
+    {
+      "path": ".github/workflows/r4-phase4-g4.yml",
+      "sha256": "041467db6076f886eb5810e58756545ec12b7868b8c4d0c38cf19ca00e21ec33",
+      "triggers": [
+        "push",
+        "pull_request",
+        "workflow_dispatch"
+      ],
+      "uses": [
+        "actions/checkout@v4",
+        "actions/setup-python@v5"
+      ]
+    },
+    {
+      "path": ".github/workflows/r4-phase4-gap002-review.yml",
+      "sha256": "63f36bccd9a0ea83c8c17f4c57d122aa145f5c740b63147cc682c11710614368",
+      "triggers": [
+        "push",
+        "workflow_dispatch"
+      ],
+      "uses": [
+        "actions/checkout@v4",
+        "actions/setup-python@v5"
+      ]
+    },
+    {
+      "path": ".github/workflows/r4-phase4-gap002.yml",
+      "sha256": "e93e7b9a7aa9c86533229defa2f98f126e0f29ee9e532624c4645321d41a4fb7",
+      "triggers": [
+        "push",
+        "pull_request"
+      ],
+      "uses": [
+        "actions/checkout@v4",
+        "actions/setup-python@v5",
+        "actions/upload-artifact@v4"
+      ]
+    },
+    {
+      "path": ".github/workflows/r4-phase4-unpack-review-bundle.yml",
+      "sha256": "2ef0b8a29f4dd145ef23eeaa0bdb94adf75cec35b10f533ef381b8520bbff6e9",
+      "triggers": [
+        "push",
+        "workflow_dispatch"
+      ],
+      "uses": [
+        "actions/checkout@v4",
+        "actions/upload-artifact@v4"
+      ]
+    },
+    {
+      "path": ".github/workflows/r4-phase5-closeout.yml",
+      "sha256": "1f149423ec08d32e2946b15305845abd1a6c233a70ae198fd41dd274dd73be02",
+      "triggers": [
+        "push",
+        "workflow_dispatch"
+      ],
+      "uses": [
+        "actions/checkout@v4",
+        "actions/setup-python@v5"
+      ]
+    },
+    {
+      "path": ".github/workflows/r4-phase5-g5.yml",
+      "sha256": "d4b7e34295b1afb8d4d6d9ebe9035e7685655677d7bcbed0ce4a6a8c4c7a34cf",
+      "triggers": [
+        "push",
+        "pull_request",
+        "workflow_dispatch"
+      ],
+      "uses": [
+        "actions/checkout@v4",
+        "actions/setup-python@v5"
+      ]
+    },
+    {
+      "path": ".github/workflows/r4-phase5-policy.yml",
+      "sha256": "6fc311c6a8961071f149ad4cf6d454c6ed784a976be2bcd8fec2f0bc8c77a5fd",
+      "triggers": [
+        "push",
+        "pull_request",
+        "workflow_dispatch"
+      ],
+      "uses": [
+        "actions/checkout@v4",
+        "actions/setup-python@v5"
+      ]
+    },
+    {
+      "path": ".github/workflows/r4-phase6-closeout.yml",
+      "sha256": "fcebd5fa41c577c18efc7ecee247c7031b2a655ad73cb2982086fa99dfccee94",
+      "triggers": [
+        "push",
+        "workflow_dispatch"
+      ],
+      "uses": [
+        "actions/checkout@v4",
+        "actions/setup-python@v5"
+      ]
+    },
+    {
+      "path": ".github/workflows/r4-phase6-freeze.yml",
+      "sha256": "97391b027e75264455549704ea082ded87fd8fd55c274430adfd21ed97f181d2",
+      "triggers": [
+        "push",
+        "workflow_dispatch"
+      ],
+      "uses": [
+        "actions/checkout@v4",
+        "actions/setup-python@v5"
+      ]
+    },
+    {
+      "path": ".github/workflows/r4-phase6-g6.yml",
+      "sha256": "10b600c94544930421af1a0b809039520c2e715cc1f6d5a3634ed1fee03e0f03",
+      "triggers": [
+        "push",
+        "pull_request",
+        "workflow_dispatch"
+      ],
+      "uses": [
+        "actions/checkout@v4",
+        "actions/setup-python@v5"
+      ]
+    },
+    {
+      "path": ".github/workflows/r4-phase6-inventory.yml",
+      "sha256": "b5f9134cc82d5142c876c6b0f310984ba281996cfe1db71f5925cd6e05ebca17",
+      "triggers": [
+        "push",
+        "workflow_dispatch"
+      ],
+      "uses": [
+        "actions/checkout@v4",
+        "actions/setup-python@v5"
+      ]
+    },
+    {
+      "path": ".github/workflows/r4-phase7-closeout-fast.yml",
+      "sha256": "e530a4d4e8816666725ebd9bd36bbaf63c5911b70cd240ba16ae7292582dd92c",
+      "triggers": [
+        "push",
+        "workflow_dispatch"
+      ],
+      "uses": [
+        "actions/checkout@v4",
+        "actions/setup-python@v5"
+      ]
+    },
+    {
+      "path": ".github/workflows/r4-phase7-closeout.yml",
+      "sha256": "6bfae65bcfdf3e2324df964d80ce8d867447ebd8215a22db906243c4ae81a55b",
+      "triggers": [
+        "push",
+        "workflow_dispatch"
+      ],
+      "uses": [
+        "actions/checkout@v4",
+        "actions/setup-python@v5"
+      ]
+    },
+    {
+      "path": ".github/workflows/r4-phase7-g7.yml",
+      "sha256": "b64c6c5b8665833b54c62d72a3f07b9cf05f376d6158f9feeeac29cca2b15ee2",
+      "triggers": [
+        "push",
+        "pull_request",
+        "workflow_dispatch"
+      ],
+      "uses": [
+        "actions/checkout@v4",
+        "actions/setup-python@v5"
+      ]
+    },
+    {
+      "path": ".github/workflows/r4-phase7-vnext.yml",
+      "sha256": "8c9eef782e4fe6c110d39f3362aa847345f53dfe1ba434be12fec249793b0630",
+      "triggers": [
+        "push",
+        "workflow_dispatch"
+      ],
+      "uses": [
+        "actions/checkout@v4",
+        "actions/setup-python@v5"
+      ]
+    },
+    {
+      "path": ".github/workflows/r4-phase8-compat.yml",
+      "sha256": "70926524d05905baac1e34c2dd729184f29270e60cb3c71ecf18b14b81f00a0b",
+      "triggers": [
+        "push",
+        "pull_request",
+        "workflow_dispatch"
+      ],
+      "uses": [
+        "actions/checkout@v4",
+        "actions/setup-python@v5"
+      ]
+    },
+    {
+      "path": ".github/workflows/r4-phase8-data-repair.yml",
+      "sha256": "37f46aae63a2a623b26fb52aae48382fdca2c29ae394df9abcc7d961ab519e1e",
+      "triggers": [
+        "push",
+        "pull_request",
+        "workflow_dispatch"
+      ],
+      "uses": [
+        "actions/checkout@v4",
+        "actions/setup-python@v5"
+      ]
+    },
+    {
+      "path": ".github/workflows/security-hygiene.yml",
+      "sha256": "ef13f5c1412904a329c31a3c12c692ed34e5112209a47ed3b42c8892f05fee31",
+      "triggers": [
+        "pull_request",
+        "push",
+        "schedule",
+        "workflow_dispatch"
+      ],
+      "uses": [
+        "actions/checkout@v4",
+        "actions/setup-python@v5",
+        "actions/checkout@v4",
+        "actions/setup-python@v5"
+      ]
+    },
+    {
+      "path": ".github/workflows/showcase.yml",
+      "sha256": "955a654ff280d5932fa02e6cb9b68faab039f546a6b25fa2addc8aed7a1b070f",
+      "triggers": [
+        "pull_request",
+        "push"
+      ],
+      "uses": [
+        "actions/checkout@v4",
+        "actions/setup-python@v5"
+      ]
+    },
+    {
+      "path": ".github/workflows/system-alignment.yml",
+      "sha256": "34586b80869e3cbb868026eaf73a93feac5c27aeae484eec335db9d4244f1d79",
+      "triggers": [
+        "push",
+        "pull_request"
+      ],
+      "uses": [
+        "actions/checkout@v4",
+        "actions/setup-python@v5",
+        "actions/checkout@v4",
+        "actions/setup-python@v5",
+        "actions/checkout@v4",
+        "actions/setup-python@v5",
+        "actions/checkout@v4",
+        "actions/setup-python@v5",
+        "foundry-rs/foundry-toolchain@v1",
+        "actions/checkout@v4",
+        "actions/setup-python@v5",
+        "foundry-rs/foundry-toolchain@v1"
+      ]
+    },
+    {
+      "path": ".github/workflows/v3-runtime-feedback.yml",
+      "sha256": "52db93ffec3b960b4f2de593e7d59d945e9df356c552b216c8a22af59f8991b1",
+      "triggers": [
+        "push",
+        "pull_request"
+      ],
+      "uses": [
+        "actions/checkout@v4",
+        "actions/setup-python@v5"
+      ]
+    }
+  ]
+}

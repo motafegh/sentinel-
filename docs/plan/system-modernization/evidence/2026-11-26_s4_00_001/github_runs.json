@@ -1,0 +1,86 @@
+{
+  "source": "GitHub API /repos/motafegh/sentinel-/actions/runs?branch=main&per_page=15",
+  "observed_date": "2026-11-26",
+  "runs": [
+    {
+      "name": "Handbook",
+      "id": 45819267557,
+      "conclusion": "success",
+      "status": "completed",
+      "head_sha": "2c4dd3cee0a1313d1f23d87fdb17e682340cacd6",
+      "url": "https://github.com/motafegh/sentinel-/actions/runs/45819267557"
+    },
+    {
+      "name": "Security hygiene",
+      "id": 45819267576,
+      "conclusion": "success",
+      "status": "completed",
+      "head_sha": "2c4dd3cee0a1313d1f23d87fdb17e682340cacd6",
+      "url": "https://github.com/motafegh/sentinel-/actions/runs/45819267576"
+    },
+    {
+      "name": "Portfolio showcase",
+      "id": 45819267646,
+      "conclusion": "success",
+      "status": "completed",
+      "head_sha": "2c4dd3cee0a1313d1f23d87fdb17e682340cacd6",
+      "url": "https://github.com/motafegh/sentinel-/actions/runs/45819267646"
+    },
+    {
+      "name": "R4 Phase 6 G6 gate",
+      "id": 45817256844,
+      "conclusion": "success",
+      "status": "completed",
+      "head_sha": "61854a32a2badbcd84b98cef3f3976f070b1341e",
+      "url": "https://github.com/motafegh/sentinel-/actions/runs/45817256844"
+    },
+    {
+      "name": "R4 Phase 4 G4 gate",
+      "id": 45817256741,
+      "conclusion": "failure",
+      "status": "completed",
+      "head_sha": "61854a32a2badbcd84b98cef3f3976f070b1341e",
+      "url": "https://github.com/motafegh/sentinel-/actions/runs/45817256741"
+    },
+    {
+      "name": "R4 Phase 8 real-data repository repair",
+      "id": 45817256692,
+      "conclusion": "success",
+      "status": "completed",
+      "head_sha": "61854a32a2badbcd84b98cef3f3976f070b1341e",
+      "url": "https://github.com/motafegh/sentinel-/actions/runs/45817256692"
+    },
+    {
+      "name": "Portfolio showcase",
+      "id": 45817256906,
+      "conclusion": "success",
+      "status": "completed",
+      "head_sha": "61854a32a2badbcd84b98cef3f3976f070b1341e",
+      "url": "https://github.com/motafegh/sentinel-/actions/runs/45817256906"
+    },
+    {
+      "name": "Handbook",
+      "id": 45817256683,
+      "conclusion": "success",
+      "status": "completed",
+      "head_sha": "61854a32a2badbcd84b98cef3f3976f070b1341e",
+      "url": "https://github.com/motafegh/sentinel-/actions/runs/45817256683"
+    },
+    {
+      "name": "R4 Phase 8 vNext training compatibility",
+      "id": 45817256682,
+      "conclusion": "success",
+      "status": "completed",
+      "head_sha": "61854a32a2badbcd84b98cef3f3976f070b1341e",
+      "url": "https://github.com/motafegh/sentinel-/actions/runs/45817256682"
+    },
+    {
+      "name": "Security hygiene",
+      "id": 45817256795,
+      "conclusion": "success",
+      "status": "completed",
+      "head_sha": "61854a32a2badbcd84b98cef3f3976f070b1341e",
+      "url": "https://github.com/motafegh/sentinel-/actions/runs/45817256795"
+    }
+  ]
+}

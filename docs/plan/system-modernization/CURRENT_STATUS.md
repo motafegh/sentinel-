@@ -2,7 +2,7 @@
 
 Date: 2026-11-26
 
-Program: ACTIVE; governing documents established; S4-00 READY.
+Program: ACTIVE; governing documents established; S4-00 IN_PROGRESS; S4-00-001 completed.
 
 Reconnaissance source baseline: 61854a32a2badbcd84b98cef3f3976f070b1341e. The program-establishment commit is the commit containing this record; later evidence must record its own exact source SHA.
 
@@ -17,7 +17,7 @@ Reconnaissance source baseline: 61854a32a2badbcd84b98cef3f3976f070b1341e. The pr
 
 | Stage | State |
 |---|---|
-| S4-00 Baseline | READY |
+| S4-00 Baseline | IN_PROGRESS (001 complete; 002 ready) |
 | S4-01 Architecture/usefulness | WAITING on G00 |
 | S4-02 Dependencies/CI | WAITING on G00 |
 | S4-03 DATA | NOT_STARTED |
@@ -30,19 +30,28 @@ Reconnaissance source baseline: 61854a32a2badbcd84b98cef3f3976f070b1341e. The pr
 | S4-10 Implementation | NOT_STARTED |
 | S4-11 Integrated acceptance | NOT_STARTED |
 
-No S4 gate has passed, no S4 finding has been formally adjudicated, and no modernization candidate has been accepted. The master's eight reconnaissance seeds are leads for verification. Existing historical domain gates retain their own authority.
+No S4 gate has passed; five narrowly scoped findings are CONFIRMED and five remain CANDIDATE in the initial register. No remediation or modernization decision is accepted. Existing historical domain gates retain their own authority.
 
-## First bounded slice: S4-00-001
+## Completed slice: S4-00-001
 
-Question: can the current exact source, environment and historical evidence be reliably inventoried without changing protected or unrelated local state?
+Inspected source: 2c4dd3cee0a1313d1f23d87fdb17e682340cacd6 (local and remote main matched). Evidence is published in the commit containing this updated record.
 
-1. Read the master/protocol and repository/module instructions; verify local and remote main and tracked/untracked state.
-2. Inventory the five core source roots, active/historical lifecycle categories, workflows, manifests/locks, interpreter/tool/installed package versions, artifact identities/availability and relevant test commands.
-3. Record exact-commit CI and baseline test scope, including G4 failure run 45817256741. Determine safe dependency-light baseline checks and distinguish pre-existing red from new regression. No dependency installation, protected artifact regeneration or GPU training in this initial inventory slice.
-4. Locate D2 unique finding registry/acceptance, R0/V3/R4 closeouts, relevant local audit files and untracked paths; build a reconciliation queue, not a premature closure verdict.
-5. Produce 02_BASELINE_INVENTORY.md and 03_FINDINGS_REGISTER.md with evidence references, gaps and next bounded baseline verification action. Store sanitized evidence as needed; never stage pre-existing untracked files indiscriminately.
+- [Baseline inventory](02_BASELINE_INVENTORY.md) and [findings register](03_FINDINGS_REGISTER.md); five evidence records E-0001 through E-0005.
+- Five core roots: 292 source files, 64,738 physical lines; 189 test-source files. Inventory, not exhaustive audit.
+- Root/AGENTS Poetry checks failed; DATA/ML passed lock checks. DATA 69 and AGENTS 10 common installed/locked version mismatches; ML zero common differences, not full environment equivalence.
+- D-011/D-013 roots and selected runtime/proof artifacts present; physical integrity/live operation not reverified.
+- Six of seven local dependency-light checks passed; exact historical G4 replay failed at line 75. GitHub three triggered workflows at the inspected SHA passed; G4 not triggered there.
+- D2 86 raw rows, 84 unique queued UNVERIFIED, two duplicate tombstones retained. No historical closures asserted.
 
-Budget/stop: one inventory and read-only verification slice; stop at documented baseline/gaps before deeper remediation or technology migration. If a required tool/artifact is unavailable, record blocker rather than install/rebuild without a scoped plan. G00 is assessed only once its full baseline and coverage criteria are satisfied.
+## Next bounded slice: S4-00-002
+
+Question: can we establish trustworthy safe module baseline coverage and reconcile the historical G4 reference without changing accepted semantic or artifact authority?
+
+1. Trace the original G4 digest/registration history, frozen evidence and current register, then decide a narrow evidence-preserving repair if justified (S4-F-0004). Do not alter frozen sample, bundle, review or gate semantics. If repair, record plan, exact change, replay and applicable regression/CI.
+2. Inspect module test setup, fixtures, markers, service/network/chain calls, file writes, dependency and tool prerequisites. Select isolated dependency-light test slices; run only safe commands, distinguish PASS/FAIL/SKIP/ERROR/NOT_RUN and record exact source/env. No actual inference/training, proving, live RPC, unsafe deserialization or protected-root writes without separately scoped authority.
+3. Reconcile baseline blockers, test coverage and limitations in inventory/register. Evaluate G00 against the master/protocol; retain blocked/limited scope if required evidence unavailable.
+
+Budget/stop: one bounded test-safety and G4 investigation/repair slice; stop before dependency migration or larger module refactoring. Stage S4-01/02 begin only once G00 has an explicit admissible disposition permitting them.
 
 ## Known initial blockers and independent work
 
@@ -52,4 +61,4 @@ Budget/stop: one inventory and read-only verification slice; stop at documented 
 - R4-GAP-007 isolated independent review remains pending; confirmed negatives zero, M5/full training and G8 not authorized. That separate evidence path can proceed without S4 context.
 - ZKML proof scope, read-only audit MCP, production signing/deployment and accepted DATA/ML roots unchanged.
 
-Next action: execute S4-00-001; do not jump straight to modernization implementation.
+Next action: execute S4-00-002; do not jump straight to modernization implementation.
