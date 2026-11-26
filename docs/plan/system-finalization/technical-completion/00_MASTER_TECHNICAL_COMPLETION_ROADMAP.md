@@ -11,6 +11,8 @@ This roadmap coordinates the remaining engineering work across SENTINEL. Executa
 
 This file does **not** replace `docs/plan/ml-R4/00_MASTER_PLAN.md`, the R4 decision register, accepted ADRs, or module-specific plans. It defines cross-module sequencing and the conditions under which work may move from one subsystem to another.
 
+The [S4 comprehensive audit and modernization program](../../system-modernization/00_MASTER_PROGRAM.md) now coordinates system-wide reassessment and comparative research. It does not supersede this roadmap's domain dependencies, R4 authority or protected evidence. Consult [S4 current status](../../system-modernization/CURRENT_STATUS.md) before overlapping audit/modernization work; avoid duplicating accepted tasks.
+
 Subordinate plans:
 
 1. `01_DATA_REPRESENTATION_COMPLETION_PLAN.md`

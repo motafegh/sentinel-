@@ -62,6 +62,10 @@ The dated `working/2026-10-03_ml_m4_bounded_pilot.md` record contains historical
 
 The current next action is **obtain a genuinely isolated independent review using the reproducibly verified `r4_gap007_candidate2_independent_review_v2.zip`**. Rebuild/verify the archive with the committed builder when needed; see the 2026-11-26 publication working record. Do not repeat accepted DATA work, repeat M4, use v1 for future adjudication, count contaminated reviews, or launch M5/full training.
 
+## S4 comprehensive audit and modernization restart
+
+For project-wide reassessment, use [S4 current status](docs/plan/system-modernization/CURRENT_STATUS.md), [master program](docs/plan/system-modernization/00_MASTER_PROGRAM.md), and [audit protocol](docs/plan/system-modernization/01_AUDIT_PROTOCOL.md). S4 coordinates bounded audit, experiments and modernization; it does not supersede R4, accepted artifact lineage, technical-completion dependencies or security/launch authority. Begin with S4-00 and keep isolated blind-review sessions free of S4 context. Do not infer implementation permission from an untested modernization proposal.
+
 ## Approval model
 
 Ali has delegated **routine technical and governance approvals** to the assistant. Do not stop merely to ask for approval of a normal plan, implementation slice, refactor, test, ADR, branch, PR, or evidence-preserving decision when the technically best option is clear.
