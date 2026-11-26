@@ -1,8 +1,8 @@
 # Sentinel Portfolio Professionalization — Merge Closeout
 
-**Date:** 2026-09-13  
-**PR:** #72  
-**Merge commit:** `6e86b04e9d78ab9d0e6fd4a485bec7270bec0b7c`  
+**Date:** 2026-09-13\
+**PR:** #72\
+**Merge commit:** `6e86b04e9d78ab9d0e6fd4a485bec7270bec0b7c`\
 **Disposition:** `MERGED_TO_MAIN / RELEASE_SECURITY_FOLLOWUP_OPEN`
 
 ## Result

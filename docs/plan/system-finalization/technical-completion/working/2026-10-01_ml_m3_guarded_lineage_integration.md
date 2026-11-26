@@ -1,7 +1,7 @@
 # ML M3 — R4-D-013 guarded training-lineage integration
 
-**Date:** 2026-10-01  
-**Authorities:** R4-D-009 logical V3; R4-D-011 graph parent; R4-D-013 guarded-token physical acceptance; R4-D-014 bounded positive-only objective/evaluation boundary  
+**Date:** 2026-10-01\
+**Authorities:** R4-D-009 logical V3; R4-D-011 graph parent; R4-D-013 guarded-token physical acceptance; R4-D-014 bounded positive-only objective/evaluation boundary\
 **State:** COMPLETE — protected-local no-step preflight reviewed PASS
 
 ## Design

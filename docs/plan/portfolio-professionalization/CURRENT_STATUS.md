@@ -1,9 +1,9 @@
 # SENTINEL Portfolio Professionalization — Current Status
 
-**Last reconciled:** 2026-09-13  
-**Branch:** `main`  
-**PR:** #72 — **MERGED**  
-**Merge commit:** `6e86b04e9d78ab9d0e6fd4a485bec7270bec0b7c`  
+**Last reconciled:** 2026-09-13\
+**Branch:** `main`\
+**PR:** #72 — **MERGED**\
+**Merge commit:** `6e86b04e9d78ab9d0e6fd4a485bec7270bec0b7c`\
 **Role:** canonical live status for the portfolio-professionalization program
 
 The P0–P8 portfolio-professionalization program is merged into `main`. Dated plans, audits, and closeouts remain evidence of the path taken; this file owns the current portfolio-program disposition.

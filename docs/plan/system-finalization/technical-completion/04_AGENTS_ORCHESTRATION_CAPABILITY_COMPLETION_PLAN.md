@@ -1,7 +1,7 @@
 # Agents / Orchestration Capability Completion Plan
 
-**Status:** ACTIVE — source audit and bounded repairs may proceed in parallel with DATA/ML  
-**Parent:** `00_MASTER_TECHNICAL_COMPLETION_ROADMAP.md`  
+**Status:** ACTIVE — source audit and bounded repairs may proceed in parallel with DATA/ML\
+**Parent:** `00_MASTER_TECHNICAL_COMPLETION_ROADMAP.md`\
 
 ## 1. Objective
 

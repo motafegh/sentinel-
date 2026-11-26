@@ -60,7 +60,7 @@ Read in this order:
 
 The dated `working/2026-10-03_ml_m4_bounded_pilot.md` record contains historical in-progress stop lines from execution; do not use those as the current restart instruction after R4-D-015. The 2026-10-20 semantic-alignment working record is closed evidence under R4-D-016, not an active definition task.
 
-The current next action is **build and verify `r4_gap007_candidate2_independent_review_v2.zip`, then obtain a genuinely isolated independent review**. Do not repeat accepted DATA work, repeat M4, use v1 for future adjudication, count contaminated reviews, or launch M5/full training.
+The current next action is **obtain a genuinely isolated independent review using the reproducibly verified `r4_gap007_candidate2_independent_review_v2.zip`**. Rebuild/verify the archive with the committed builder when needed; see the 2026-11-26 publication working record. Do not repeat accepted DATA work, repeat M4, use v1 for future adjudication, count contaminated reviews, or launch M5/full training.
 
 ## Approval model
 
@@ -161,7 +161,7 @@ Dated audits, experimental reports, `docs/learning/`, and handbook exercises may
 
 ### DATA / ML
 
-- R4 controls current semantic authority.
+- R4 controls current semantic authority under `data-vnext-policy-v1` and subsequent accepted versioned R4 decisions.
 - Historical Phase-6/v1 roles remain frozen and immutable.
 - Repaired-v2/v9 remains historical physical/reproducibility evidence; v9 is not eligible for a new full training run under R4-D-010.
 - Current accepted logical authority is R4-D-009 V3; arbitrary address literals may not create leakage-group edges.

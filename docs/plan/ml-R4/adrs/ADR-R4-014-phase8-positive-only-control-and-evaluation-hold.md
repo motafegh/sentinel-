@@ -1,7 +1,7 @@
 # ADR-R4-014 — Phase-8 positive-only control and evidence-limited evaluation boundary
 
-Date: 2026-10-01  
-Status: ACCEPTED  
+Date: 2026-10-01\
+Status: ACCEPTED\
 Decision ID: R4-D-014
 
 ## Context

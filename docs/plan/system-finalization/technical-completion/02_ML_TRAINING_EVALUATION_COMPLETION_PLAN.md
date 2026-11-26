@@ -1,8 +1,8 @@
 # ML Training / Evaluation Completion Plan
 
-**Status:** ACTIVE — M0-M4 complete; R4-D-015 accepts the bounded pilot and keeps M5/full training on HOLD; R4-D-016 resolves `CallToUnknown` semantics; candidate #2 self-contained v2 independent review is the active R4-GAP-007 boundary  
-**Parent:** `00_MASTER_TECHNICAL_COMPLETION_ROADMAP.md`  
-**Primary authority:** R4 Phase 8–10 governance under `docs/plan/ml-R4/`  
+**Status:** ACTIVE — M0-M4 complete; R4-D-015 accepts the bounded pilot and keeps M5/full training on HOLD; R4-D-016 resolves `CallToUnknown` semantics; candidate #2 self-contained v2 independent review is the active R4-GAP-007 boundary\
+**Parent:** `00_MASTER_TECHNICAL_COMPLETION_ROADMAP.md`\
+**Primary authority:** R4 Phase 8–10 governance under `docs/plan/ml-R4/`\
 
 ## 1. Objective
 
@@ -50,6 +50,8 @@ Closed semantic-alignment evidence:
 - `docs/plan/ml-R4/adrs/ADR-R4-016-call-to-unknown-semantic-clarification.md`;
 - `docs/plan/ml-R4/evidence/2026-10-20_call_to_unknown_semantic_alignment/decision.json`;
 - `docs/plan/system-finalization/technical-completion/working/2026-10-20_ml_gap007_call_to_unknown_semantic_alignment.md`.
+
+The v2 archive was deterministically rebuilt and checksum-verified on 2026-11-26. Independent verification remains pending; see the dated publication working record.
 
 Current blind-review builder:
 

@@ -1,10 +1,10 @@
 # SENTINEL P0 Portfolio Readiness Audit
 
-**Original audit date:** 2026-09-02  
-**Last reconciled:** 2026-09-05  
-**Status:** **P0 COMPLETE — historical baseline; dispositions reconciled below**  
-**Branch:** `portfolio/professionalization-2026-09-02`  
-**Parent plan:** `2026-09-02_SENTINEL_PORTFOLIO_PROFESSIONALIZATION_MASTER_PLAN.md`  
+**Original audit date:** 2026-09-02\
+**Last reconciled:** 2026-09-05\
+**Status:** **P0 COMPLETE — historical baseline; dispositions reconciled below**\
+**Branch:** `portfolio/professionalization-2026-09-02`\
+**Parent plan:** `2026-09-02_SENTINEL_PORTFOLIO_PROFESSIONALIZATION_MASTER_PLAN.md`\
 **Live program status:** [`CURRENT_STATUS.md`](CURRENT_STATUS.md)
 
 ## 1. How to read this file

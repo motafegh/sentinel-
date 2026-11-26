@@ -1,7 +1,7 @@
 # Phase-8 objective/evaluation decision and bounded-pilot boundary
 
-Date: 2026-10-01  
-Decision: R4-D-014  
+Date: 2026-10-01\
+Decision: R4-D-014\
 Outcome: `ACCEPT_BOUNDED_POSITIVE_ONLY_CONTROL_HOLD_FULL_TRAINING`
 
 ## Result

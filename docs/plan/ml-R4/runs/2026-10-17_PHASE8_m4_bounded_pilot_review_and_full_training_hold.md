@@ -1,9 +1,9 @@
 # Phase-8 M4 bounded-pilot review and full-training hold
 
-Date: 2026-10-17  
-Decision ID: `R4-D-015`  
-Decision: `PASS_BOUNDED_PILOT_FULL_TRAINING_STILL_HELD`  
-G8: OPEN  
+Date: 2026-10-17\
+Decision ID: `R4-D-015`\
+Decision: `PASS_BOUNDED_PILOT_FULL_TRAINING_STILL_HELD`\
+G8: OPEN\
 M5/full training: NOT AUTHORIZED
 
 ## Outcome

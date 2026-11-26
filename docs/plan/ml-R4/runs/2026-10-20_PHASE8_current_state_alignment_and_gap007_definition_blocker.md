@@ -1,7 +1,7 @@
 # Phase 8 — current-state alignment and R4-GAP-007 definition blocker
 
-**Date:** 2026-10-20  
-**Baseline before reconciliation:** `02a720f9a10f816cc16d04e6d59d0242ef748b03`  
+**Date:** 2026-10-20\
+**Baseline before reconciliation:** `02a720f9a10f816cc16d04e6d59d0242ef748b03`\
 **State after audit:** ALIGNED — M4 complete; M5 held; R4-GAP-007 semantic-definition alignment active
 
 ## Why this record exists

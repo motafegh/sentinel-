@@ -1,10 +1,10 @@
 # SENTINEL Portfolio Professionalization Master Plan
 
-**Created:** 2026-09-02  
-**Last reconciled:** 2026-09-06  
-**Status:** **IN PROGRESS**  
-**Branch:** `portfolio/professionalization-2026-09-02`  
-**Live status:** [`CURRENT_STATUS.md`](CURRENT_STATUS.md)  
+**Created:** 2026-09-02\
+**Last reconciled:** 2026-09-06\
+**Status:** **IN PROGRESS**\
+**Branch:** `portfolio/professionalization-2026-09-02`\
+**Live status:** [`CURRENT_STATUS.md`](CURRENT_STATUS.md)\
 **Scope:** whole-repository professionalization for public GitHub / CV use
 
 ## 1. Purpose

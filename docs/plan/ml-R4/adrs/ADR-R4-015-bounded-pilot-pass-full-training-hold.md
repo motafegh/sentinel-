@@ -1,7 +1,7 @@
 # ADR-R4-015 — Bounded pilot pass with full-training hold
 
-Date: 2026-10-17  
-Status: ACCEPTED  
+Date: 2026-10-17\
+Status: ACCEPTED\
 Decision ID: R4-D-015
 
 ## Context

@@ -1,11 +1,11 @@
 # Phase-8 M4-B recovery review and M4-C execution authorization
 
-Date: 2026-10-17  
-Scope: bounded Phase-8 pilot only  
-Authorities: R4-D-009, R4-D-011, R4-D-013, R4-D-014  
-M4-B decision: PASS  
-M4-C execution: AUTHORIZED  
-M5/full training: NOT AUTHORIZED  
+Date: 2026-10-17\
+Scope: bounded Phase-8 pilot only\
+Authorities: R4-D-009, R4-D-011, R4-D-013, R4-D-014\
+M4-B decision: PASS\
+M4-C execution: AUTHORIZED\
+M5/full training: NOT AUTHORIZED\
 G8: OPEN
 
 ## M4-B reviewed evidence

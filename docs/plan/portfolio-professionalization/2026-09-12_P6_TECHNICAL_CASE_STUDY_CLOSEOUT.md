@@ -1,8 +1,8 @@
 # P6 Technical Case-Study Package — Closeout
 
-**Date:** 2026-09-12  
-**Branch:** `portfolio/professionalization-2026-09-02`  
-**PR:** #72  
+**Date:** 2026-09-12\
+**Branch:** `portfolio/professionalization-2026-09-02`\
+**PR:** #72\
 **Scope:** external technical-review case-study package only; no change to R4 technical authority
 
 ## Outcome

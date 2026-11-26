@@ -161,7 +161,7 @@ Historical execution context only, not current restart authority:
 2. preserve R4-D-014/R4-D-015 boundaries: no M5/full training, threshold/calibration, promotion, pseudo-negatives or Run12-state reuse;
 3. preserve R4-D-016 `CallToUnknown` semantics;
 4. keep candidate #2 `UNKNOWN / PENDING_REVIEW / target None`;
-5. build and verify the self-contained `r4_gap007_candidate2_independent_review_v2.zip` using the committed deterministic builder;
+5. use the self-contained `r4_gap007_candidate2_independent_review_v2.zip` (deterministic rebuild and checksum verified 2026-11-26); reverify using the committed builder before dispatch;
 6. provide only that v2 archive to a genuinely isolated reviewer with no candidate-specific prior context;
 7. adjudicate candidate #2 only after the independent result returns;
 8. only after new accepted evidence exists, reassess objective/evaluation/full-training authority explicitly;

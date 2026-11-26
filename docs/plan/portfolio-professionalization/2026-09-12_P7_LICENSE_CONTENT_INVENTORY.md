@@ -1,7 +1,7 @@
 # P7 License-Sensitive Content Inventory
 
-**Date:** 2026-09-12  
-**Scope:** bounded tracked-content review to support the repository-level license decision  
+**Date:** 2026-09-12\
+**Scope:** bounded tracked-content review to support the repository-level license decision\
 **Status:** COMPLETE FOR DECISION SUPPORT — not a legal audit
 
 ## Why this check exists

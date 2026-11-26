@@ -1,8 +1,8 @@
 # ML M1 — supervision / evaluation evidence investigation
 
-**Date:** 2026-10-01  
-**Plan:** `02_ML_TRAINING_EVALUATION_COMPLETION_PLAN.md`  
-**Authority:** accepted logical V3 + R4-D-011 graph parent + R4-D-013 guarded-token physical successor  
+**Date:** 2026-10-01\
+**Plan:** `02_ML_TRAINING_EVALUATION_COMPLETION_PLAN.md`\
+**Authority:** accepted logical V3 + R4-D-011 graph parent + R4-D-013 guarded-token physical successor\
 **State:** COMPLETE WITH R4-GAP-007 OPEN — evidence-backed M2 recommendation ready
 
 ## Objective

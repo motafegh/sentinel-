@@ -1,10 +1,10 @@
 # DATA D0 — guarded-selector source/evidence reconstruction
 
-**Date:** 2026-09-19  
-**Last reconciled:** 2026-09-29  
-**Branch:** `agent/data-target-aware-guarded-v1`  
-**Base main:** `57f39d652cbec1092084b4efbf41bec6a117ba07`  
-**Work package:** D0-D6 guarded-token technical-completion continuation  
+**Date:** 2026-09-19\
+**Last reconciled:** 2026-09-29\
+**Branch:** `agent/data-target-aware-guarded-v1`\
+**Base main:** `57f39d652cbec1092084b4efbf41bec6a117ba07`\
+**Work package:** D0-D6 guarded-token technical-completion continuation\
 **Status:** D0-D6 COMPLETE / R4-D-013 ACCEPTED / DATA HANDOFF COMPLETE
 
 ### Continuation checkpoint

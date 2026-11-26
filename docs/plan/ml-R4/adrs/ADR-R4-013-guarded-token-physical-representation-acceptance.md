@@ -1,8 +1,8 @@
 # ADR-R4-013 — Guarded-token physical representation acceptance and training hold
 
-Date: 2026-09-29  
-Status: ACCEPTED  
-Decision ID: R4-D-013  
+Date: 2026-09-29\
+Status: ACCEPTED\
+Decision ID: R4-D-013\
 Scope: R4 guarded-token physical lineage and Phase-8 ML handoff boundary
 
 ## Context

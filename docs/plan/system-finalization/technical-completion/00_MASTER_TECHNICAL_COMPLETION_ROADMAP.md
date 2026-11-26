@@ -1,9 +1,9 @@
 # SENTINEL Technical Completion Roadmap
 
-**Status:** ACTIVE — cross-module execution controller  
-**Created:** 2026-09-14  
-**Current-state reconciliation:** 2026-10-20  
-**Scope:** remaining technical completion, capability hardening, model evidence/promotion, and downstream lineage reconciliation  
+**Status:** ACTIVE — cross-module execution controller\
+**Created:** 2026-09-14\
+**Current-state reconciliation:** 2026-10-20\
+**Scope:** remaining technical completion, capability hardening, model evidence/promotion, and downstream lineage reconciliation\
 
 ## 1. Purpose
 
@@ -273,4 +273,4 @@ Read:
 3. `02_ML_TRAINING_EVALUATION_COMPLETION_PLAN.md`;
 4. `docs/plan/ml-R4/EVIDENCE_GAP_REGISTER.md` and `RISK_AND_BLOCKER_REGISTER.md`.
 
-Then build/verify `r4_gap007_candidate2_independent_review_v2.zip` with the committed deterministic builder and provide only that archive to a genuinely isolated reviewer. Do **not** repeat DATA acceptance or M4, use v1 for future adjudication, count contaminated review attempts, or launch M5/full training.
+The v2 archive was rebuilt and checksum-verified on 2026-11-26. Reverify with the committed deterministic builder before dispatch, then provide only that archive to a genuinely isolated reviewer. Do **not** repeat DATA acceptance or M4, use v1 for future adjudication, count contaminated review attempts, or launch M5/full training.

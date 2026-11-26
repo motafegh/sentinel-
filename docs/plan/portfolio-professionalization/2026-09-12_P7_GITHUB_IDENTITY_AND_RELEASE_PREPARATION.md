@@ -1,8 +1,8 @@
 # P7 GitHub Identity and Release Preparation
 
-**Date:** 2026-09-12  
-**Branch:** `portfolio/professionalization-2026-09-02`  
-**PR:** #72  
+**Date:** 2026-09-12\
+**Branch:** `portfolio/professionalization-2026-09-02`\
+**PR:** #72\
 **Status:** PREPARED — owner/external decisions remain
 
 ## Purpose

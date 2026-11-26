@@ -1,9 +1,9 @@
 # Phase-8 guarded-token physical acceptance and no-launch decision
 
-Date: 2026-09-29  
-Decision ID: `R4-D-013`  
-Physical decision: `ACCEPTED_IMMUTABLE_LOCAL_GUARDED_TOKEN_REPRESENTATION`  
-Training decision: `NOT_AUTHORIZED`  
+Date: 2026-09-29\
+Decision ID: `R4-D-013`\
+Physical decision: `ACCEPTED_IMMUTABLE_LOCAL_GUARDED_TOKEN_REPRESENTATION`\
+Training decision: `NOT_AUTHORIZED`\
 Gate: G8 remains open
 
 ## Outcome

@@ -1,8 +1,8 @@
 # ML M4 — guarded bounded pilot
 
-**Date:** 2026-10-03  
-**Authorities:** R4-D-009 logical V3; R4-D-011 graph parent; R4-D-013 guarded-token physical acceptance; R4-D-014 bounded positive-only objective/evaluation boundary  
-**Entry:** M3 protected-local no-step preflight reviewed PASS  
+**Date:** 2026-10-03\
+**Authorities:** R4-D-009 logical V3; R4-D-011 graph parent; R4-D-013 guarded-token physical acceptance; R4-D-014 bounded positive-only objective/evaluation boundary\
+**Entry:** M3 protected-local no-step preflight reviewed PASS\
 **State:** IN PROGRESS — M4-A reviewed PASS; M4-B checkpoint/resume/recovery proof next
 
 ## Purpose

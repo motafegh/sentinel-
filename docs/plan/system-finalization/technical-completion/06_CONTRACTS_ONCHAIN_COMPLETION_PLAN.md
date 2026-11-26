@@ -1,7 +1,7 @@
 # Contracts / On-Chain Completion Plan
 
-**Status:** ACTIVE — audit may proceed; verifier-lineage migration waits for ZKML handoff  
-**Parent:** `00_MASTER_TECHNICAL_COMPLETION_ROADMAP.md`  
+**Status:** ACTIVE — audit may proceed; verifier-lineage migration waits for ZKML handoff\
+**Parent:** `00_MASTER_TECHNICAL_COMPLETION_ROADMAP.md`\
 
 ## 1. Objective
 

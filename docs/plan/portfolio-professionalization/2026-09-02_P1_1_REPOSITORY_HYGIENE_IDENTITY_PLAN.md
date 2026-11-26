@@ -1,10 +1,10 @@
 # SENTINEL P1.1 Repository Hygiene and Identity Plan
 
-**Created:** 2026-09-02  
-**Last reconciled:** 2026-09-05  
-**Status:** **SUBSTANTIALLY COMPLETE — identity decisions remain open**  
-**Parent:** P0 Portfolio Readiness Audit / P1  
-**Live status:** [`CURRENT_STATUS.md`](CURRENT_STATUS.md)  
+**Created:** 2026-09-02\
+**Last reconciled:** 2026-09-05\
+**Status:** **SUBSTANTIALLY COMPLETE — identity decisions remain open**\
+**Parent:** P0 Portfolio Readiness Audit / P1\
+**Live status:** [`CURRENT_STATUS.md`](CURRENT_STATUS.md)\
 **Scope:** repository hygiene, artifact/public-identity foundation; no R4 semantic/product implementation changes
 
 ## Goal

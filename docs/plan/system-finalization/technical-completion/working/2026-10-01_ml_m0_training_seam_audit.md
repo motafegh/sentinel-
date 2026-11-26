@@ -1,8 +1,8 @@
 # ML M0 — current training-seam audit
 
-**Date:** 2026-10-01  
-**Plan:** `02_ML_TRAINING_EVALUATION_COMPLETION_PLAN.md`  
-**Authority:** R4-D-013 accepted guarded-token physical lineage; R4-D-011 immutable V10 graph/control parent  
+**Date:** 2026-10-01\
+**Plan:** `02_ML_TRAINING_EVALUATION_COMPLETION_PLAN.md`\
+**Authority:** R4-D-013 accepted guarded-token physical lineage; R4-D-011 immutable V10 graph/control parent\
 **State:** IN PROGRESS — source tracing only; no full-training authorization
 
 ## Objective

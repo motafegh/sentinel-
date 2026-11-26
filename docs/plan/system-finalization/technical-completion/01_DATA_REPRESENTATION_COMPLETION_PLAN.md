@@ -1,9 +1,9 @@
 # DATA / Representation Completion Plan
 
-**Status:** ACCEPTED — D0-D6 complete under R4-D-013  
-**Parent:** `00_MASTER_TECHNICAL_COMPLETION_ROADMAP.md`  
-**Primary authority:** `docs/plan/ml-R4/` decisions/evidence, especially R4-D-011, R4-D-012 and R4-D-013  
-**Current execution checkpoint:** D0-D6 complete; accepted guarded-token physical lineage handed off to ML completion  
+**Status:** ACCEPTED — D0-D6 complete under R4-D-013\
+**Parent:** `00_MASTER_TECHNICAL_COMPLETION_ROADMAP.md`\
+**Primary authority:** `docs/plan/ml-R4/` decisions/evidence, especially R4-D-011, R4-D-012 and R4-D-013\
+**Current execution checkpoint:** D0-D6 complete; accepted guarded-token physical lineage handed off to ML completion\
 
 ## 1. Objective
 

@@ -1,8 +1,8 @@
 # ADR-R4-016 — Clarify `CallToUnknown` as the low-level unknown-target class
 
-**Date:** 2026-10-20  
-**Status:** ACCEPTED  
-**Decision ID:** R4-D-016  
+**Date:** 2026-10-20\
+**Status:** ACCEPTED\
+**Decision ID:** R4-D-016\
 **Scope:** R4-GAP-007 class semantics, confirmed-negative review authority, and candidate-review compatibility
 
 ## Context

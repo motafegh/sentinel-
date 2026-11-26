@@ -1,9 +1,9 @@
 # SENTINEL Repository Weight, Artifact, and History Audit
 
-**Date:** 2026-09-04  
-**Last reconciled:** 2026-09-05  
-**Status:** **COMPLETE — canonical M-011 record**  
-**Branch:** `portfolio/professionalization-2026-09-02`  
+**Date:** 2026-09-04\
+**Last reconciled:** 2026-09-05\
+**Status:** **COMPLETE — canonical M-011 record**\
+**Branch:** `portfolio/professionalization-2026-09-02`\
 **Scope:** portfolio-professionalization item M-011
 
 ## 1. Conclusion

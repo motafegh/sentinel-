@@ -1,9 +1,9 @@
 # P8 Final Portfolio / Interviewer Audit Closeout
 
-**Date:** 2026-09-12  
-**Audited candidate commit:** `5f621e7ae5a7af0907e72d59d81bcbeff39f0955`  
-**Branch:** `portfolio/professionalization-2026-09-02`  
-**PR:** #72  
+**Date:** 2026-09-12\
+**Audited candidate commit:** `5f621e7ae5a7af0907e72d59d81bcbeff39f0955`\
+**Branch:** `portfolio/professionalization-2026-09-02`\
+**PR:** #72\
 **Disposition:** `PUBLIC_CONTENT_READY / HOLD_MERGE_AND_RELEASE_FOR_EXTERNAL_PREREQUISITES`
 
 ## Executive result

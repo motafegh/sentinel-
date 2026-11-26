@@ -203,6 +203,12 @@ jobs:
             docs/plan/ml-R4/scripts/test_p8_stage_v10_v25_primary_attempt.py \
             docs/plan/ml-R4/scripts/test_p8_probe_v10_cfg_write_evidence.py
 
+      - name: Reproduce exact committed GAP-007 v2 reviewer archive
+        run: |
+          python docs/plan/ml-R4/scripts/p8_build_gap007_candidate2_independent_review_v2.py
+          (cd docs/plan/ml-R4/review_bundles && sha256sum -c r4_gap007_candidate2_independent_review_v2.zip.sha256)
+          git diff --exit-code -- docs/plan/ml-R4/review_bundles/r4_gap007_candidate2_independent_review_v2.zip docs/plan/ml-R4/review_bundles/r4_gap007_candidate2_independent_review_v2.zip.sha256
+
       - name: Verify committed logical-V3 snapshot from fresh clone
         run: |
           python docs/plan/ml-R4/scripts/p8_verify_committed_logical_v3_snapshot.py

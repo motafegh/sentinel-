@@ -1,7 +1,7 @@
 # Inference / Deployment Promotion Plan
 
-**Status:** ACTIVE — audit may proceed; repaired-model migration waits for ML promotion authority  
-**Parent:** `00_MASTER_TECHNICAL_COMPLETION_ROADMAP.md`  
+**Status:** ACTIVE — audit may proceed; repaired-model migration waits for ML promotion authority\
+**Parent:** `00_MASTER_TECHNICAL_COMPLETION_ROADMAP.md`\
 
 ## 1. Objective
 

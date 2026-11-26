@@ -1,7 +1,7 @@
 # ZKML Lineage / Proof Completion Plan
 
-**Status:** ACTIVE — audit/research may proceed; rebuild waits for an accepted repaired teacher  
-**Parent:** `00_MASTER_TECHNICAL_COMPLETION_ROADMAP.md`  
+**Status:** ACTIVE — audit/research may proceed; rebuild waits for an accepted repaired teacher\
+**Parent:** `00_MASTER_TECHNICAL_COMPLETION_ROADMAP.md`\
 
 ## 1. Objective
 

@@ -1,8 +1,8 @@
 # ML / R4-GAP-007 — CallToUnknown semantic alignment checkpoint
 
-**Date:** 2026-10-20  
-**State:** COMPLETE — closed by R4-D-016  
-**Applies to:** R4-GAP-007 / `CallToUnknown` confirmed-negative evaluation evidence  
+**Date:** 2026-10-20\
+**State:** COMPLETE — closed by R4-D-016\
+**Applies to:** R4-GAP-007 / `CallToUnknown` confirmed-negative evaluation evidence\
 
 ## Accepted boundary
 

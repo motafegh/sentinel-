@@ -1,10 +1,10 @@
 # SENTINEL P1.0 Current-Document Truth-Alignment Record
 
-**Date:** 2026-09-02  
-**Last reconciled:** 2026-09-05  
-**Status:** **COMPLETE — B-001 CLOSED**  
-**Parent:** `2026-09-02_P0_PORTFOLIO_READINESS_AUDIT.md` / B-001  
-**Live program status:** [`CURRENT_STATUS.md`](CURRENT_STATUS.md)  
+**Date:** 2026-09-02\
+**Last reconciled:** 2026-09-05\
+**Status:** **COMPLETE — B-001 CLOSED**\
+**Parent:** `2026-09-02_P0_PORTFOLIO_READINESS_AUDIT.md` / B-001\
+**Live program status:** [`CURRENT_STATUS.md`](CURRENT_STATUS.md)\
 **Scope:** current-facing documentation only; no product, DATA/ML semantic, artifact, or architecture implementation change
 
 ## Goal
