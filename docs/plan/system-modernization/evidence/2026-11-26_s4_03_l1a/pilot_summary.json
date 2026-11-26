@@ -1,0 +1,170 @@
+{
+  "manifest_sha256": "d029e2ad302b7b94c3cd89f5a799a678fb9d747c2a1ee363bdc53d46ff5d7dc3",
+  "completed": 16,
+  "requested": 16,
+  "strata": {
+    "DenialOfService|native_positive": {
+      "completed": 4,
+      "relevant_detector_hit": 3,
+      "finding_records": 13
+    },
+    "DenialOfService|no_mapped_claim": {
+      "completed": 4,
+      "relevant_detector_hit": 0,
+      "finding_records": 2
+    },
+    "UnusedReturn|native_positive": {
+      "completed": 4,
+      "relevant_detector_hit": 1,
+      "finding_records": 1
+    },
+    "UnusedReturn|no_mapped_claim": {
+      "completed": 4,
+      "relevant_detector_hit": 0,
+      "finding_records": 0
+    }
+  },
+  "coordinate_totals": {
+    "smartbugs_curated": {
+      "spans": 5,
+      "in_bounds_spans": 5,
+      "annotated_line_occurrences": 7,
+      "same_line_exact_nonempty": 7,
+      "unique_exact_text_matches": 5,
+      "unique_exact_text_shifted": 0
+    },
+    "solidifi": {
+      "spans": 52,
+      "in_bounds_spans": 52,
+      "annotated_line_occurrences": 345,
+      "same_line_exact_nonempty": 307,
+      "unique_exact_text_matches": 196,
+      "unique_exact_text_shifted": 0
+    }
+  },
+  "spot_checks": [
+    {
+      "case_id": "L1A-01",
+      "class": "DenialOfService",
+      "ranges": [
+        [
+          142,
+          155
+        ],
+        [
+          157,
+          163
+        ]
+      ],
+      "observation": "Costly storage writes in owner-only batch distribution; single-item owner-only alternative exists. Detector does not show attacker-controlled persistent blocking of an essential operation.",
+      "disposition": "INSUFFICIENT_FOR_CLASS_CONFIRMATION",
+      "source_sha256": "c3ef4d19822e4787d8ba3549213ba6743487c4752f709576b9ad0f4aef1499e9",
+      "review_scope": "Non-blind targeted source spot-check only; no independent or complete class-scope adjudication."
+    },
+    {
+      "case_id": "L1A-02",
+      "class": "DenialOfService",
+      "ranges": [
+        [
+          558,
+          568
+        ],
+        [
+          764,
+          770
+        ],
+        [
+          788,
+          802
+        ]
+      ],
+      "observation": "Loop caller is owner-gated; detector highlights token-check modifier. No attacker path or permanent nonfunctionality established by inspected ranges; other behavior not reviewed.",
+      "disposition": "INSUFFICIENT_FOR_CLASS_CONFIRMATION",
+      "source_sha256": "98de8a5ee7429c88c362a8899bd231658b773d5bf8aa60b2be401f2aeda584f2",
+      "review_scope": "Non-blind targeted source spot-check only; no independent or complete class-scope adjudication."
+    },
+    {
+      "case_id": "L1A-03",
+      "class": "DenialOfService",
+      "ranges": [
+        [
+          1045,
+          1066
+        ],
+        [
+          1207,
+          1225
+        ],
+        [
+          1232,
+          1250
+        ],
+        [
+          1289,
+          1308
+        ],
+        [
+          1375,
+          1380
+        ]
+      ],
+      "observation": "NFT receiver callbacks and enumeration storage operations in mint-related loops. Supply and non-owner mint-amount checks exist; owner airdrop loop present. A caller-specific revert or gas cost alone does not establish permanent attacker-induced contract nonfunctionality.",
+      "disposition": "INSUFFICIENT_FOR_CLASS_CONFIRMATION",
+      "source_sha256": "d2d6a25fd238aa74c0cdfd16ce9c74d5a35c2aa629379cbe371db4b79a4bf0cb",
+      "review_scope": "Non-blind targeted source spot-check only; no independent or complete class-scope adjudication."
+    },
+    {
+      "case_id": "L1A-11",
+      "class": "UnusedReturn",
+      "ranges": [
+        [
+          84,
+          91
+        ],
+        [
+          425,
+          436
+        ]
+      ],
+      "observation": "Typed addLiquidityETH interface declares three returned integers. Caller discards all three. Direct source support for discarded nonvoid results under literal taxonomy; not evidence of swallowed external-call failure or raw unknown-target call. Security impact separate.",
+      "disposition": "POSITIVE_CANDIDATE_NOT_ADJUDICATED",
+      "native_claim": "PRESENT",
+      "source_sha256": "06de0432e1f626fa0a89a130d778d0b1dcfdd2261b1bf8d30c7d30bd97151838",
+      "review_scope": "Non-blind targeted source spot-check only; no independent or complete class-scope adjudication."
+    },
+    {
+      "case_id": "L1A-08",
+      "class": "UnusedReturn",
+      "ranges": [
+        [
+          23,
+          25
+        ],
+        [
+          108,
+          115
+        ],
+        [
+          328,
+          337
+        ]
+      ],
+      "observation": "Typed router addLiquidityETH declares three return values; typed IERC20 approve declares bool. Calls discard outputs. Cross-class follow-up of DoS control; original DIVE categories Time manipulation, Reentrancy, Access Control only; Unchecked Return Values absent. Candidate missing native claim, not a verified false negative. No assertion of external failure or exploitability.",
+      "disposition": "POSITIVE_CANDIDATE_NOT_ADJUDICATED",
+      "native_claim": "ABSENT",
+      "scope": "Post hoc discovery, excluded from prespecified class-stratum rates",
+      "source_sha256": "25f30a8ce75a836185779fa597d9fbce4b1420d0fc0b2043547c95ef34513af7",
+      "review_scope": "Non-blind targeted source spot-check only; no independent or complete class-scope adjudication."
+    }
+  ],
+  "total_findings": 16,
+  "confirmed_labels_admitted": 0,
+  "limitations": [
+    "No-hit is not a negative; class detector overlap is not semantic equivalence.",
+    "Selected small size-limited compiler-available groups; no population extrapolation.",
+    "All selected groups reserved in pilot manifest only, not new enforced partition; successor builder must honor reservations before optimizer admission.",
+    "No complete manual scope review or independent review; L-G1 remains open.",
+    "No actual RAG/LLM annotation evaluation.",
+    "Calibration uses known native annotations; never an independent evaluation set."
+  ]
+}

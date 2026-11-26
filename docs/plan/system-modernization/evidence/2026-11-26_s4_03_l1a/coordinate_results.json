@@ -1,0 +1,431 @@
+{
+  "manifest_sha256": "d029e2ad302b7b94c3cd89f5a799a678fb9d747c2a1ee363bdc53d46ff5d7dc3",
+  "method": "1-based bounds; upstream SolidiFI inspection.py compares loc <= detector line < loc+length. Unique exact stripped nonempty text matches are candidate anchors, not proven source maps. Same-line equality is not semantic equivalence.",
+  "results": [
+    {
+      "source": "smartbugs_curated",
+      "manifest_path": "repo/denial_of_service/auction.sol",
+      "artifact_sha256": "9d96e4f70bd7806f4f37d3f20afe86a0ee0a43ecf4dabd0cbbdb930a2268c5b9",
+      "raw_lines": 29,
+      "normalized_lines": 29,
+      "flatten_status": "skipped_no_imports",
+      "spans": 1,
+      "in_bounds_spans": 1,
+      "annotated_line_occurrences": 1,
+      "same_line_exact_nonempty": 1,
+      "unique_exact_text_matches": 1,
+      "unique_exact_text_shifted": 0,
+      "example_spans": [
+        {
+          "category": "denial_of_service",
+          "raw_lines": [
+            23
+          ],
+          "unique_text_match_lines": [
+            23
+          ]
+        }
+      ]
+    },
+    {
+      "source": "smartbugs_curated",
+      "manifest_path": "repo/denial_of_service/dos_address.sol",
+      "artifact_sha256": "88d7f4b2015bef53171050491bc89fe6ded752a861add8dc30754d82c81b0d9c",
+      "raw_lines": 36,
+      "normalized_lines": 36,
+      "flatten_status": "skipped_no_imports",
+      "spans": 1,
+      "in_bounds_spans": 1,
+      "annotated_line_occurrences": 3,
+      "same_line_exact_nonempty": 3,
+      "unique_exact_text_matches": 3,
+      "unique_exact_text_shifted": 0,
+      "example_spans": [
+        {
+          "category": "denial_of_service",
+          "raw_lines": [
+            16,
+            17,
+            18
+          ],
+          "unique_text_match_lines": [
+            16,
+            17,
+            18
+          ]
+        }
+      ]
+    },
+    {
+      "source": "smartbugs_curated",
+      "manifest_path": "repo/unchecked_low_level_calls/0x07f7ecb66d788ab01dc93b9b71a88401de7d0f2e.sol",
+      "artifact_sha256": "4b6ea15d5c6e4763734706c683d3331626650bfb35be07ebf3e36ca08362b413",
+      "raw_lines": 297,
+      "normalized_lines": 297,
+      "flatten_status": "skipped_no_imports",
+      "spans": 2,
+      "in_bounds_spans": 2,
+      "annotated_line_occurrences": 2,
+      "same_line_exact_nonempty": 2,
+      "unique_exact_text_matches": 0,
+      "unique_exact_text_shifted": 0,
+      "example_spans": [
+        {
+          "category": "unchecked_low_level_calls",
+          "raw_lines": [
+            201
+          ],
+          "unique_text_match_lines": [
+            null
+          ]
+        },
+        {
+          "category": "unchecked_low_level_calls",
+          "raw_lines": [
+            213
+          ],
+          "unique_text_match_lines": [
+            null
+          ]
+        }
+      ]
+    },
+    {
+      "source": "smartbugs_curated",
+      "manifest_path": "repo/unchecked_low_level_calls/0x0cbe050f75bc8f8c2d6c0d249fea125fd6e1acc9.sol",
+      "artifact_sha256": "c0e6fa6c237ae33e0517456b89b80d85c15a00469cfb09f5116dadc379e923e6",
+      "raw_lines": 14,
+      "normalized_lines": 14,
+      "flatten_status": "skipped_no_imports",
+      "spans": 1,
+      "in_bounds_spans": 1,
+      "annotated_line_occurrences": 1,
+      "same_line_exact_nonempty": 1,
+      "unique_exact_text_matches": 1,
+      "unique_exact_text_shifted": 0,
+      "example_spans": [
+        {
+          "category": "unchecked_low_level_calls",
+          "raw_lines": [
+            12
+          ],
+          "unique_text_match_lines": [
+            12
+          ]
+        }
+      ]
+    },
+    {
+      "source": "solidifi",
+      "manifest_path": "repo/buggy_contracts/Re-entrancy/buggy_1.sol",
+      "artifact_sha256": "d4fc2ee9344495309ec4332a6a5ec01730786ca4998e4efb16669268713f5f0c",
+      "raw_lines": 251,
+      "normalized_lines": 251,
+      "flatten_status": "skipped_no_imports",
+      "spans": 18,
+      "in_bounds_spans": 18,
+      "annotated_line_occurrences": 144,
+      "same_line_exact_nonempty": 128,
+      "unique_exact_text_matches": 81,
+      "unique_exact_text_shifted": 0,
+      "example_spans": [
+        {
+          "category": "Re+AC0-erntrancy",
+          "raw_lines": [
+            22,
+            23,
+            24,
+            25,
+            26,
+            27,
+            28,
+            29
+          ],
+          "unique_text_match_lines": [
+            22,
+            23,
+            24,
+            null,
+            null,
+            null,
+            28,
+            null
+          ]
+        },
+        {
+          "category": "Re+AC0-erntrancy",
+          "raw_lines": [
+            36,
+            37,
+            38,
+            39,
+            40,
+            41,
+            42,
+            43
+          ],
+          "unique_text_match_lines": [
+            36,
+            37,
+            38,
+            39,
+            null,
+            41,
+            42,
+            null
+          ]
+        },
+        {
+          "category": "Re+AC0-erntrancy",
+          "raw_lines": [
+            51,
+            52,
+            53,
+            54,
+            55,
+            56,
+            57,
+            58
+          ],
+          "unique_text_match_lines": [
+            51,
+            52,
+            53,
+            null,
+            null,
+            null,
+            57,
+            null
+          ]
+        }
+      ]
+    },
+    {
+      "source": "solidifi",
+      "manifest_path": "repo/buggy_contracts/Re-entrancy/buggy_10.sol",
+      "artifact_sha256": "c9aa105441f5d9eaf4369d9b2205a5f56589604820a8a0b2c231adb5e9fbcd70",
+      "raw_lines": 108,
+      "normalized_lines": 108,
+      "flatten_status": "skipped_no_imports",
+      "spans": 8,
+      "in_bounds_spans": 8,
+      "annotated_line_occurrences": 65,
+      "same_line_exact_nonempty": 57,
+      "unique_exact_text_matches": 36,
+      "unique_exact_text_shifted": 0,
+      "example_spans": [
+        {
+          "category": "Re-erntrancy",
+          "raw_lines": [
+            37,
+            38,
+            39,
+            40,
+            41,
+            42,
+            43,
+            44,
+            45
+          ],
+          "unique_text_match_lines": [
+            37,
+            38,
+            39,
+            40,
+            null,
+            null,
+            null,
+            44,
+            null
+          ]
+        },
+        {
+          "category": "Re-erntrancy",
+          "raw_lines": [
+            29,
+            30,
+            31,
+            32,
+            33,
+            34,
+            35
+          ],
+          "unique_text_match_lines": [
+            29,
+            30,
+            31,
+            null,
+            null,
+            34,
+            null
+          ]
+        },
+        {
+          "category": "Re-erntrancy",
+          "raw_lines": [
+            100,
+            101,
+            102,
+            103,
+            104,
+            105,
+            106,
+            107
+          ],
+          "unique_text_match_lines": [
+            100,
+            101,
+            102,
+            103,
+            null,
+            null,
+            106,
+            null
+          ]
+        }
+      ]
+    },
+    {
+      "source": "solidifi",
+      "manifest_path": "repo/buggy_contracts/Unhandled-Exceptions/buggy_1.sol",
+      "artifact_sha256": "f6a0829d4569dd20f15c1a5706d1b9e8c46000b0455c0db5d05d8d0ce3d0196e",
+      "raw_lines": 200,
+      "normalized_lines": 200,
+      "flatten_status": "skipped_no_imports",
+      "spans": 18,
+      "in_bounds_spans": 18,
+      "annotated_line_occurrences": 93,
+      "same_line_exact_nonempty": 84,
+      "unique_exact_text_matches": 52,
+      "unique_exact_text_shifted": 0,
+      "example_spans": [
+        {
+          "category": "Unhandled-Exceptions",
+          "raw_lines": [
+            22,
+            23,
+            24
+          ],
+          "unique_text_match_lines": [
+            22,
+            null,
+            null
+          ]
+        },
+        {
+          "category": "Unhandled-Exceptions",
+          "raw_lines": [
+            31,
+            32,
+            33,
+            34,
+            35,
+            36,
+            37,
+            38
+          ],
+          "unique_text_match_lines": [
+            31,
+            32,
+            33,
+            34,
+            35,
+            null,
+            null,
+            null
+          ]
+        },
+        {
+          "category": "Unhandled-Exceptions",
+          "raw_lines": [
+            46,
+            47,
+            48,
+            49,
+            50,
+            51,
+            52,
+            53,
+            54
+          ],
+          "unique_text_match_lines": [
+            46,
+            47,
+            48,
+            null,
+            50,
+            51,
+            52,
+            53,
+            null
+          ]
+        }
+      ]
+    },
+    {
+      "source": "solidifi",
+      "manifest_path": "repo/buggy_contracts/Unhandled-Exceptions/buggy_10.sol",
+      "artifact_sha256": "c62cedbbb5a1452d3657f0ea93bfedbb6851da8681fdb72c59fbc48b3c8636ef",
+      "raw_lines": 86,
+      "normalized_lines": 86,
+      "flatten_status": "skipped_no_imports",
+      "spans": 8,
+      "in_bounds_spans": 8,
+      "annotated_line_occurrences": 43,
+      "same_line_exact_nonempty": 38,
+      "unique_exact_text_matches": 27,
+      "unique_exact_text_shifted": 0,
+      "example_spans": [
+        {
+          "category": "Unhandled-Exceptions",
+          "raw_lines": [
+            35,
+            36,
+            37
+          ],
+          "unique_text_match_lines": [
+            35,
+            36,
+            null
+          ]
+        },
+        {
+          "category": "Unhandled-Exceptions",
+          "raw_lines": [
+            28,
+            29,
+            30,
+            31,
+            32,
+            33
+          ],
+          "unique_text_match_lines": [
+            28,
+            null,
+            30,
+            31,
+            null,
+            null
+          ]
+        },
+        {
+          "category": "Unhandled-Exceptions",
+          "raw_lines": [
+            81,
+            82,
+            83,
+            84,
+            85
+          ],
+          "unique_text_match_lines": [
+            81,
+            82,
+            83,
+            84,
+            null
+          ]
+        }
+      ]
+    }
+  ]
+}

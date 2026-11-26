@@ -1,0 +1,1225 @@
+{
+  "manifest_sha256": "d029e2ad302b7b94c3cd89f5a799a678fb9d747c2a1ee363bdc53d46ff5d7dc3",
+  "environment": "isolated per-case scratch HOME and source; network namespace; existing AGENTS venv; no live services; bounded 3 workers; source snippets and raw tool errors not published, hashes only",
+  "results": [
+    {
+      "case_id": "L1A-01",
+      "command": [
+        "unshare",
+        "-Urn",
+        "--",
+        "/home/motafeq/projects/sentinel/agents/.venv/bin/python",
+        "/tmp/s4-l1a-detectors.py",
+        "--compiler",
+        "/home/motafeq/.solc-select/artifacts/solc-0.4.25/solc-0.4.25",
+        "--source",
+        "/tmp/sentinel-l1a-utq6my9t/L1A-01/target.sol"
+      ],
+      "source_sha256": "c3ef4d19822e4787d8ba3549213ba6743487c4752f709576b9ad0f4aef1499e9",
+      "compiler_sha256": "c9b268750506b88fe71371100050e9dd1e7edcf8f69da34d1cd09557ecb24580",
+      "exit_code": 0,
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stdout_sha256": "13d05acb8a4d8860f8aff1de3d73e1c9bfe1ef3c36a1657b17435c775c32b244",
+      "tool": {
+        "requested_detectors": [
+          "calls-loop",
+          "costly-loop",
+          "return-bomb",
+          "unchecked-lowlevel",
+          "unchecked-send",
+          "unused-return"
+        ],
+        "registered_detectors": [
+          "calls-loop",
+          "costly-loop",
+          "return-bomb",
+          "unchecked-lowlevel",
+          "unchecked-send",
+          "unused-return"
+        ],
+        "available_detectors": [
+          "calls-loop",
+          "costly-loop",
+          "return-bomb",
+          "unchecked-lowlevel",
+          "unchecked-send",
+          "unused-return"
+        ],
+        "missing_detectors": [],
+        "findings": [
+          {
+            "detector": "costly-loop",
+            "impact": "Informational",
+            "confidence": "Medium",
+            "lines": [
+              142,
+              143,
+              144,
+              145,
+              146,
+              147,
+              148,
+              149,
+              150,
+              151,
+              152,
+              153,
+              154,
+              155
+            ],
+            "description_sha256": "f0c3ff9c3fd2a86e550e28b795cb98262dcb0793e812e62bb9964d5b97f3214f"
+          },
+          {
+            "detector": "costly-loop",
+            "impact": "Informational",
+            "confidence": "Medium",
+            "lines": [
+              142,
+              143,
+              144,
+              145,
+              146,
+              147,
+              148,
+              149,
+              150,
+              151,
+              152,
+              153,
+              154,
+              155
+            ],
+            "description_sha256": "0b118dacd425c54edbb928d2c2e085e9af884019671a53a027eaec2cb8686f1e"
+          }
+        ],
+        "slither_version": "0.11.5",
+        "status": "COMPLETED",
+        "seconds": 0.1304
+      },
+      "wall_seconds": 0.531
+    },
+    {
+      "case_id": "L1A-02",
+      "command": [
+        "unshare",
+        "-Urn",
+        "--",
+        "/home/motafeq/projects/sentinel/agents/.venv/bin/python",
+        "/tmp/s4-l1a-detectors.py",
+        "--compiler",
+        "/home/motafeq/.solc-select/artifacts/solc-0.6.12/solc-0.6.12",
+        "--source",
+        "/tmp/sentinel-l1a-utq6my9t/L1A-02/target.sol"
+      ],
+      "source_sha256": "98de8a5ee7429c88c362a8899bd231658b773d5bf8aa60b2be401f2aeda584f2",
+      "compiler_sha256": "f6cb519b01dabc61cab4c184a3db11aa591d18151e362fcae850e42cffdfb09a",
+      "exit_code": 0,
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stdout_sha256": "6f60165a2cebf3aafab7c6c288f61136dbe4c64ca97efae3de4c6f64898a8f2e",
+      "tool": {
+        "requested_detectors": [
+          "calls-loop",
+          "costly-loop",
+          "return-bomb",
+          "unchecked-lowlevel",
+          "unchecked-send",
+          "unused-return"
+        ],
+        "registered_detectors": [
+          "calls-loop",
+          "costly-loop",
+          "return-bomb",
+          "unchecked-lowlevel",
+          "unchecked-send",
+          "unused-return"
+        ],
+        "available_detectors": [
+          "calls-loop",
+          "costly-loop",
+          "return-bomb",
+          "unchecked-lowlevel",
+          "unchecked-send",
+          "unused-return"
+        ],
+        "missing_detectors": [],
+        "findings": [
+          {
+            "detector": "costly-loop",
+            "impact": "Informational",
+            "confidence": "Medium",
+            "lines": [
+              788,
+              789,
+              790,
+              791,
+              792,
+              793,
+              794,
+              795,
+              796,
+              797,
+              798,
+              799,
+              800,
+              801,
+              802
+            ],
+            "description_sha256": "c39c693e28a0068fbad6c9d8818cbcd60e7d7cd999bff22f2fe4b432a719b74e"
+          },
+          {
+            "detector": "costly-loop",
+            "impact": "Informational",
+            "confidence": "Medium",
+            "lines": [
+              788,
+              789,
+              790,
+              791,
+              792,
+              793,
+              794,
+              795,
+              796,
+              797,
+              798,
+              799,
+              800,
+              801,
+              802
+            ],
+            "description_sha256": "e45f79915057d7d15ffec0bb06b349ec60d6bdb53ede32ec3e57d2823f6eb1cc"
+          }
+        ],
+        "slither_version": "0.11.5",
+        "status": "COMPLETED",
+        "seconds": 0.139
+      },
+      "wall_seconds": 0.543
+    },
+    {
+      "case_id": "L1A-03",
+      "command": [
+        "unshare",
+        "-Urn",
+        "--",
+        "/home/motafeq/projects/sentinel/agents/.venv/bin/python",
+        "/tmp/s4-l1a-detectors.py",
+        "--compiler",
+        "/home/motafeq/.solc-select/artifacts/solc-0.8.0/solc-0.8.0",
+        "--source",
+        "/tmp/sentinel-l1a-utq6my9t/L1A-03/target.sol"
+      ],
+      "source_sha256": "d2d6a25fd238aa74c0cdfd16ce9c74d5a35c2aa629379cbe371db4b79a4bf0cb",
+      "compiler_sha256": "64016310a57caf1af76a3610f1f94c8848c04c9673e7fa268492e608918a4bdc",
+      "exit_code": 0,
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stdout_sha256": "67dae5fe2bdf9148d430e8179224ad3d828beb0af7a6218abf266328e8909d15",
+      "tool": {
+        "requested_detectors": [
+          "calls-loop",
+          "costly-loop",
+          "return-bomb",
+          "unchecked-lowlevel",
+          "unchecked-send",
+          "unused-return"
+        ],
+        "registered_detectors": [
+          "calls-loop",
+          "costly-loop",
+          "return-bomb",
+          "unchecked-lowlevel",
+          "unchecked-send",
+          "unused-return"
+        ],
+        "available_detectors": [
+          "calls-loop",
+          "costly-loop",
+          "return-bomb",
+          "unchecked-lowlevel",
+          "unchecked-send",
+          "unused-return"
+        ],
+        "missing_detectors": [],
+        "findings": [
+          {
+            "detector": "calls-loop",
+            "impact": "Low",
+            "confidence": "Medium",
+            "lines": [
+              1045,
+              1046,
+              1047,
+              1048,
+              1049,
+              1050,
+              1051,
+              1052,
+              1053,
+              1054,
+              1055,
+              1056,
+              1057,
+              1058,
+              1059,
+              1060,
+              1061,
+              1062,
+              1063,
+              1064,
+              1065,
+              1066
+            ],
+            "description_sha256": "7acf3f23bad2be725e78f93b98eae7f5df109039bb33ef179d1df2781a70f1d3"
+          },
+          {
+            "detector": "calls-loop",
+            "impact": "Low",
+            "confidence": "Medium",
+            "lines": [
+              1045,
+              1046,
+              1047,
+              1048,
+              1049,
+              1050,
+              1051,
+              1052,
+              1053,
+              1054,
+              1055,
+              1056,
+              1057,
+              1058,
+              1059,
+              1060,
+              1061,
+              1062,
+              1063,
+              1064,
+              1065,
+              1066
+            ],
+            "description_sha256": "87945a166b54749bbcab12a1510626b04b3fc9ba3908c6cd867ced57a22f5dc6"
+          },
+          {
+            "detector": "calls-loop",
+            "impact": "Low",
+            "confidence": "Medium",
+            "lines": [
+              1045,
+              1046,
+              1047,
+              1048,
+              1049,
+              1050,
+              1051,
+              1052,
+              1053,
+              1054,
+              1055,
+              1056,
+              1057,
+              1058,
+              1059,
+              1060,
+              1061,
+              1062,
+              1063,
+              1064,
+              1065,
+              1066
+            ],
+            "description_sha256": "884b8f1634a7054443f9cc3caf21b01d9975d6c66ac2178a3491c78bcc6aa9f9"
+          },
+          {
+            "detector": "costly-loop",
+            "impact": "Informational",
+            "confidence": "Medium",
+            "lines": [
+              1232,
+              1233,
+              1234,
+              1235,
+              1236,
+              1237,
+              1238,
+              1239,
+              1240,
+              1241,
+              1242,
+              1243,
+              1244,
+              1245,
+              1246,
+              1247,
+              1248,
+              1249,
+              1250
+            ],
+            "description_sha256": "0a6ecb5e82e6d318b67be22fa3254fdb0eb76d7a22d2bac2a709f99691b88247"
+          },
+          {
+            "detector": "costly-loop",
+            "impact": "Informational",
+            "confidence": "Medium",
+            "lines": [
+              1207,
+              1208,
+              1209,
+              1210,
+              1211,
+              1212,
+              1213,
+              1214,
+              1215,
+              1216,
+              1217,
+              1218,
+              1219,
+              1220,
+              1221,
+              1222,
+              1223,
+              1224,
+              1225
+            ],
+            "description_sha256": "c01c972ad4449aff013aa59f57db8ef0e07d6b0ce3ce1fbb720ba6c529557817"
+          },
+          {
+            "detector": "costly-loop",
+            "impact": "Informational",
+            "confidence": "Medium",
+            "lines": [
+              1232,
+              1233,
+              1234,
+              1235,
+              1236,
+              1237,
+              1238,
+              1239,
+              1240,
+              1241,
+              1242,
+              1243,
+              1244,
+              1245,
+              1246,
+              1247,
+              1248,
+              1249,
+              1250
+            ],
+            "description_sha256": "bb7059a1e71b6bc75d77c2bcb9b3f022df30aaf36a475aa7a13688326303ca57"
+          },
+          {
+            "detector": "costly-loop",
+            "impact": "Informational",
+            "confidence": "Medium",
+            "lines": [
+              1207,
+              1208,
+              1209,
+              1210,
+              1211,
+              1212,
+              1213,
+              1214,
+              1215,
+              1216,
+              1217,
+              1218,
+              1219,
+              1220,
+              1221,
+              1222,
+              1223,
+              1224,
+              1225
+            ],
+            "description_sha256": "fe7a6094d36e607b1ba350651453b88821805d49bedce39fb96b4b923ad98daa"
+          },
+          {
+            "detector": "costly-loop",
+            "impact": "Informational",
+            "confidence": "Medium",
+            "lines": [
+              1232,
+              1233,
+              1234,
+              1235,
+              1236,
+              1237,
+              1238,
+              1239,
+              1240,
+              1241,
+              1242,
+              1243,
+              1244,
+              1245,
+              1246,
+              1247,
+              1248,
+              1249,
+              1250
+            ],
+            "description_sha256": "d4a2adf1849bbc520c6b06928f1ef3b74bf4f00447c453807c1783904f88f2e8"
+          },
+          {
+            "detector": "costly-loop",
+            "impact": "Informational",
+            "confidence": "Medium",
+            "lines": [
+              1232,
+              1233,
+              1234,
+              1235,
+              1236,
+              1237,
+              1238,
+              1239,
+              1240,
+              1241,
+              1242,
+              1243,
+              1244,
+              1245,
+              1246,
+              1247,
+              1248,
+              1249,
+              1250
+            ],
+            "description_sha256": "70dc0c75e8aedb4c32f815023bc0e6ff6d5e80f66f0c4a74b3d48767b040f854"
+          }
+        ],
+        "slither_version": "0.11.5",
+        "status": "COMPLETED",
+        "seconds": 0.3343
+      },
+      "wall_seconds": 0.758
+    },
+    {
+      "case_id": "L1A-04",
+      "command": [
+        "unshare",
+        "-Urn",
+        "--",
+        "/home/motafeq/projects/sentinel/agents/.venv/bin/python",
+        "/tmp/s4-l1a-detectors.py",
+        "--compiler",
+        "/home/motafeq/.solc-select/artifacts/solc-0.8.7/solc-0.8.7",
+        "--source",
+        "/tmp/sentinel-l1a-utq6my9t/L1A-04/target.sol"
+      ],
+      "source_sha256": "11f50b3809298cfdc75607ae3deb17888f6710466d057dc3bf770904bf4237d5",
+      "compiler_sha256": "003d75383e45212f9812d0b6add90329fd3b239e6c378d2882f61f9345896d99",
+      "exit_code": 0,
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stdout_sha256": "7cd3360c3c36a9ba445d782506206f59018f43e8d41c3ade039ee72fe95cb11e",
+      "tool": {
+        "requested_detectors": [
+          "calls-loop",
+          "costly-loop",
+          "return-bomb",
+          "unchecked-lowlevel",
+          "unchecked-send",
+          "unused-return"
+        ],
+        "registered_detectors": [
+          "calls-loop",
+          "costly-loop",
+          "return-bomb",
+          "unchecked-lowlevel",
+          "unchecked-send",
+          "unused-return"
+        ],
+        "available_detectors": [
+          "calls-loop",
+          "costly-loop",
+          "return-bomb",
+          "unchecked-lowlevel",
+          "unchecked-send",
+          "unused-return"
+        ],
+        "missing_detectors": [],
+        "findings": [],
+        "slither_version": "0.11.5",
+        "status": "COMPLETED",
+        "seconds": 0.2954
+      },
+      "wall_seconds": 0.524
+    },
+    {
+      "case_id": "L1A-05",
+      "command": [
+        "unshare",
+        "-Urn",
+        "--",
+        "/home/motafeq/projects/sentinel/agents/.venv/bin/python",
+        "/tmp/s4-l1a-detectors.py",
+        "--compiler",
+        "/home/motafeq/.solc-select/artifacts/solc-0.4.12/solc-0.4.12",
+        "--source",
+        "/tmp/sentinel-l1a-utq6my9t/L1A-05/target.sol"
+      ],
+      "source_sha256": "c0cacd26a90eb4ba9746d2b801a17e2658b3543bb329f26c035c24a8a0bbcc68",
+      "compiler_sha256": "221ae33e12bda5c8b796c9abae2b2eb73e46d9b12128bfee451b12856f8b47ee",
+      "exit_code": 0,
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stdout_sha256": "8e902e88be92f486573fc746d5b9119961000b1bd984fcd16f14fb181ce68e96",
+      "tool": {
+        "requested_detectors": [
+          "calls-loop",
+          "costly-loop",
+          "return-bomb",
+          "unchecked-lowlevel",
+          "unchecked-send",
+          "unused-return"
+        ],
+        "registered_detectors": [
+          "calls-loop",
+          "costly-loop",
+          "return-bomb",
+          "unchecked-lowlevel",
+          "unchecked-send",
+          "unused-return"
+        ],
+        "available_detectors": [
+          "calls-loop",
+          "costly-loop",
+          "return-bomb",
+          "unchecked-lowlevel",
+          "unchecked-send",
+          "unused-return"
+        ],
+        "missing_detectors": [],
+        "findings": [],
+        "slither_version": "0.11.5",
+        "status": "COMPLETED",
+        "seconds": 0.1004
+      },
+      "wall_seconds": 0.3
+    },
+    {
+      "case_id": "L1A-06",
+      "command": [
+        "unshare",
+        "-Urn",
+        "--",
+        "/home/motafeq/projects/sentinel/agents/.venv/bin/python",
+        "/tmp/s4-l1a-detectors.py",
+        "--compiler",
+        "/home/motafeq/.solc-select/artifacts/solc-0.4.16/solc-0.4.16",
+        "--source",
+        "/tmp/sentinel-l1a-utq6my9t/L1A-06/target.sol"
+      ],
+      "source_sha256": "3e815a0927ff1be25cfa7d2f323569ac86e6dc0420a0818d8ac3d09824b723f8",
+      "compiler_sha256": "78e0da6cad24ab145a8d17420c4f094c8314418ca23cff4b050bb2bfd36f3af2",
+      "exit_code": 0,
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stdout_sha256": "41091d8704caf4edcb723efc41e7ea762566d887d45898e53781dfc4d1896ef1",
+      "tool": {
+        "requested_detectors": [
+          "calls-loop",
+          "costly-loop",
+          "return-bomb",
+          "unchecked-lowlevel",
+          "unchecked-send",
+          "unused-return"
+        ],
+        "registered_detectors": [
+          "calls-loop",
+          "costly-loop",
+          "return-bomb",
+          "unchecked-lowlevel",
+          "unchecked-send",
+          "unused-return"
+        ],
+        "available_detectors": [
+          "calls-loop",
+          "costly-loop",
+          "return-bomb",
+          "unchecked-lowlevel",
+          "unchecked-send",
+          "unused-return"
+        ],
+        "missing_detectors": [],
+        "findings": [],
+        "slither_version": "0.11.5",
+        "status": "COMPLETED",
+        "seconds": 0.0367
+      },
+      "wall_seconds": 0.243
+    },
+    {
+      "case_id": "L1A-07",
+      "command": [
+        "unshare",
+        "-Urn",
+        "--",
+        "/home/motafeq/projects/sentinel/agents/.venv/bin/python",
+        "/tmp/s4-l1a-detectors.py",
+        "--compiler",
+        "/home/motafeq/.solc-select/artifacts/solc-0.8.23/solc-0.8.23",
+        "--source",
+        "/tmp/sentinel-l1a-utq6my9t/L1A-07/target.sol"
+      ],
+      "source_sha256": "a51fa5abab79fbe6231a5f2730429aa138cf28e888144ac4b3ba027e2182278c",
+      "compiler_sha256": "28726a452290c70e1984f15c53ad3088e7d98783ee3070b11b3664da77415732",
+      "exit_code": 0,
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stdout_sha256": "9e33ca402a0b2fdb284f9bde54311ea9e5f9b4f0190efda922595bdc72cdc166",
+      "tool": {
+        "requested_detectors": [
+          "calls-loop",
+          "costly-loop",
+          "return-bomb",
+          "unchecked-lowlevel",
+          "unchecked-send",
+          "unused-return"
+        ],
+        "registered_detectors": [
+          "calls-loop",
+          "costly-loop",
+          "return-bomb",
+          "unchecked-lowlevel",
+          "unchecked-send",
+          "unused-return"
+        ],
+        "available_detectors": [
+          "calls-loop",
+          "costly-loop",
+          "return-bomb",
+          "unchecked-lowlevel",
+          "unchecked-send",
+          "unused-return"
+        ],
+        "missing_detectors": [],
+        "findings": [],
+        "slither_version": "0.11.5",
+        "status": "COMPLETED",
+        "seconds": 0.2305
+      },
+      "wall_seconds": 0.454
+    },
+    {
+      "case_id": "L1A-08",
+      "command": [
+        "unshare",
+        "-Urn",
+        "--",
+        "/home/motafeq/projects/sentinel/agents/.venv/bin/python",
+        "/tmp/s4-l1a-detectors.py",
+        "--compiler",
+        "/home/motafeq/.solc-select/artifacts/solc-0.8.20/solc-0.8.20",
+        "--source",
+        "/tmp/sentinel-l1a-utq6my9t/L1A-08/target.sol"
+      ],
+      "source_sha256": "25f30a8ce75a836185779fa597d9fbce4b1420d0fc0b2043547c95ef34513af7",
+      "compiler_sha256": "0479d44fdf9c501c25337fdc540419f1593b884a87b47f023da4f1c700fda782",
+      "exit_code": 0,
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stdout_sha256": "021e94b14aa60a8055ad5ab22f10fcd4fd7b06c492c867dfb41f914e19e73678",
+      "tool": {
+        "requested_detectors": [
+          "calls-loop",
+          "costly-loop",
+          "return-bomb",
+          "unchecked-lowlevel",
+          "unchecked-send",
+          "unused-return"
+        ],
+        "registered_detectors": [
+          "calls-loop",
+          "costly-loop",
+          "return-bomb",
+          "unchecked-lowlevel",
+          "unchecked-send",
+          "unused-return"
+        ],
+        "available_detectors": [
+          "calls-loop",
+          "costly-loop",
+          "return-bomb",
+          "unchecked-lowlevel",
+          "unchecked-send",
+          "unused-return"
+        ],
+        "missing_detectors": [],
+        "findings": [
+          {
+            "detector": "unused-return",
+            "impact": "Medium",
+            "confidence": "Medium",
+            "lines": [
+              328,
+              329,
+              330,
+              331,
+              332,
+              333,
+              334,
+              335,
+              336,
+              337
+            ],
+            "description_sha256": "10e43d287337322306b33d4925a05cbf1b5293c61c6697a0f126b2df04fef368"
+          },
+          {
+            "detector": "unused-return",
+            "impact": "Medium",
+            "confidence": "Medium",
+            "lines": [
+              328,
+              329,
+              330,
+              331,
+              332,
+              333,
+              334,
+              335,
+              336,
+              337
+            ],
+            "description_sha256": "939b55113ad96148ab30e00b032ae0177d36e81c0e3047de909a52654d85a6a2"
+          }
+        ],
+        "slither_version": "0.11.5",
+        "status": "COMPLETED",
+        "seconds": 0.1773
+      },
+      "wall_seconds": 0.385
+    },
+    {
+      "case_id": "L1A-09",
+      "command": [
+        "unshare",
+        "-Urn",
+        "--",
+        "/home/motafeq/projects/sentinel/agents/.venv/bin/python",
+        "/tmp/s4-l1a-detectors.py",
+        "--compiler",
+        "/home/motafeq/.solc-select/artifacts/solc-0.4.26/solc-0.4.26",
+        "--source",
+        "/tmp/sentinel-l1a-utq6my9t/L1A-09/target.sol"
+      ],
+      "source_sha256": "1435a832d722b1f8dca133b429b3781d7d9ff70402fe0767606b68af28652bce",
+      "compiler_sha256": "5d577b3f7918dd735ab157e2f37a21d06c90469f13868359874f15184f2fa4d0",
+      "exit_code": 0,
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stdout_sha256": "151ec5ed6f3fb307572c04fb39251e09196834813dfc1b0ad4f23c5e662e0543",
+      "tool": {
+        "requested_detectors": [
+          "calls-loop",
+          "costly-loop",
+          "return-bomb",
+          "unchecked-lowlevel",
+          "unchecked-send",
+          "unused-return"
+        ],
+        "registered_detectors": [
+          "calls-loop",
+          "costly-loop",
+          "return-bomb",
+          "unchecked-lowlevel",
+          "unchecked-send",
+          "unused-return"
+        ],
+        "available_detectors": [
+          "calls-loop",
+          "costly-loop",
+          "return-bomb",
+          "unchecked-lowlevel",
+          "unchecked-send",
+          "unused-return"
+        ],
+        "missing_detectors": [],
+        "findings": [],
+        "slither_version": "0.11.5",
+        "status": "COMPLETED",
+        "seconds": 0.0282
+      },
+      "wall_seconds": 0.225
+    },
+    {
+      "case_id": "L1A-10",
+      "command": [
+        "unshare",
+        "-Urn",
+        "--",
+        "/home/motafeq/projects/sentinel/agents/.venv/bin/python",
+        "/tmp/s4-l1a-detectors.py",
+        "--compiler",
+        "/home/motafeq/.solc-select/artifacts/solc-0.4.24/solc-0.4.24",
+        "--source",
+        "/tmp/sentinel-l1a-utq6my9t/L1A-10/target.sol"
+      ],
+      "source_sha256": "55b97aa8d81196e12aefa908b802ef01bae6e1200798e2ae0cceecbc6d8cd20b",
+      "compiler_sha256": "665675b9e0431c2572d59d6a7112afbdc752732ea0ce9aecf1a1855f28e02a09",
+      "exit_code": 0,
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stdout_sha256": "588a0faa58181422d32fffc61f1cf49bac5872e9cc8b6a80965537ecdc2b7629",
+      "tool": {
+        "requested_detectors": [
+          "calls-loop",
+          "costly-loop",
+          "return-bomb",
+          "unchecked-lowlevel",
+          "unchecked-send",
+          "unused-return"
+        ],
+        "registered_detectors": [
+          "calls-loop",
+          "costly-loop",
+          "return-bomb",
+          "unchecked-lowlevel",
+          "unchecked-send",
+          "unused-return"
+        ],
+        "available_detectors": [
+          "calls-loop",
+          "costly-loop",
+          "return-bomb",
+          "unchecked-lowlevel",
+          "unchecked-send",
+          "unused-return"
+        ],
+        "missing_detectors": [],
+        "findings": [],
+        "slither_version": "0.11.5",
+        "status": "COMPLETED",
+        "seconds": 0.096
+      },
+      "wall_seconds": 0.287
+    },
+    {
+      "case_id": "L1A-11",
+      "command": [
+        "unshare",
+        "-Urn",
+        "--",
+        "/home/motafeq/projects/sentinel/agents/.venv/bin/python",
+        "/tmp/s4-l1a-detectors.py",
+        "--compiler",
+        "/home/motafeq/.solc-select/artifacts/solc-0.8.18/solc-0.8.18",
+        "--source",
+        "/tmp/sentinel-l1a-utq6my9t/L1A-11/target.sol"
+      ],
+      "source_sha256": "06de0432e1f626fa0a89a130d778d0b1dcfdd2261b1bf8d30c7d30bd97151838",
+      "compiler_sha256": "95e6ed4949a63ad89afb443ecba1fb8302dd2860ee5e9baace3e674a0f48aa77",
+      "exit_code": 0,
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stdout_sha256": "5ce7adcac28636adfc7cf64096ce76e243f86376f9b650a87c5e9d93fae71a68",
+      "tool": {
+        "requested_detectors": [
+          "calls-loop",
+          "costly-loop",
+          "return-bomb",
+          "unchecked-lowlevel",
+          "unchecked-send",
+          "unused-return"
+        ],
+        "registered_detectors": [
+          "calls-loop",
+          "costly-loop",
+          "return-bomb",
+          "unchecked-lowlevel",
+          "unchecked-send",
+          "unused-return"
+        ],
+        "available_detectors": [
+          "calls-loop",
+          "costly-loop",
+          "return-bomb",
+          "unchecked-lowlevel",
+          "unchecked-send",
+          "unused-return"
+        ],
+        "missing_detectors": [],
+        "findings": [
+          {
+            "detector": "unused-return",
+            "impact": "Medium",
+            "confidence": "Medium",
+            "lines": [
+              425,
+              426,
+              427,
+              428,
+              429,
+              430,
+              431,
+              432,
+              433,
+              434,
+              435,
+              436
+            ],
+            "description_sha256": "6c380bee3eb395e7683b613ea2bdcb69e8ae19da911a64b263e86aef72c0fa21"
+          }
+        ],
+        "slither_version": "0.11.5",
+        "status": "COMPLETED",
+        "seconds": 0.1908
+      },
+      "wall_seconds": 0.4
+    },
+    {
+      "case_id": "L1A-12",
+      "command": [
+        "unshare",
+        "-Urn",
+        "--",
+        "/home/motafeq/projects/sentinel/agents/.venv/bin/python",
+        "/tmp/s4-l1a-detectors.py",
+        "--compiler",
+        "/home/motafeq/.solc-select/artifacts/solc-0.8.17/solc-0.8.17",
+        "--source",
+        "/tmp/sentinel-l1a-utq6my9t/L1A-12/target.sol"
+      ],
+      "source_sha256": "e4966aa8f4c498e564686294914613ca3dd14f0300a02f57ab24511b30e53773",
+      "compiler_sha256": "99f2070b776e9714f1f76c43c229cf99b8978a92938ee8d2364c6de11c1a03d4",
+      "exit_code": 0,
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stdout_sha256": "a3c61ac79f964b598a6fdd3ade65cc0b292403bf30c1cb81c14f42f2c85d7de8",
+      "tool": {
+        "requested_detectors": [
+          "calls-loop",
+          "costly-loop",
+          "return-bomb",
+          "unchecked-lowlevel",
+          "unchecked-send",
+          "unused-return"
+        ],
+        "registered_detectors": [
+          "calls-loop",
+          "costly-loop",
+          "return-bomb",
+          "unchecked-lowlevel",
+          "unchecked-send",
+          "unused-return"
+        ],
+        "available_detectors": [
+          "calls-loop",
+          "costly-loop",
+          "return-bomb",
+          "unchecked-lowlevel",
+          "unchecked-send",
+          "unused-return"
+        ],
+        "missing_detectors": [],
+        "findings": [],
+        "slither_version": "0.11.5",
+        "status": "COMPLETED",
+        "seconds": 0.2325
+      },
+      "wall_seconds": 0.453
+    },
+    {
+      "case_id": "L1A-13",
+      "command": [
+        "unshare",
+        "-Urn",
+        "--",
+        "/home/motafeq/projects/sentinel/agents/.venv/bin/python",
+        "/tmp/s4-l1a-detectors.py",
+        "--compiler",
+        "/home/motafeq/.solc-select/artifacts/solc-0.4.11/solc-0.4.11",
+        "--source",
+        "/tmp/sentinel-l1a-utq6my9t/L1A-13/target.sol"
+      ],
+      "source_sha256": "7d89f178b2a3453823f16e35bba07a4165f062931b94853dc0dea867d9225b05",
+      "compiler_sha256": "0a8d138ee245039e6f8312edc024ba3c4739cc3c013b47dc7fc9196a2e327fea",
+      "exit_code": 0,
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stdout_sha256": "2e157dec09f2fb7b3ffcde98db042a1ea5091e42011b5027062bf2d3478bd32c",
+      "tool": {
+        "requested_detectors": [
+          "calls-loop",
+          "costly-loop",
+          "return-bomb",
+          "unchecked-lowlevel",
+          "unchecked-send",
+          "unused-return"
+        ],
+        "registered_detectors": [
+          "calls-loop",
+          "costly-loop",
+          "return-bomb",
+          "unchecked-lowlevel",
+          "unchecked-send",
+          "unused-return"
+        ],
+        "available_detectors": [
+          "calls-loop",
+          "costly-loop",
+          "return-bomb",
+          "unchecked-lowlevel",
+          "unchecked-send",
+          "unused-return"
+        ],
+        "missing_detectors": [],
+        "findings": [],
+        "slither_version": "0.11.5",
+        "status": "COMPLETED",
+        "seconds": 0.0229
+      },
+      "wall_seconds": 0.214
+    },
+    {
+      "case_id": "L1A-14",
+      "command": [
+        "unshare",
+        "-Urn",
+        "--",
+        "/home/motafeq/projects/sentinel/agents/.venv/bin/python",
+        "/tmp/s4-l1a-detectors.py",
+        "--compiler",
+        "/home/motafeq/.solc-select/artifacts/solc-0.4.24/solc-0.4.24",
+        "--source",
+        "/tmp/sentinel-l1a-utq6my9t/L1A-14/target.sol"
+      ],
+      "source_sha256": "4d17eb2c53b8fcd28b313f84239bf4f426b9c31dddc8db9f47a9fa149441347c",
+      "compiler_sha256": "665675b9e0431c2572d59d6a7112afbdc752732ea0ce9aecf1a1855f28e02a09",
+      "exit_code": 0,
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stdout_sha256": "fc70a6470854cbaf548bdfb97fb28d2bd199ac0448c4f6b2a6dde25d2844b644",
+      "tool": {
+        "requested_detectors": [
+          "calls-loop",
+          "costly-loop",
+          "return-bomb",
+          "unchecked-lowlevel",
+          "unchecked-send",
+          "unused-return"
+        ],
+        "registered_detectors": [
+          "calls-loop",
+          "costly-loop",
+          "return-bomb",
+          "unchecked-lowlevel",
+          "unchecked-send",
+          "unused-return"
+        ],
+        "available_detectors": [
+          "calls-loop",
+          "costly-loop",
+          "return-bomb",
+          "unchecked-lowlevel",
+          "unchecked-send",
+          "unused-return"
+        ],
+        "missing_detectors": [],
+        "findings": [],
+        "slither_version": "0.11.5",
+        "status": "COMPLETED",
+        "seconds": 0.051
+      },
+      "wall_seconds": 0.241
+    },
+    {
+      "case_id": "L1A-15",
+      "command": [
+        "unshare",
+        "-Urn",
+        "--",
+        "/home/motafeq/projects/sentinel/agents/.venv/bin/python",
+        "/tmp/s4-l1a-detectors.py",
+        "--compiler",
+        "/home/motafeq/.solc-select/artifacts/solc-0.8.19/solc-0.8.19",
+        "--source",
+        "/tmp/sentinel-l1a-utq6my9t/L1A-15/target.sol"
+      ],
+      "source_sha256": "11559716965595ded7822b2c4187dba1246934a7617d9a5222d31ba5ab975066",
+      "compiler_sha256": "7a5c1d3dc9a8eba62bb2ec37192c9178ae5fe8a54a56e5573fd3c9c17cd9eb48",
+      "exit_code": 0,
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stdout_sha256": "625720631b2160c4e7a9fed67615d628ddb82dec227e9076fe0dc87eb38b8049",
+      "tool": {
+        "requested_detectors": [
+          "calls-loop",
+          "costly-loop",
+          "return-bomb",
+          "unchecked-lowlevel",
+          "unchecked-send",
+          "unused-return"
+        ],
+        "registered_detectors": [
+          "calls-loop",
+          "costly-loop",
+          "return-bomb",
+          "unchecked-lowlevel",
+          "unchecked-send",
+          "unused-return"
+        ],
+        "available_detectors": [
+          "calls-loop",
+          "costly-loop",
+          "return-bomb",
+          "unchecked-lowlevel",
+          "unchecked-send",
+          "unused-return"
+        ],
+        "missing_detectors": [],
+        "findings": [],
+        "slither_version": "0.11.5",
+        "status": "COMPLETED",
+        "seconds": 0.0638
+      },
+      "wall_seconds": 0.273
+    },
+    {
+      "case_id": "L1A-16",
+      "command": [
+        "unshare",
+        "-Urn",
+        "--",
+        "/home/motafeq/projects/sentinel/agents/.venv/bin/python",
+        "/tmp/s4-l1a-detectors.py",
+        "--compiler",
+        "/home/motafeq/.solc-select/artifacts/solc-0.8.23/solc-0.8.23",
+        "--source",
+        "/tmp/sentinel-l1a-utq6my9t/L1A-16/target.sol"
+      ],
+      "source_sha256": "2adb48ceef00550bc3ad2c59b21243f925e2ae4a0aef33513cd9c0156b49acf6",
+      "compiler_sha256": "28726a452290c70e1984f15c53ad3088e7d98783ee3070b11b3664da77415732",
+      "exit_code": 0,
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stdout_sha256": "32d1f36489901e3991f0f46199b047b16aba2968746f9cd28a460ff41ef975e5",
+      "tool": {
+        "requested_detectors": [
+          "calls-loop",
+          "costly-loop",
+          "return-bomb",
+          "unchecked-lowlevel",
+          "unchecked-send",
+          "unused-return"
+        ],
+        "registered_detectors": [
+          "calls-loop",
+          "costly-loop",
+          "return-bomb",
+          "unchecked-lowlevel",
+          "unchecked-send",
+          "unused-return"
+        ],
+        "available_detectors": [
+          "calls-loop",
+          "costly-loop",
+          "return-bomb",
+          "unchecked-lowlevel",
+          "unchecked-send",
+          "unused-return"
+        ],
+        "missing_detectors": [],
+        "findings": [],
+        "slither_version": "0.11.5",
+        "status": "COMPLETED",
+        "seconds": 0.0481
+      },
+      "wall_seconds": 0.247
+    }
+  ]
+}

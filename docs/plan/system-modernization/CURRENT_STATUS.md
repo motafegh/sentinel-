@@ -20,7 +20,7 @@ Reconnaissance source baseline: 61854a32a2badbcd84b98cef3f3976f070b1341e. The pr
 | S4-00 Baseline | COMPLETE / G00 PASS_WITH_LIMITATIONS |
 | S4-01 Architecture/usefulness | IN_PROGRESS (001/002/003A complete; 003B ready) |
 | S4-02 Dependencies/CI | READY (parallel eligible) |
-| S4-03 DATA | L0A/L0B COMPLETE; L-G0 PASS_WITH_LIMITATIONS; L1A READY |
+| S4-03 DATA | L0A/L0B/L1A COMPLETE; L-G0 PASS_WITH_LIMITATIONS; L1B READY |
 | S4-04 ML/inference | NOT_STARTED |
 | S4-05 AGENTS/LLM/RAG | NOT_STARTED |
 | S4-06 ZKML/contracts | NOT_STARTED |
@@ -65,9 +65,13 @@ Inspected ee9a2e0202bb0a729c60a05906b71bd3195e67b6. [Evidence](evidence/2026-11-
 
 Inspected ca7e47c6ce7a1aeaf49f9ee5689e0862bf0dbf06. [Native provenance evidence](evidence/2026-11-26_s4_03_l0b/WORKING_RECORD.md). 22,823 raw bytes/size manifest checks, 22,540 normalized source identities, 22,801 source records and all 58,056 native claims reconcile. DIVE 22 omitted paths match historical compile-failure count; per-path linkage not revalidated. Original CSV, SmartBugs 207 annotations and SolidiFI 350 injection logs available; exact local pins/license notices captured. DIVE portable origin/license unresolved; per-contract rights, annotation semantics and fresh compilation unestablished. L-G0 PASS_WITH_LIMITATIONS for local recovery research, not scientific acceptance. User's DATA quality priority advanced; no new labels or protected data changes. Prior exact SHA CI 2/2 green.
 
+## Completed slice: S4-03-L1A
+
+Inspected 604d882dac7958baed50c3cafb957b5d060ae28e. [Evidence](evidence/2026-11-26_s4_03_l1a/WORKING_RECORD.md). Frozen 16 distinct DIVE groups (all TRAIN_UNLABELED, excluded R4 reserved groups), 8 annotation calibration files. All 57 spans in bounds; partial exact coordinate anchoring. 16/16 live Slither runs complete with six detectors; DoS native 3/4 and UnusedReturn native 1/4 relevant signals, no mapped claim strata 0/4 each. Three DoS spot-checks insufficient for class confirmation; two source-supported UnusedReturn positive candidates, one cross-class post hoc missing native claim. No labels admitted. L1A complete for triage, L-G1 remains open; reservation recorded not enforced in successor. Previous CI 2/2 green.
+
 ## Next bounded slices
 
-S4-03-L1A: validate native annotation coordinates and class-specific review rubric, then freeze bounded UnusedReturn/DoS recovery pilot with group reservations and controls. GasException source research under L3 after class-definition check. S4-01-003B coverage-aware utility evaluator and actual adapter/full graph pilot, S4-02 dedicated AGENTS CI/environment reproducibility independently eligible. L-G1/G01 open; no training/promotion.
+S4-03-L1B: complete primary source reviews, independent review design, candidate extraction and no-hit scope, preserve group reservations; L3 GasException candidate-source research independently eligible. S4-01-003B coverage-aware evaluator/actual graph and S4-02 dedicated AGENTS CI/environment remain independently eligible. L-G1/G01 open, no training/promotion.
 
 ## Known initial blockers and independent work
 
@@ -77,4 +81,4 @@ S4-03-L1A: validate native annotation coordinates and class-specific review rubr
 - R4-GAP-007 isolated independent review remains pending; confirmed negatives zero, M5/full training and G8 not authorized. That separate evidence path can proceed without S4 context.
 - ZKML proof scope, read-only audit MCP, production signing/deployment and accepted DATA/ML roots unchanged.
 
-Next actions: S4-03-L1A native annotation recovery pilot and S4-01-003B utility evaluation (S4-02 parallel eligible); no broad redesign or new training without admissible evidence.
+Next actions: S4-03-L1B source review, L3 GasException research, S4-01-003B utility evaluation and S4-02 parallel eligible; no new training without admissible evidence.

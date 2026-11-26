@@ -1,0 +1,403 @@
+{
+  "baseline": "604d882dac7958baed50c3cafb957b5d060ae28e",
+  "taxonomy_sha256": "32ea164236aa0e567a5560f65f0ce45f17ed8e8112c2ed06c1b490712f7d6d39",
+  "queue_sha256": "224d82d99e4f1c88a57d9d75528d02a80abc8dcfaeaa1fce3aa459a96c7170d0",
+  "excluded_reserved_groups": 200,
+  "excluded_contract_counts": {
+    "size": 2012,
+    "r4_reserved": 201
+  },
+  "stratum_pool_contract_counts": {
+    "UnusedReturn|native_positive|legacy": 1607,
+    "DenialOfService|no_mapped_claim|legacy": 6861,
+    "DenialOfService|native_positive|legacy": 2052,
+    "UnusedReturn|no_mapped_claim|modern": 7547,
+    "DenialOfService|no_mapped_claim|modern": 9493,
+    "UnusedReturn|no_mapped_claim|legacy": 7306,
+    "UnusedReturn|native_positive|modern": 2764,
+    "DenialOfService|native_positive|modern": 818
+  },
+  "stratum_pool_group_counts": {
+    "UnusedReturn|native_positive|legacy": 1603,
+    "DenialOfService|no_mapped_claim|legacy": 6830,
+    "DenialOfService|native_positive|legacy": 2045,
+    "UnusedReturn|no_mapped_claim|modern": 7478,
+    "DenialOfService|no_mapped_claim|modern": 9416,
+    "UnusedReturn|no_mapped_claim|legacy": 7271,
+    "UnusedReturn|native_positive|modern": 2758,
+    "DenialOfService|native_positive|modern": 818
+  },
+  "cases": [
+    {
+      "contract_id": "c3ef4d19822e4787d8ba3549213ba6743487c4752f709576b9ad0f4aef1499e9",
+      "group_id": "r4grp-48f25c281dcad56ac655b8a4607f6403",
+      "class": "DenialOfService",
+      "native_claim": "native_positive",
+      "era": "legacy",
+      "role": "TRAIN_UNLABELED",
+      "outcome_state": "NOT_REVIEWED",
+      "source_path": "data_module/data/sentinel-preprocessed-r4-v2/dive/c3ef4d19822e4787d8ba3549213ba6743487c4752f709576b9ad0f4aef1499e9.sol",
+      "source_sha256": "c3ef4d19822e4787d8ba3549213ba6743487c4752f709576b9ad0f4aef1499e9",
+      "compiler_version": "0.4.25",
+      "lines": 318,
+      "bytes": 9848,
+      "case_id": "L1A-01",
+      "reservation": "REVIEW_ONLY_DO_NOT_ADD_TO_FUTURE_OPTIMIZER_PENDING_OWNER_DECISION"
+    },
+    {
+      "contract_id": "98de8a5ee7429c88c362a8899bd231658b773d5bf8aa60b2be401f2aeda584f2",
+      "group_id": "r4grp-30f7ec8a15a6de5b0ef753b62bd940ba",
+      "class": "DenialOfService",
+      "native_claim": "native_positive",
+      "era": "legacy",
+      "role": "TRAIN_UNLABELED",
+      "outcome_state": "NOT_REVIEWED",
+      "source_path": "data_module/data/sentinel-preprocessed-r4-v2/dive/98de8a5ee7429c88c362a8899bd231658b773d5bf8aa60b2be401f2aeda584f2.sol",
+      "source_sha256": "98de8a5ee7429c88c362a8899bd231658b773d5bf8aa60b2be401f2aeda584f2",
+      "compiler_version": "0.6.12",
+      "lines": 832,
+      "bytes": 14401,
+      "case_id": "L1A-02",
+      "reservation": "REVIEW_ONLY_DO_NOT_ADD_TO_FUTURE_OPTIMIZER_PENDING_OWNER_DECISION"
+    },
+    {
+      "contract_id": "d2d6a25fd238aa74c0cdfd16ce9c74d5a35c2aa629379cbe371db4b79a4bf0cb",
+      "group_id": "r4grp-fc44d360bdb1cd5999de5029ceba4545",
+      "class": "DenialOfService",
+      "native_claim": "native_positive",
+      "era": "modern",
+      "role": "TRAIN_UNLABELED",
+      "outcome_state": "NOT_REVIEWED",
+      "source_path": "data_module/data/sentinel-preprocessed-r4-v2/dive/d2d6a25fd238aa74c0cdfd16ce9c74d5a35c2aa629379cbe371db4b79a4bf0cb.sol",
+      "source_sha256": "d2d6a25fd238aa74c0cdfd16ce9c74d5a35c2aa629379cbe371db4b79a4bf0cb",
+      "compiler_version": "0.8.0",
+      "lines": 1383,
+      "bytes": 22639,
+      "case_id": "L1A-03",
+      "reservation": "REVIEW_ONLY_DO_NOT_ADD_TO_FUTURE_OPTIMIZER_PENDING_OWNER_DECISION"
+    },
+    {
+      "contract_id": "11f50b3809298cfdc75607ae3deb17888f6710466d057dc3bf770904bf4237d5",
+      "group_id": "r4grp-0b58e81158e1bfaf4a25872ff3ca0a8f",
+      "class": "DenialOfService",
+      "native_claim": "native_positive",
+      "era": "modern",
+      "role": "TRAIN_UNLABELED",
+      "outcome_state": "NOT_REVIEWED",
+      "source_path": "data_module/data/sentinel-preprocessed-r4-v2/dive/11f50b3809298cfdc75607ae3deb17888f6710466d057dc3bf770904bf4237d5.sol",
+      "source_sha256": "11f50b3809298cfdc75607ae3deb17888f6710466d057dc3bf770904bf4237d5",
+      "compiler_version": "0.8.7",
+      "lines": 768,
+      "bytes": 23124,
+      "case_id": "L1A-04",
+      "reservation": "REVIEW_ONLY_DO_NOT_ADD_TO_FUTURE_OPTIMIZER_PENDING_OWNER_DECISION"
+    },
+    {
+      "contract_id": "c0cacd26a90eb4ba9746d2b801a17e2658b3543bb329f26c035c24a8a0bbcc68",
+      "group_id": "r4grp-102d1896734893e900bf272099e97fdb",
+      "class": "DenialOfService",
+      "native_claim": "no_mapped_claim",
+      "era": "legacy",
+      "role": "TRAIN_UNLABELED",
+      "outcome_state": "UNKNOWN",
+      "source_path": "data_module/data/sentinel-preprocessed-r4-v2/dive/c0cacd26a90eb4ba9746d2b801a17e2658b3543bb329f26c035c24a8a0bbcc68.sol",
+      "source_sha256": "c0cacd26a90eb4ba9746d2b801a17e2658b3543bb329f26c035c24a8a0bbcc68",
+      "compiler_version": "0.4.12",
+      "lines": 261,
+      "bytes": 4532,
+      "case_id": "L1A-05",
+      "reservation": "REVIEW_ONLY_DO_NOT_ADD_TO_FUTURE_OPTIMIZER_PENDING_OWNER_DECISION"
+    },
+    {
+      "contract_id": "3e815a0927ff1be25cfa7d2f323569ac86e6dc0420a0818d8ac3d09824b723f8",
+      "group_id": "r4grp-5a9ab0cd3caf35df3fdd691825742835",
+      "class": "DenialOfService",
+      "native_claim": "no_mapped_claim",
+      "era": "legacy",
+      "role": "TRAIN_UNLABELED",
+      "outcome_state": "UNKNOWN",
+      "source_path": "data_module/data/sentinel-preprocessed-r4-v2/dive/3e815a0927ff1be25cfa7d2f323569ac86e6dc0420a0818d8ac3d09824b723f8.sol",
+      "source_sha256": "3e815a0927ff1be25cfa7d2f323569ac86e6dc0420a0818d8ac3d09824b723f8",
+      "compiler_version": "0.4.16",
+      "lines": 154,
+      "bytes": 2873,
+      "case_id": "L1A-06",
+      "reservation": "REVIEW_ONLY_DO_NOT_ADD_TO_FUTURE_OPTIMIZER_PENDING_OWNER_DECISION"
+    },
+    {
+      "contract_id": "a51fa5abab79fbe6231a5f2730429aa138cf28e888144ac4b3ba027e2182278c",
+      "group_id": "r4grp-89591eb3d30d3081dc54a6f53962eb71",
+      "class": "DenialOfService",
+      "native_claim": "no_mapped_claim",
+      "era": "modern",
+      "role": "TRAIN_UNLABELED",
+      "outcome_state": "UNKNOWN",
+      "source_path": "data_module/data/sentinel-preprocessed-r4-v2/dive/a51fa5abab79fbe6231a5f2730429aa138cf28e888144ac4b3ba027e2182278c.sol",
+      "source_sha256": "a51fa5abab79fbe6231a5f2730429aa138cf28e888144ac4b3ba027e2182278c",
+      "compiler_version": "0.8.23",
+      "lines": 776,
+      "bytes": 18763,
+      "case_id": "L1A-07",
+      "reservation": "REVIEW_ONLY_DO_NOT_ADD_TO_FUTURE_OPTIMIZER_PENDING_OWNER_DECISION"
+    },
+    {
+      "contract_id": "25f30a8ce75a836185779fa597d9fbce4b1420d0fc0b2043547c95ef34513af7",
+      "group_id": "r4grp-6068727e4dddaf65741b9255ef565547",
+      "class": "DenialOfService",
+      "native_claim": "no_mapped_claim",
+      "era": "modern",
+      "role": "TRAIN_UNLABELED",
+      "outcome_state": "UNKNOWN",
+      "source_path": "data_module/data/sentinel-preprocessed-r4-v2/dive/25f30a8ce75a836185779fa597d9fbce4b1420d0fc0b2043547c95ef34513af7.sol",
+      "source_sha256": "25f30a8ce75a836185779fa597d9fbce4b1420d0fc0b2043547c95ef34513af7",
+      "compiler_version": "0.8.20",
+      "lines": 361,
+      "bytes": 12286,
+      "case_id": "L1A-08",
+      "reservation": "REVIEW_ONLY_DO_NOT_ADD_TO_FUTURE_OPTIMIZER_PENDING_OWNER_DECISION"
+    },
+    {
+      "contract_id": "1435a832d722b1f8dca133b429b3781d7d9ff70402fe0767606b68af28652bce",
+      "group_id": "r4grp-20e96af5c124933fc9954a79f3f2be82",
+      "class": "UnusedReturn",
+      "native_claim": "native_positive",
+      "era": "legacy",
+      "role": "TRAIN_UNLABELED",
+      "outcome_state": "NOT_REVIEWED",
+      "source_path": "data_module/data/sentinel-preprocessed-r4-v2/dive/1435a832d722b1f8dca133b429b3781d7d9ff70402fe0767606b68af28652bce.sol",
+      "source_sha256": "1435a832d722b1f8dca133b429b3781d7d9ff70402fe0767606b68af28652bce",
+      "compiler_version": "0.4.26",
+      "lines": 103,
+      "bytes": 2153,
+      "case_id": "L1A-09",
+      "reservation": "REVIEW_ONLY_DO_NOT_ADD_TO_FUTURE_OPTIMIZER_PENDING_OWNER_DECISION"
+    },
+    {
+      "contract_id": "55b97aa8d81196e12aefa908b802ef01bae6e1200798e2ae0cceecbc6d8cd20b",
+      "group_id": "r4grp-97de5e76b51fbd43c8ad39742ab9e563",
+      "class": "UnusedReturn",
+      "native_claim": "native_positive",
+      "era": "legacy",
+      "role": "TRAIN_UNLABELED",
+      "outcome_state": "NOT_REVIEWED",
+      "source_path": "data_module/data/sentinel-preprocessed-r4-v2/dive/55b97aa8d81196e12aefa908b802ef01bae6e1200798e2ae0cceecbc6d8cd20b.sol",
+      "source_sha256": "55b97aa8d81196e12aefa908b802ef01bae6e1200798e2ae0cceecbc6d8cd20b",
+      "compiler_version": "0.4.24",
+      "lines": 234,
+      "bytes": 5320,
+      "case_id": "L1A-10",
+      "reservation": "REVIEW_ONLY_DO_NOT_ADD_TO_FUTURE_OPTIMIZER_PENDING_OWNER_DECISION"
+    },
+    {
+      "contract_id": "06de0432e1f626fa0a89a130d778d0b1dcfdd2261b1bf8d30c7d30bd97151838",
+      "group_id": "r4grp-b4532f8c4702a9a5a05c50e1ff75986f",
+      "class": "UnusedReturn",
+      "native_claim": "native_positive",
+      "era": "modern",
+      "role": "TRAIN_UNLABELED",
+      "outcome_state": "NOT_REVIEWED",
+      "source_path": "data_module/data/sentinel-preprocessed-r4-v2/dive/06de0432e1f626fa0a89a130d778d0b1dcfdd2261b1bf8d30c7d30bd97151838.sol",
+      "source_sha256": "06de0432e1f626fa0a89a130d778d0b1dcfdd2261b1bf8d30c7d30bd97151838",
+      "compiler_version": "0.8.18",
+      "lines": 541,
+      "bytes": 15524,
+      "case_id": "L1A-11",
+      "reservation": "REVIEW_ONLY_DO_NOT_ADD_TO_FUTURE_OPTIMIZER_PENDING_OWNER_DECISION"
+    },
+    {
+      "contract_id": "e4966aa8f4c498e564686294914613ca3dd14f0300a02f57ab24511b30e53773",
+      "group_id": "r4grp-ed93e6372c49199b3323d82220d85fdb",
+      "class": "UnusedReturn",
+      "native_claim": "native_positive",
+      "era": "modern",
+      "role": "TRAIN_UNLABELED",
+      "outcome_state": "NOT_REVIEWED",
+      "source_path": "data_module/data/sentinel-preprocessed-r4-v2/dive/e4966aa8f4c498e564686294914613ca3dd14f0300a02f57ab24511b30e53773.sol",
+      "source_sha256": "e4966aa8f4c498e564686294914613ca3dd14f0300a02f57ab24511b30e53773",
+      "compiler_version": "0.8.17",
+      "lines": 845,
+      "bytes": 25260,
+      "case_id": "L1A-12",
+      "reservation": "REVIEW_ONLY_DO_NOT_ADD_TO_FUTURE_OPTIMIZER_PENDING_OWNER_DECISION"
+    },
+    {
+      "contract_id": "7d89f178b2a3453823f16e35bba07a4165f062931b94853dc0dea867d9225b05",
+      "group_id": "r4grp-32770f806788a00777b15e766f9b9305",
+      "class": "UnusedReturn",
+      "native_claim": "no_mapped_claim",
+      "era": "legacy",
+      "role": "TRAIN_UNLABELED",
+      "outcome_state": "UNKNOWN",
+      "source_path": "data_module/data/sentinel-preprocessed-r4-v2/dive/7d89f178b2a3453823f16e35bba07a4165f062931b94853dc0dea867d9225b05.sol",
+      "source_sha256": "7d89f178b2a3453823f16e35bba07a4165f062931b94853dc0dea867d9225b05",
+      "compiler_version": "0.4.11",
+      "lines": 69,
+      "bytes": 2099,
+      "case_id": "L1A-13",
+      "reservation": "REVIEW_ONLY_DO_NOT_ADD_TO_FUTURE_OPTIMIZER_PENDING_OWNER_DECISION"
+    },
+    {
+      "contract_id": "4d17eb2c53b8fcd28b313f84239bf4f426b9c31dddc8db9f47a9fa149441347c",
+      "group_id": "r4grp-97db68e6d58ea28ea477b9fe7fa25257",
+      "class": "UnusedReturn",
+      "native_claim": "no_mapped_claim",
+      "era": "legacy",
+      "role": "TRAIN_UNLABELED",
+      "outcome_state": "UNKNOWN",
+      "source_path": "data_module/data/sentinel-preprocessed-r4-v2/dive/4d17eb2c53b8fcd28b313f84239bf4f426b9c31dddc8db9f47a9fa149441347c.sol",
+      "source_sha256": "4d17eb2c53b8fcd28b313f84239bf4f426b9c31dddc8db9f47a9fa149441347c",
+      "compiler_version": "0.4.24",
+      "lines": 203,
+      "bytes": 4302,
+      "case_id": "L1A-14",
+      "reservation": "REVIEW_ONLY_DO_NOT_ADD_TO_FUTURE_OPTIMIZER_PENDING_OWNER_DECISION"
+    },
+    {
+      "contract_id": "11559716965595ded7822b2c4187dba1246934a7617d9a5222d31ba5ab975066",
+      "group_id": "r4grp-6fd45f08db15463551cbd67ffd38447c",
+      "class": "UnusedReturn",
+      "native_claim": "no_mapped_claim",
+      "era": "modern",
+      "role": "TRAIN_UNLABELED",
+      "outcome_state": "UNKNOWN",
+      "source_path": "data_module/data/sentinel-preprocessed-r4-v2/dive/11559716965595ded7822b2c4187dba1246934a7617d9a5222d31ba5ab975066.sol",
+      "source_sha256": "11559716965595ded7822b2c4187dba1246934a7617d9a5222d31ba5ab975066",
+      "compiler_version": "0.8.19",
+      "lines": 260,
+      "bytes": 5808,
+      "case_id": "L1A-15",
+      "reservation": "REVIEW_ONLY_DO_NOT_ADD_TO_FUTURE_OPTIMIZER_PENDING_OWNER_DECISION"
+    },
+    {
+      "contract_id": "2adb48ceef00550bc3ad2c59b21243f925e2ae4a0aef33513cd9c0156b49acf6",
+      "group_id": "r4grp-aa2afbe745e48d0b3384918d705ab0ba",
+      "class": "UnusedReturn",
+      "native_claim": "no_mapped_claim",
+      "era": "modern",
+      "role": "TRAIN_UNLABELED",
+      "outcome_state": "UNKNOWN",
+      "source_path": "data_module/data/sentinel-preprocessed-r4-v2/dive/2adb48ceef00550bc3ad2c59b21243f925e2ae4a0aef33513cd9c0156b49acf6.sol",
+      "source_sha256": "2adb48ceef00550bc3ad2c59b21243f925e2ae4a0aef33513cd9c0156b49acf6",
+      "compiler_version": "0.8.23",
+      "lines": 137,
+      "bytes": 4259,
+      "case_id": "L1A-16",
+      "reservation": "REVIEW_ONLY_DO_NOT_ADD_TO_FUTURE_OPTIMIZER_PENDING_OWNER_DECISION"
+    }
+  ],
+  "calibration": [
+    {
+      "source": "smartbugs_curated",
+      "raw_path": "ml/data/smartbugs-curated/dataset/denial_of_service/auction.sol",
+      "manifest_path": "repo/denial_of_service/auction.sol",
+      "annotation_path": "ml/data/smartbugs-curated/vulnerabilities.json",
+      "annotation_sha256": "2a7c119406b1c56df6087fbfb041f5d3aacbb07a82ee350e2220b51f429646bc",
+      "raw_sha256": "85952d4855d88d2870b14816dddd238c13f5b70bea0950564c1563e1a80f2438",
+      "category": "denial_of_service",
+      "annotations": [
+        {
+          "lines": [
+            23
+          ],
+          "category": "denial_of_service"
+        }
+      ]
+    },
+    {
+      "source": "smartbugs_curated",
+      "raw_path": "ml/data/smartbugs-curated/dataset/denial_of_service/dos_address.sol",
+      "manifest_path": "repo/denial_of_service/dos_address.sol",
+      "annotation_path": "ml/data/smartbugs-curated/vulnerabilities.json",
+      "annotation_sha256": "2a7c119406b1c56df6087fbfb041f5d3aacbb07a82ee350e2220b51f429646bc",
+      "raw_sha256": "4f6960a84c3da5f791faf0111033b1d6a425e2575fb03b31acd248210497794e",
+      "category": "denial_of_service",
+      "annotations": [
+        {
+          "lines": [
+            16,
+            17,
+            18
+          ],
+          "category": "denial_of_service"
+        }
+      ]
+    },
+    {
+      "source": "smartbugs_curated",
+      "raw_path": "ml/data/smartbugs-curated/dataset/unchecked_low_level_calls/0x07f7ecb66d788ab01dc93b9b71a88401de7d0f2e.sol",
+      "manifest_path": "repo/unchecked_low_level_calls/0x07f7ecb66d788ab01dc93b9b71a88401de7d0f2e.sol",
+      "annotation_path": "ml/data/smartbugs-curated/vulnerabilities.json",
+      "annotation_sha256": "2a7c119406b1c56df6087fbfb041f5d3aacbb07a82ee350e2220b51f429646bc",
+      "raw_sha256": "cd990cb200f29075f790bed8d2a7f15e7b01a974c533e6206a28842aaa29f368",
+      "category": "unchecked_low_level_calls",
+      "annotations": [
+        {
+          "lines": [
+            201
+          ],
+          "category": "unchecked_low_level_calls"
+        },
+        {
+          "lines": [
+            213
+          ],
+          "category": "unchecked_low_level_calls"
+        }
+      ]
+    },
+    {
+      "source": "smartbugs_curated",
+      "raw_path": "ml/data/smartbugs-curated/dataset/unchecked_low_level_calls/0x0cbe050f75bc8f8c2d6c0d249fea125fd6e1acc9.sol",
+      "manifest_path": "repo/unchecked_low_level_calls/0x0cbe050f75bc8f8c2d6c0d249fea125fd6e1acc9.sol",
+      "annotation_path": "ml/data/smartbugs-curated/vulnerabilities.json",
+      "annotation_sha256": "2a7c119406b1c56df6087fbfb041f5d3aacbb07a82ee350e2220b51f429646bc",
+      "raw_sha256": "25e13af95fecbc40ae362a331ffb65ad8c1ac284298e3b83bfe194cfb52d0386",
+      "category": "unchecked_low_level_calls",
+      "annotations": [
+        {
+          "lines": [
+            12
+          ],
+          "category": "unchecked_low_level_calls"
+        }
+      ]
+    },
+    {
+      "source": "solidifi",
+      "raw_path": "data_module/data/raw/solidifi/repo/buggy_contracts/Re-entrancy/buggy_1.sol",
+      "manifest_path": "repo/buggy_contracts/Re-entrancy/buggy_1.sol",
+      "annotation_path": "data_module/data/raw/solidifi/repo/buggy_contracts/Re-entrancy/BugLog_1.csv",
+      "annotation_sha256": "07def858675bb0872fff42f6d15f671ed51a26d94ea01bb8833b2a703635c624",
+      "raw_sha256": "6caf2132264a4a0f7def47471ebe760459c20b707516629f77f6e2528104c4f6",
+      "category": "Re-entrancy"
+    },
+    {
+      "source": "solidifi",
+      "raw_path": "data_module/data/raw/solidifi/repo/buggy_contracts/Re-entrancy/buggy_10.sol",
+      "manifest_path": "repo/buggy_contracts/Re-entrancy/buggy_10.sol",
+      "annotation_path": "data_module/data/raw/solidifi/repo/buggy_contracts/Re-entrancy/BugLog_10.csv",
+      "annotation_sha256": "acba3534ebf30cf386348e4366912e12166dad2adb0be764cd67b117dc859027",
+      "raw_sha256": "e4fc00650f091eef9d111b1903a30574619f6379abdd0e189787edcd87c08135",
+      "category": "Re-entrancy"
+    },
+    {
+      "source": "solidifi",
+      "raw_path": "data_module/data/raw/solidifi/repo/buggy_contracts/Unhandled-Exceptions/buggy_1.sol",
+      "manifest_path": "repo/buggy_contracts/Unhandled-Exceptions/buggy_1.sol",
+      "annotation_path": "data_module/data/raw/solidifi/repo/buggy_contracts/Unhandled-Exceptions/BugLog_1.csv",
+      "annotation_sha256": "becdd3b56099baeb5988b086e515f94db90b950aefcb33464b4348472578111d",
+      "raw_sha256": "fe93fcde4182059398eb620dbf5492bec6417374ccedc6e8270a2ac610ef0049",
+      "category": "Unhandled-Exceptions"
+    },
+    {
+      "source": "solidifi",
+      "raw_path": "data_module/data/raw/solidifi/repo/buggy_contracts/Unhandled-Exceptions/buggy_10.sol",
+      "manifest_path": "repo/buggy_contracts/Unhandled-Exceptions/buggy_10.sol",
+      "annotation_path": "data_module/data/raw/solidifi/repo/buggy_contracts/Unhandled-Exceptions/BugLog_10.csv",
+      "annotation_sha256": "066f54d4e37619fefd31ae7e6ec66aaa9a57bc5fdcda9b93888da95ec111f5b1",
+      "raw_sha256": "e85be941ab2ac36945a6030862a224413a79dc926a5d58f5d9e8081699af1b49",
+      "category": "Unhandled-Exceptions"
+    }
+  ],
+  "limits": "Pre-analysis freeze. No negatives, no truth promotion. Selected groups reserved for review only in this program; existing frozen roles unchanged."
+}
