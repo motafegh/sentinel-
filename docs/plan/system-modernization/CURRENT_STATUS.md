@@ -18,9 +18,9 @@ Reconnaissance source baseline: 61854a32a2badbcd84b98cef3f3976f070b1341e. The pr
 | Stage | State |
 |---|---|
 | S4-00 Baseline | COMPLETE / G00 PASS_WITH_LIMITATIONS |
-| S4-01 Architecture/usefulness | IN_PROGRESS (001/002 complete; 003 ready) |
+| S4-01 Architecture/usefulness | IN_PROGRESS (001/002/003A complete; 003B ready) |
 | S4-02 Dependencies/CI | READY (parallel eligible) |
-| S4-03 DATA | L0 READY (parallel label-recovery priority) |
+| S4-03 DATA | L0A COMPLETE; L0B READY (parallel priority) |
 | S4-04 ML/inference | NOT_STARTED |
 | S4-05 AGENTS/LLM/RAG | NOT_STARTED |
 | S4-06 ZKML/contracts | NOT_STARTED |
@@ -57,9 +57,13 @@ Inspected 154896459942c772b267e2de4e11670a1d812819. [Evidence and decision](evid
 
 [S4-03-L Solidity source and label recovery](module-audits/S4-03_LABEL_RECOVERY_PROGRAM.md) approved for planning/bounded evidence research. L0 independently ready: recover exact current class/source/outcome/group/role counts, source provenance and review queue gaps. Committed logical V3 seed: 225,400 cells, 932 effective loss, 143 outcome metric, zero confirmed negatives. Do not infer physical revalidation or admit labels from counts. R4 authority and independent GAP-007 remain intact.
 
+## Completed slices: S4-01-003A and S4-03-L0A
+
+Inspected ee9a2e0202bb0a729c60a05906b71bd3195e67b6. [Evidence](evidence/2026-11-26_s4_01_003/WORKING_RECORD.md). Actual V3 label and target rows read-only reconciled (seven hashes, 225,400 cells, no checked projection mismatches or cross-role groups). 474 confirmed positive and 606 weak target cells; zero negatives. GasException/UnusedReturn no positive targets, DoS six; TOD 633 of 932 effective loss. L0A complete, L-G0 remains open pending native source provenance. Actual Slither timestamp detector on three synthetic inputs: positive observation, completed zero finding, failed compilation. All 15 preregistered checks pass; current report WATCH/INCONCLUSIVE/INCONCLUSIVE, unrelated synthetic context not promoted. Raw legacy fusion comparator CONFIRMED on all with synthetic context. No actual ML/RAG/LLM/full graph comparison, no security label truth, no empirical user utility. Prior exact SHA three workflows green.
+
 ## Next bounded slices
 
-S4-01-003: design and run a bounded coverage-aware comparative analyst utility pilot, separating target evidence, contextual retrieval, missing coverage and abstention; no closed-world negative metrics on new reports. Establish exact cases, rubric, budgets, allowed tools and source-level evidence before execution. S4-03-L0 can independently start now (read-only label/source inventory); S4-02 dependency/CI independently eligible. Prioritize dedicated AGENTS CI. G01 still IN_PROGRESS; no product or training promotion.
+S4-03-L0B: trace native source claims and ledger, deduplicate claim records, recover original label provenance and representative raw source identity/license/compiler evidence. Prioritize GasException/UnusedReturn/DoS and class-specific negative coverage. Keep R4 independent review untouched. S4-01-003B: task-scoped coverage-aware evaluator and real adapter/full graph pilot; compare actual deterministic baseline to optional components in explicit safe budgets, measure coverage, abstention, source observations, costs and unsupported claims. S4-02 independent (dedicated AGENTS CI, lock/environment drift). G01 IN_PROGRESS; no product or training promotion.
 
 ## Known initial blockers and independent work
 
@@ -69,4 +73,4 @@ S4-01-003: design and run a bounded coverage-aware comparative analyst utility p
 - R4-GAP-007 isolated independent review remains pending; confirmed negatives zero, M5/full training and G8 not authorized. That separate evidence path can proceed without S4 context.
 - ZKML proof scope, read-only audit MCP, production signing/deployment and accepted DATA/ML roots unchanged.
 
-Next actions: S4-01-003 coverage-aware utility evaluation and S4-03-L0 label inventory (S4-02 parallel eligible); no broad redesign or new training without admissible evidence.
+Next actions: S4-03-L0B native claim provenance and S4-01-003B utility evaluation (S4-02 parallel eligible); no broad redesign or new training without admissible evidence.

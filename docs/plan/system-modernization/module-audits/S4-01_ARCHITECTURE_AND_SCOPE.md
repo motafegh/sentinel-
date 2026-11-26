@@ -103,3 +103,17 @@ First repair report adequacy (F-0013) and align claims; then define a bounded an
 Compare incremental variants under equal input/budgets: deterministic analyzer and structured report; add ML (historical clearly marked), add evidence retrieval, add bounded LLM explanation/debate, add formal property where applicable. Optional proxy/attestation compared separately with hash-bound evidence manifest/signed attestations, not as accuracy enhancement. Record source correctness, actionable findings, unsupported claims, missed task-relevant evidence, tool coverage, abstention, latency, resource use and analyst review burden. Measure case-level results, preserve adverse/inconclusive results, no arbitrary numeric threshold. A small pilot establishes feasibility, not population generalization. Select architecture only after useful comparison; no model training or proof production needed for first benchmark design.
 
 S4-G01 remains IN_PROGRESS: source map, target direction and initial repairs complete; user/task acceptance, coverage policy and bounded comparative design/evidence remain required. S4-02 may proceed in parallel; dependency drift remains an explicit constraint. Next slice S4-01-002: evidence adequacy and report truthfulness before utility experiments.
+
+## 7. S4-01-003A controlled utility pilot
+
+[Predeclared case manifest](../evidence/2026-11-26_s4_01_003/utility_cases.json), [raw evidence](../evidence/2026-11-26_s4_01_003/utility_results.json). Actual Slither 0.11.5 + cached solc 0.8.22, selected timestamp detector only, three newly authored synthetic inputs, offline scratch and current synthesizer. Compare scoped analyzer observation, actual direct report, direct report with synthetic unrelated RAG evidence, historical raw fusion comparator. No actual RAG retrieval/ML/LLM/other detector/full graph execution. No vulnerability truth labels, no negative accuracy claims.
+
+| Case | Tool state | Observed | Report | With unrelated context |
+|---|---|---|---|---|
+| timestamp-01 | COMPLETED | timestamp detector, lines 3-6 include expected line 4 | WATCH | WATCH |
+| arithmetic-01 | COMPLETED | no timestamp finding | INCONCLUSIVE | INCONCLUSIVE |
+| compile-01 | FAILED | compiler rejected malformed input | INCONCLUSIVE | INCONCLUSIVE |
+
+All five predeclared checks per case pass (15/15, some direct-finding checks are conditional and vacuous for no-hit cases). Historical raw fusion with synthetic context yielded CONFIRMED in all three cases; current projection does not promote unrelated Reentrancy context. This is an observed controlled counterexample to contextual-only promotion, not a population-level comparison. The WATCH band is a weak signal requiring review, not a confirmed vulnerability. The current report honestly abstains on successful limited scan when ML and Aderyn unavailable, but lacks a dedicated scoped static-only completion result; evaluate whether additional explicit coverage dimensions improve practical usability rather than weakening the policy. Existing report coverage is conservative. No user usefulness or accuracy established.
+
+S4-01-003B: build task-scoped coverage-aware evaluator, use real tool adapters/full graph under explicit isolated budget with known source cases, compare actual deterministic report baseline vs optional ML/RAG/LLM independently; measure useful source-grounded observations, unsupported claims, abstention, coverage, cost. Historical raw fusion comparator not a shipped legacy full pipeline. G01 remains in progress.

@@ -1,0 +1,40 @@
+{
+  "policy": "s4-utility-observation-v1",
+  "cases": [
+    {
+      "id": "timestamp-01",
+      "source": "pragma solidity 0.8.22;\ncontract ClockGate {\n function allowed(uint256 deadline) external view returns (bool) {\n  require(block.timestamp >= deadline, \"wait\");\n  return true;\n }\n}\n",
+      "expected_status": "COMPLETED",
+      "expected_detector": "timestamp",
+      "expected_line": 4,
+      "question": "Does a timestamp-dependent guard appear in the exact input? A detector observation, not an exploit or class adjudication.",
+      "source_sha256": "c1819d1f7f54453200266141bcb934f9038d11a7ac6e02990c73aef6189481b2"
+    },
+    {
+      "id": "arithmetic-01",
+      "source": "pragma solidity 0.8.22;\ncontract Arithmetic {\n function add(uint256 a, uint256 b) external pure returns (uint256) {\n  return a + b;\n }\n}\n",
+      "expected_status": "COMPLETED",
+      "expected_detector": null,
+      "expected_line": null,
+      "question": "Can a completed timestamp-only scan return no findings without establishing global safety?",
+      "source_sha256": "184008553ce830ba992a78384ad376be929e9b490be29c7b54ec8cd4cde65dfc"
+    },
+    {
+      "id": "compile-01",
+      "source": "pragma solidity 0.8.22;\ncontract Broken { function f( external {} }\n",
+      "expected_status": "FAILED",
+      "expected_detector": null,
+      "expected_line": null,
+      "question": "Can a failed compilation be distinguished from successful detector silence?",
+      "source_sha256": "3c4a5f3f1fc72f17cc7087b5eb46cc74f4fead385d4deb2f9df0ce3b444fbb3c"
+    }
+  ],
+  "rubric": [
+    "execution_status_matches_expected",
+    "expected_detector_and_line_observed",
+    "no_unsupported_safety_assurance",
+    "direct_observation_retained",
+    "context_only_not_promoted"
+  ],
+  "scope": "Synthetic new cases, not R4 evaluation or labels; timestamp detector only; simulated unrelated RAG, no real retrieval; no inferred negative. Frozen before run."
+}

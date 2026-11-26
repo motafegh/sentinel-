@@ -1,0 +1,677 @@
+{
+  "artifact_checks": {
+    "claims": {
+      "actual_sha256": "987cd2f35bae31121b880e73e3d90e0e73ed56558e4283d65e0a884173cdaaaf",
+      "expected_sha256": "987cd2f35bae31121b880e73e3d90e0e73ed56558e4283d65e0a884173cdaaaf",
+      "matches": true,
+      "path": "data_module/data/r4-v2-build/source_claims.jsonl"
+    },
+    "grouping": {
+      "actual_sha256": "f72c20fb2bd9c89013644ee5f4cb714979361306f87c60357ed4e90f4bc8238e",
+      "expected_sha256": "f72c20fb2bd9c89013644ee5f4cb714979361306f87c60357ed4e90f4bc8238e",
+      "matches": true,
+      "path": "data_module/data/r4-v3-logical-build/grouping.json"
+    },
+    "label_states": {
+      "actual_sha256": "6d75898f0cf5fc502132fa51f22de3ec1271808e34fec3e656ac0c1fc3915312",
+      "expected_sha256": "6d75898f0cf5fc502132fa51f22de3ec1271808e34fec3e656ac0c1fc3915312",
+      "matches": true,
+      "path": "data_module/data/exports/sentinel-r4-vnext-v3/label_states.parquet"
+    },
+    "ml_targets": {
+      "actual_sha256": "908888ca40c921debdeeb9c09891df7435ed770b6040209555c4dd95b2ecfccf",
+      "expected_sha256": "908888ca40c921debdeeb9c09891df7435ed770b6040209555c4dd95b2ecfccf",
+      "matches": true,
+      "path": "data_module/data/exports/sentinel-r4-vnext-v3/ml_targets.parquet"
+    },
+    "policy": {
+      "actual_sha256": "b1cfce9cf85c49e4eea533808005d466e0872e98737d366641e287e2a8cfe094",
+      "expected_sha256": "b1cfce9cf85c49e4eea533808005d466e0872e98737d366641e287e2a8cfe094",
+      "matches": true,
+      "path": "docs/plan/ml-R4/specs/data_vnext_policy_v1.json"
+    },
+    "source_evidence_ledger": {
+      "actual_sha256": "5317aba94b9cdbe900bd90bd9b2fdf22d69c3810ec2b0a08d9be032f21658d6d",
+      "expected_sha256": "5317aba94b9cdbe900bd90bd9b2fdf22d69c3810ec2b0a08d9be032f21658d6d",
+      "matches": true,
+      "path": "data_module/data/r4-v2-build/evidence_ledger_v2.parquet"
+    },
+    "source_evidence_ledger_manifest": {
+      "actual_sha256": "3db9994d4ec4e838e0a116b28f6e9a8700767637670de5ce235c4e70c94b5208",
+      "expected_sha256": "3db9994d4ec4e838e0a116b28f6e9a8700767637670de5ce235c4e70c94b5208",
+      "matches": true,
+      "path": "data_module/data/r4-v2-build/evidence_ledger_v2_manifest.json"
+    }
+  },
+  "cross_role_groups": 0,
+  "groups": 22394,
+  "limitations": "Hash equality against frozen manifest, exact label/target projection checks; no source-content verification, class truth adjudication, compiler audit or physical representation rehash. Group counts are distinct recorded groups, not statistically independent samples.",
+  "manifest_sha256": "26b0a4b103010d3f2bcbb6ca08aaec98047dfeb8a4954440aa913c4a7053400f",
+  "per_class": {
+    "CallToUnknown": {
+      "cells": 22540,
+      "effective_loss": 76,
+      "historical:HISTORICAL_MISSING": 22540,
+      "independent_group_counts": {
+        "effective_loss": 76,
+        "outcome_metric": 25,
+        "target_positive": 101
+      },
+      "no_evidence_ids": 22439,
+      "outcome:CONFIRMED_POSITIVE": 101,
+      "outcome:UNKNOWN": 22439,
+      "outcome_metric": 25,
+      "strength:NONE": 22439,
+      "strength:STRONG": 101,
+      "target:1": 101,
+      "target:None": 22439
+    },
+    "DenialOfService": {
+      "cells": 22540,
+      "effective_loss": 3,
+      "historical:HISTORICAL_MISSING": 22540,
+      "independent_group_counts": {
+        "effective_loss": 3,
+        "outcome_metric": 3,
+        "target_positive": 6
+      },
+      "no_evidence_ids": 18779,
+      "outcome:CONFIRMED_POSITIVE": 6,
+      "outcome:NOT_REVIEWED": 3755,
+      "outcome:UNKNOWN": 18779,
+      "outcome_metric": 3,
+      "strength:NONE": 22534,
+      "strength:STRONG": 6,
+      "target:1": 6,
+      "target:None": 22534
+    },
+    "ExternalBug": {
+      "cells": 22540,
+      "effective_loss": 43,
+      "historical:HISTORICAL_MISSING": 22540,
+      "independent_group_counts": {
+        "effective_loss": 43,
+        "outcome_metric": 24,
+        "target_positive": 67
+      },
+      "no_evidence_ids": 5868,
+      "outcome:CONFIRMED_POSITIVE": 67,
+      "outcome:NOT_REVIEWED": 16605,
+      "outcome:UNKNOWN": 5868,
+      "outcome_metric": 24,
+      "strength:NONE": 22473,
+      "strength:STRONG": 67,
+      "target:1": 67,
+      "target:None": 22473
+    },
+    "GasException": {
+      "cells": 22540,
+      "effective_loss": 0,
+      "historical:HISTORICAL_MISSING": 22540,
+      "independent_group_counts": {},
+      "no_evidence_ids": 22540,
+      "outcome:UNKNOWN": 22540,
+      "outcome_metric": 0,
+      "strength:NONE": 22540,
+      "target:None": 22540
+    },
+    "IntegerUO": {
+      "cells": 22540,
+      "effective_loss": 41,
+      "historical:HISTORICAL_MISSING": 22540,
+      "independent_group_counts": {
+        "effective_loss": 41,
+        "outcome_metric": 23,
+        "target_positive": 64
+      },
+      "no_evidence_ids": 13092,
+      "outcome:CONFIRMED_POSITIVE": 64,
+      "outcome:NOT_REVIEWED": 9384,
+      "outcome:UNKNOWN": 13092,
+      "outcome_metric": 23,
+      "strength:NONE": 22476,
+      "strength:STRONG": 64,
+      "target:1": 64,
+      "target:None": 22476
+    },
+    "MishandledException": {
+      "cells": 22540,
+      "effective_loss": 40,
+      "historical:HISTORICAL_MISSING": 22540,
+      "independent_group_counts": {
+        "effective_loss": 40,
+        "outcome_metric": 9,
+        "target_positive": 49
+      },
+      "no_evidence_ids": 22491,
+      "outcome:CONFIRMED_POSITIVE": 49,
+      "outcome:UNKNOWN": 22491,
+      "outcome_metric": 9,
+      "strength:NONE": 22491,
+      "strength:STRONG": 49,
+      "target:1": 49,
+      "target:None": 22491
+    },
+    "Reentrancy": {
+      "cells": 22540,
+      "effective_loss": 59,
+      "historical:HISTORICAL_MISSING": 22540,
+      "independent_group_counts": {
+        "effective_loss": 59,
+        "outcome_metric": 21,
+        "target_positive": 80
+      },
+      "no_evidence_ids": 11105,
+      "outcome:CONFIRMED_POSITIVE": 80,
+      "outcome:NOT_REVIEWED": 11355,
+      "outcome:UNKNOWN": 11105,
+      "outcome_metric": 21,
+      "strength:NONE": 22460,
+      "strength:STRONG": 80,
+      "target:1": 80,
+      "target:None": 22460
+    },
+    "Timestamp": {
+      "cells": 22540,
+      "effective_loss": 37,
+      "historical:HISTORICAL_MISSING": 22540,
+      "independent_group_counts": {
+        "effective_loss": 37,
+        "outcome_metric": 17,
+        "target_positive": 54
+      },
+      "no_evidence_ids": 16212,
+      "outcome:CONFIRMED_POSITIVE": 54,
+      "outcome:NOT_REVIEWED": 6274,
+      "outcome:UNKNOWN": 16212,
+      "outcome_metric": 17,
+      "strength:NONE": 22486,
+      "strength:STRONG": 54,
+      "target:1": 54,
+      "target:None": 22486
+    },
+    "TransactionOrderDependence": {
+      "cells": 22540,
+      "effective_loss": 633,
+      "historical:HISTORICAL_MISSING": 22540,
+      "independent_group_counts": {
+        "effective_loss": 633,
+        "outcome_metric": 21,
+        "target_positive": 659
+      },
+      "no_evidence_ids": 21881,
+      "outcome:CONFIRMED_POSITIVE": 53,
+      "outcome:NOT_REVIEWED": 606,
+      "outcome:UNKNOWN": 21881,
+      "outcome_metric": 21,
+      "strength:NONE": 21881,
+      "strength:STRONG": 53,
+      "strength:WEAK": 606,
+      "target:1": 659,
+      "target:None": 21881
+    },
+    "UnusedReturn": {
+      "cells": 22540,
+      "effective_loss": 0,
+      "historical:HISTORICAL_MISSING": 22540,
+      "independent_group_counts": {},
+      "no_evidence_ids": 16676,
+      "outcome:NOT_REVIEWED": 5864,
+      "outcome:UNKNOWN": 16676,
+      "outcome_metric": 0,
+      "strength:NONE": 22540,
+      "target:None": 22540
+    }
+  },
+  "per_primary_source": {
+    "dive": {
+      "cells": 220540,
+      "effective_loss": 601,
+      "historical:HISTORICAL_MISSING": 220540,
+      "no_evidence_ids": 166697,
+      "outcome:NOT_REVIEWED": 53843,
+      "outcome:UNKNOWN": 166697,
+      "outcome_metric": 0,
+      "strength:NONE": 219934,
+      "strength:WEAK": 606,
+      "target:1": 606,
+      "target:None": 219934
+    },
+    "smartbugs_curated": {
+      "cells": 1430,
+      "effective_loss": 91,
+      "historical:HISTORICAL_MISSING": 1430,
+      "no_evidence_ids": 1299,
+      "outcome:CONFIRMED_POSITIVE": 131,
+      "outcome:UNKNOWN": 1299,
+      "outcome_metric": 40,
+      "strength:NONE": 1299,
+      "strength:STRONG": 131,
+      "target:1": 131,
+      "target:None": 1299
+    },
+    "solidifi": {
+      "cells": 3430,
+      "effective_loss": 240,
+      "historical:HISTORICAL_MISSING": 3430,
+      "no_evidence_ids": 3087,
+      "outcome:CONFIRMED_POSITIVE": 343,
+      "outcome:UNKNOWN": 3087,
+      "outcome_metric": 103,
+      "strength:NONE": 3087,
+      "strength:STRONG": 343,
+      "target:1": 343,
+      "target:None": 3087
+    }
+  },
+  "per_source_class": {
+    "dive/CallToUnknown": {
+      "cells": 22054,
+      "effective_loss": 0,
+      "historical:HISTORICAL_MISSING": 22054,
+      "no_evidence_ids": 22054,
+      "outcome:UNKNOWN": 22054,
+      "outcome_metric": 0,
+      "strength:NONE": 22054,
+      "target:None": 22054
+    },
+    "dive/DenialOfService": {
+      "cells": 22054,
+      "effective_loss": 0,
+      "historical:HISTORICAL_MISSING": 22054,
+      "no_evidence_ids": 18299,
+      "outcome:NOT_REVIEWED": 3755,
+      "outcome:UNKNOWN": 18299,
+      "outcome_metric": 0,
+      "strength:NONE": 22054,
+      "target:None": 22054
+    },
+    "dive/ExternalBug": {
+      "cells": 22054,
+      "effective_loss": 0,
+      "historical:HISTORICAL_MISSING": 22054,
+      "no_evidence_ids": 5449,
+      "outcome:NOT_REVIEWED": 16605,
+      "outcome:UNKNOWN": 5449,
+      "outcome_metric": 0,
+      "strength:NONE": 22054,
+      "target:None": 22054
+    },
+    "dive/GasException": {
+      "cells": 22054,
+      "effective_loss": 0,
+      "historical:HISTORICAL_MISSING": 22054,
+      "no_evidence_ids": 22054,
+      "outcome:UNKNOWN": 22054,
+      "outcome_metric": 0,
+      "strength:NONE": 22054,
+      "target:None": 22054
+    },
+    "dive/IntegerUO": {
+      "cells": 22054,
+      "effective_loss": 0,
+      "historical:HISTORICAL_MISSING": 22054,
+      "no_evidence_ids": 12670,
+      "outcome:NOT_REVIEWED": 9384,
+      "outcome:UNKNOWN": 12670,
+      "outcome_metric": 0,
+      "strength:NONE": 22054,
+      "target:None": 22054
+    },
+    "dive/MishandledException": {
+      "cells": 22054,
+      "effective_loss": 0,
+      "historical:HISTORICAL_MISSING": 22054,
+      "no_evidence_ids": 22054,
+      "outcome:UNKNOWN": 22054,
+      "outcome_metric": 0,
+      "strength:NONE": 22054,
+      "target:None": 22054
+    },
+    "dive/Reentrancy": {
+      "cells": 22054,
+      "effective_loss": 0,
+      "historical:HISTORICAL_MISSING": 22054,
+      "no_evidence_ids": 10699,
+      "outcome:NOT_REVIEWED": 11355,
+      "outcome:UNKNOWN": 10699,
+      "outcome_metric": 0,
+      "strength:NONE": 22054,
+      "target:None": 22054
+    },
+    "dive/Timestamp": {
+      "cells": 22054,
+      "effective_loss": 0,
+      "historical:HISTORICAL_MISSING": 22054,
+      "no_evidence_ids": 15780,
+      "outcome:NOT_REVIEWED": 6274,
+      "outcome:UNKNOWN": 15780,
+      "outcome_metric": 0,
+      "strength:NONE": 22054,
+      "target:None": 22054
+    },
+    "dive/TransactionOrderDependence": {
+      "cells": 22054,
+      "effective_loss": 601,
+      "historical:HISTORICAL_MISSING": 22054,
+      "no_evidence_ids": 21448,
+      "outcome:NOT_REVIEWED": 606,
+      "outcome:UNKNOWN": 21448,
+      "outcome_metric": 0,
+      "strength:NONE": 21448,
+      "strength:WEAK": 606,
+      "target:1": 606,
+      "target:None": 21448
+    },
+    "dive/UnusedReturn": {
+      "cells": 22054,
+      "effective_loss": 0,
+      "historical:HISTORICAL_MISSING": 22054,
+      "no_evidence_ids": 16190,
+      "outcome:NOT_REVIEWED": 5864,
+      "outcome:UNKNOWN": 16190,
+      "outcome_metric": 0,
+      "strength:NONE": 22054,
+      "target:None": 22054
+    },
+    "smartbugs_curated/CallToUnknown": {
+      "cells": 143,
+      "effective_loss": 39,
+      "historical:HISTORICAL_MISSING": 143,
+      "no_evidence_ids": 91,
+      "outcome:CONFIRMED_POSITIVE": 52,
+      "outcome:UNKNOWN": 91,
+      "outcome_metric": 13,
+      "strength:NONE": 91,
+      "strength:STRONG": 52,
+      "target:1": 52,
+      "target:None": 91
+    },
+    "smartbugs_curated/DenialOfService": {
+      "cells": 143,
+      "effective_loss": 3,
+      "historical:HISTORICAL_MISSING": 143,
+      "no_evidence_ids": 137,
+      "outcome:CONFIRMED_POSITIVE": 6,
+      "outcome:UNKNOWN": 137,
+      "outcome_metric": 3,
+      "strength:NONE": 137,
+      "strength:STRONG": 6,
+      "target:1": 6,
+      "target:None": 137
+    },
+    "smartbugs_curated/ExternalBug": {
+      "cells": 143,
+      "effective_loss": 10,
+      "historical:HISTORICAL_MISSING": 143,
+      "no_evidence_ids": 125,
+      "outcome:CONFIRMED_POSITIVE": 18,
+      "outcome:UNKNOWN": 125,
+      "outcome_metric": 8,
+      "strength:NONE": 125,
+      "strength:STRONG": 18,
+      "target:1": 18,
+      "target:None": 125
+    },
+    "smartbugs_curated/GasException": {
+      "cells": 143,
+      "effective_loss": 0,
+      "historical:HISTORICAL_MISSING": 143,
+      "no_evidence_ids": 143,
+      "outcome:UNKNOWN": 143,
+      "outcome_metric": 0,
+      "strength:NONE": 143,
+      "target:None": 143
+    },
+    "smartbugs_curated/IntegerUO": {
+      "cells": 143,
+      "effective_loss": 11,
+      "historical:HISTORICAL_MISSING": 143,
+      "no_evidence_ids": 128,
+      "outcome:CONFIRMED_POSITIVE": 15,
+      "outcome:UNKNOWN": 128,
+      "outcome_metric": 4,
+      "strength:NONE": 128,
+      "strength:STRONG": 15,
+      "target:1": 15,
+      "target:None": 128
+    },
+    "smartbugs_curated/MishandledException": {
+      "cells": 143,
+      "effective_loss": 0,
+      "historical:HISTORICAL_MISSING": 143,
+      "no_evidence_ids": 143,
+      "outcome:UNKNOWN": 143,
+      "outcome_metric": 0,
+      "strength:NONE": 143,
+      "target:None": 143
+    },
+    "smartbugs_curated/Reentrancy": {
+      "cells": 143,
+      "effective_loss": 23,
+      "historical:HISTORICAL_MISSING": 143,
+      "no_evidence_ids": 112,
+      "outcome:CONFIRMED_POSITIVE": 31,
+      "outcome:UNKNOWN": 112,
+      "outcome_metric": 8,
+      "strength:NONE": 112,
+      "strength:STRONG": 31,
+      "target:1": 31,
+      "target:None": 112
+    },
+    "smartbugs_curated/Timestamp": {
+      "cells": 143,
+      "effective_loss": 2,
+      "historical:HISTORICAL_MISSING": 143,
+      "no_evidence_ids": 138,
+      "outcome:CONFIRMED_POSITIVE": 5,
+      "outcome:UNKNOWN": 138,
+      "outcome_metric": 3,
+      "strength:NONE": 138,
+      "strength:STRONG": 5,
+      "target:1": 5,
+      "target:None": 138
+    },
+    "smartbugs_curated/TransactionOrderDependence": {
+      "cells": 143,
+      "effective_loss": 3,
+      "historical:HISTORICAL_MISSING": 143,
+      "no_evidence_ids": 139,
+      "outcome:CONFIRMED_POSITIVE": 4,
+      "outcome:UNKNOWN": 139,
+      "outcome_metric": 1,
+      "strength:NONE": 139,
+      "strength:STRONG": 4,
+      "target:1": 4,
+      "target:None": 139
+    },
+    "smartbugs_curated/UnusedReturn": {
+      "cells": 143,
+      "effective_loss": 0,
+      "historical:HISTORICAL_MISSING": 143,
+      "no_evidence_ids": 143,
+      "outcome:UNKNOWN": 143,
+      "outcome_metric": 0,
+      "strength:NONE": 143,
+      "target:None": 143
+    },
+    "solidifi/CallToUnknown": {
+      "cells": 343,
+      "effective_loss": 37,
+      "historical:HISTORICAL_MISSING": 343,
+      "no_evidence_ids": 294,
+      "outcome:CONFIRMED_POSITIVE": 49,
+      "outcome:UNKNOWN": 294,
+      "outcome_metric": 12,
+      "strength:NONE": 294,
+      "strength:STRONG": 49,
+      "target:1": 49,
+      "target:None": 294
+    },
+    "solidifi/DenialOfService": {
+      "cells": 343,
+      "effective_loss": 0,
+      "historical:HISTORICAL_MISSING": 343,
+      "no_evidence_ids": 343,
+      "outcome:UNKNOWN": 343,
+      "outcome_metric": 0,
+      "strength:NONE": 343,
+      "target:None": 343
+    },
+    "solidifi/ExternalBug": {
+      "cells": 343,
+      "effective_loss": 33,
+      "historical:HISTORICAL_MISSING": 343,
+      "no_evidence_ids": 294,
+      "outcome:CONFIRMED_POSITIVE": 49,
+      "outcome:UNKNOWN": 294,
+      "outcome_metric": 16,
+      "strength:NONE": 294,
+      "strength:STRONG": 49,
+      "target:1": 49,
+      "target:None": 294
+    },
+    "solidifi/GasException": {
+      "cells": 343,
+      "effective_loss": 0,
+      "historical:HISTORICAL_MISSING": 343,
+      "no_evidence_ids": 343,
+      "outcome:UNKNOWN": 343,
+      "outcome_metric": 0,
+      "strength:NONE": 343,
+      "target:None": 343
+    },
+    "solidifi/IntegerUO": {
+      "cells": 343,
+      "effective_loss": 30,
+      "historical:HISTORICAL_MISSING": 343,
+      "no_evidence_ids": 294,
+      "outcome:CONFIRMED_POSITIVE": 49,
+      "outcome:UNKNOWN": 294,
+      "outcome_metric": 19,
+      "strength:NONE": 294,
+      "strength:STRONG": 49,
+      "target:1": 49,
+      "target:None": 294
+    },
+    "solidifi/MishandledException": {
+      "cells": 343,
+      "effective_loss": 40,
+      "historical:HISTORICAL_MISSING": 343,
+      "no_evidence_ids": 294,
+      "outcome:CONFIRMED_POSITIVE": 49,
+      "outcome:UNKNOWN": 294,
+      "outcome_metric": 9,
+      "strength:NONE": 294,
+      "strength:STRONG": 49,
+      "target:1": 49,
+      "target:None": 294
+    },
+    "solidifi/Reentrancy": {
+      "cells": 343,
+      "effective_loss": 36,
+      "historical:HISTORICAL_MISSING": 343,
+      "no_evidence_ids": 294,
+      "outcome:CONFIRMED_POSITIVE": 49,
+      "outcome:UNKNOWN": 294,
+      "outcome_metric": 13,
+      "strength:NONE": 294,
+      "strength:STRONG": 49,
+      "target:1": 49,
+      "target:None": 294
+    },
+    "solidifi/Timestamp": {
+      "cells": 343,
+      "effective_loss": 35,
+      "historical:HISTORICAL_MISSING": 343,
+      "no_evidence_ids": 294,
+      "outcome:CONFIRMED_POSITIVE": 49,
+      "outcome:UNKNOWN": 294,
+      "outcome_metric": 14,
+      "strength:NONE": 294,
+      "strength:STRONG": 49,
+      "target:1": 49,
+      "target:None": 294
+    },
+    "solidifi/TransactionOrderDependence": {
+      "cells": 343,
+      "effective_loss": 29,
+      "historical:HISTORICAL_MISSING": 343,
+      "no_evidence_ids": 294,
+      "outcome:CONFIRMED_POSITIVE": 49,
+      "outcome:UNKNOWN": 294,
+      "outcome_metric": 20,
+      "strength:NONE": 294,
+      "strength:STRONG": 49,
+      "target:1": 49,
+      "target:None": 294
+    },
+    "solidifi/UnusedReturn": {
+      "cells": 343,
+      "effective_loss": 0,
+      "historical:HISTORICAL_MISSING": 343,
+      "no_evidence_ids": 343,
+      "outcome:UNKNOWN": 343,
+      "outcome_metric": 0,
+      "strength:NONE": 343,
+      "target:None": 343
+    }
+  },
+  "primary_source_contract_counts": {
+    "dive": 22054,
+    "smartbugs_curated": 143,
+    "solidifi": 343
+  },
+  "role_contract_counts": {
+    "INTERNAL_AUDIT": 73,
+    "MODEL_SELECTION": 73,
+    "TRAIN_STRONG": 343,
+    "TRAIN_UNLABELED": 21449,
+    "TRAIN_WEAK": 602
+  },
+  "source_claim_occurrences": {
+    "dive": {
+      "claim_occurrences": 575630,
+      "flattened_sha256_present": 575630,
+      "raw_sha256_present": 575630,
+      "reason:DIVE_NATIVE_POSITIVE_MASKED_BY_ACCEPTED_POLICY": 542750,
+      "reason:DIVE_NO_POSITIVE_SOURCE_CLAIM": 26820,
+      "reason:DIVE_TOD_WEAK_POSITIVE_ONLY": 6060,
+      "state:NO_ASSERTION": 26820,
+      "state:POSITIVE": 548810
+    },
+    "smartbugs_curated": {
+      "claim_occurrences": 1430,
+      "flattened_sha256_present": 1430,
+      "raw_sha256_present": 1430,
+      "reason:SMARTBUGS_APPROVED_NATIVE_CATEGORY_STRONG_POSITIVE": 1310,
+      "reason:SMARTBUGS_LOSSY_NO_CANONICAL_TARGET": 80,
+      "reason:SMARTBUGS_OUT_OF_TAXONOMY_NO_CANONICAL_TARGET": 40,
+      "state:POSITIVE": 1430
+    },
+    "solidifi": {
+      "claim_occurrences": 3500,
+      "flattened_sha256_present": 3500,
+      "raw_sha256_present": 3500,
+      "reason:SOLIDIFI_INJECTED_CLASS_STRONG_POSITIVE": 3500,
+      "state:POSITIVE": 3500
+    }
+  },
+  "source_sha": "ee9a2e0202bb0a729c60a05906b71bd3195e67b6",
+  "total": {
+    "cells": 225400,
+    "effective_loss": 932,
+    "historical:HISTORICAL_MISSING": 225400,
+    "no_evidence_ids": 171083,
+    "outcome:CONFIRMED_POSITIVE": 474,
+    "outcome:NOT_REVIEWED": 53843,
+    "outcome:UNKNOWN": 171083,
+    "outcome_metric": 143,
+    "strength:NONE": 224320,
+    "strength:STRONG": 474,
+    "strength:WEAK": 606,
+    "target:1": 1080,
+    "target:None": 224320
+  },
+  "wide_long_mismatches": 0
+}

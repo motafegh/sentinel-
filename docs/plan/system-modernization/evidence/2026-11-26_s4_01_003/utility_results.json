@@ -1,0 +1,424 @@
+{
+  "source_sha": "ee9a2e0202bb0a729c60a05906b71bd3195e67b6",
+  "case_manifest_sha256": "308e51b97565852d4bd292ae4717ae9c3d01104fd54efef64bac4cafd1a9dfb9",
+  "environment": "tracked source snapshot; network namespace; existing AGENTS venv; CPU only; no live services",
+  "results": [
+    {
+      "command": [
+        "unshare",
+        "-Urn",
+        "--",
+        "/home/motafeq/projects/sentinel/agents/.venv/bin/python",
+        "/tmp/s4-utility-pilot.py",
+        "--cases",
+        "/home/motafeq/projects/sentinel/docs/plan/system-modernization/evidence/2026-11-26_s4_01_003/utility_cases.json",
+        "--compiler",
+        "/home/motafeq/.solc-select/artifacts/solc-0.8.22/solc-0.8.22",
+        "--case",
+        "timestamp-01"
+      ],
+      "exit_code": 0,
+      "stderr": "2026-11-26 20:55:24.648 | DEBUG    | src.orchestration.verdict.fuse:fuse:176 - fuse | 1 classes from 1 evidence items\n2026-11-26 20:55:24.649 | DEBUG    | src.orchestration.verdict.fuse:fuse:176 - fuse | 1 classes from 1 evidence items\n2026-11-26 20:55:24.649 | INFO     | src.orchestration.nodes.synthesizer:synthesizer:509 - synthesizer complete | label=unknown | verdict=WATCH | risk_prob=0.000 | top_vuln=None | confirmed=0 | suspicious=0 | path=deep | rag_chunks=0 | prior_audits=0 | static_findings=1\n2026-11-26 20:55:24.650 | DEBUG    | src.orchestration.verdict.fuse:fuse:176 - fuse | 2 classes from 2 evidence items\n2026-11-26 20:55:24.650 | DEBUG    | src.orchestration.verdict.fuse:fuse:176 - fuse | 1 classes from 1 evidence items\n2026-11-26 20:55:24.650 | INFO     | src.orchestration.nodes.synthesizer:synthesizer:509 - synthesizer complete | label=unknown | verdict=WATCH | risk_prob=0.000 | top_vuln=None | confirmed=0 | suspicious=0 | path=deep | rag_chunks=0 | prior_audits=0 | static_findings=1\n2026-11-26 20:55:24.650 | DEBUG    | src.orchestration.verdict.fuse:fuse:176 - fuse | 2 classes from 2 evidence items\n",
+      "stdout": "{\"case\": \"timestamp-01\", \"source_sha256\": \"c1819d1f7f54453200266141bcb934f9038d11a7ac6e02990c73aef6189481b2\", \"status\": \"COMPLETED\", \"findings\": [{\"tool\": \"slither\", \"detector\": \"timestamp\", \"impact\": \"Low\", \"confidence\": \"Medium\", \"description\": \"ClockGate.allowed(uint256) (pilot-timestamp-01.sol#3-6) uses timestamp for comparisons\\n\\tDangerous comparisons:\\n\\t- require(bool,string)(block.timestamp >= deadline,wait) (pilot-timestamp-01.sol#4)\\n\", \"lines\": [3, 4, 5, 6]}], \"error\": null, \"analyzer_seconds\": 0.0208, \"static_projection\": {\"overall_verdict\": \"WATCH\", \"assessment\": {\"policy\": \"evidence-adequacy-v1\", \"coverage\": \"INCOMPLETE\", \"coverage_reasons\": [\"ml_evidence_unavailable_or_ineligible\", \"ml_class_vector_incomplete_or_invalid\", \"ml_input_coverage_not_established\", \"completed_fast_screen_scope_not_established\", \"slither_empty_screen_not_established\", \"aderyn_completion_not_established\", \"aderyn_empty_screen_not_established\", \"signals_or_errors_require_review\", \"ml_no_flag_label_not_established\"], \"abstained\": false, \"direct_signal_classes\": [\"Timestamp\"], \"raw_fusion_verdicts\": {\"Timestamp\": \"SAFE\"}, \"direct_signal_scores\": {\"Timestamp\": 0.1067}, \"direct_signal_sources\": {\"Timestamp\": [\"slither\"]}, \"assurance\": \"NOT_ESTABLISHED\", \"scope\": \"Historical ML and static screening signals; not class-negative evidence.\", \"risk_probability_scope\": \"Historical ML flagged-class score; not calibrated contract risk.\", \"raw_fusion_scores\": {\"Timestamp\": 0.1067}}, \"verdicts\": {\"Timestamp\": \"WATCH\"}, \"recommendation\": \"Target-specific signals require manual review; no safety assurance. Coverage limitations: ml_evidence_unavailable_or_ineligible, ml_class_vector_incomplete_or_invalid, ml_input_coverage_not_established, completed_fast_screen_scope_not_established, slither_empty_screen_not_established, aderyn_completion_not_established, aderyn_empty_screen_not_established, signals_or_errors_require_review, ml_no_flag_label_not_established.\\n\\nML assessment failed \\u2014 manual review required. Check that the inference server (port 8001) is running.\", \"vulnerability_verdicts\": [{\"vulnerability_class\": \"Timestamp\", \"probability\": 0.0, \"ml_probability_available\": false, \"verdict\": \"WATCH\", \"evidence_sources\": [\"slither\"], \"direct_evidence_sources\": [\"slither\"], \"severity\": \"UNKNOWN\", \"confidence\": 0.1067}]}, \"synthetic_context_projection\": {\"overall_verdict\": \"WATCH\", \"assessment\": {\"policy\": \"evidence-adequacy-v1\", \"coverage\": \"INCOMPLETE\", \"coverage_reasons\": [\"ml_evidence_unavailable_or_ineligible\", \"ml_class_vector_incomplete_or_invalid\", \"ml_input_coverage_not_established\", \"completed_fast_screen_scope_not_established\", \"slither_empty_screen_not_established\", \"aderyn_completion_not_established\", \"aderyn_empty_screen_not_established\", \"signals_or_errors_require_review\", \"ml_no_flag_label_not_established\"], \"abstained\": false, \"direct_signal_classes\": [\"Timestamp\"], \"raw_fusion_verdicts\": {\"Reentrancy\": \"CONFIRMED\", \"Timestamp\": \"SAFE\"}, \"direct_signal_scores\": {\"Timestamp\": 0.1067}, \"direct_signal_sources\": {\"Timestamp\": [\"slither\"]}, \"assurance\": \"NOT_ESTABLISHED\", \"scope\": \"Historical ML and static screening signals; not class-negative evidence.\", \"risk_probability_scope\": \"Historical ML flagged-class score; not calibrated contract risk.\", \"raw_fusion_scores\": {\"Reentrancy\": 1.0, \"Timestamp\": 0.1067}}, \"verdicts\": {\"Reentrancy\": \"INCONCLUSIVE\", \"Timestamp\": \"WATCH\"}, \"recommendation\": \"Target-specific signals require manual review; no safety assurance. Coverage limitations: ml_evidence_unavailable_or_ineligible, ml_class_vector_incomplete_or_invalid, ml_input_coverage_not_established, completed_fast_screen_scope_not_established, slither_empty_screen_not_established, aderyn_completion_not_established, aderyn_empty_screen_not_established, signals_or_errors_require_review, ml_no_flag_label_not_established.\\n\\nML assessment failed \\u2014 manual review required. Check that the inference server (port 8001) is running.\", \"vulnerability_verdicts\": [{\"vulnerability_class\": \"Reentrancy\", \"probability\": 0.0, \"ml_probability_available\": false, \"verdict\": \"INCONCLUSIVE\", \"evidence_sources\": [\"rag\"], \"direct_evidence_sources\": [], \"severity\": \"UNKNOWN\", \"confidence\": 0.0}, {\"vulnerability_class\": \"Timestamp\", \"probability\": 0.0, \"ml_probability_available\": false, \"verdict\": \"WATCH\", \"evidence_sources\": [\"slither\"], \"direct_evidence_sources\": [\"slither\"], \"severity\": \"UNKNOWN\", \"confidence\": 0.1067}]}, \"historical_raw_fusion_with_context\": \"CONFIRMED\", \"rubric\": {\"execution_status_matches_expected\": true, \"expected_detector_and_line_observed\": true, \"no_unsupported_safety_assurance\": true, \"direct_observation_retained\": true, \"context_only_not_promoted\": true}, \"slither_version\": \"0.11.5\", \"compiler_version\": \"solc, the solidity compiler commandline interface\\nVersion: 0.8.22+commit.4fc1097e.Linux.g++\\n\", \"compiler_sha256\": \"8be0aeb74fc1b8213292a09a84cb524a403602526df87ecad5f5cd2a7ea7d089\"}\n",
+      "result": {
+        "case": "timestamp-01",
+        "source_sha256": "c1819d1f7f54453200266141bcb934f9038d11a7ac6e02990c73aef6189481b2",
+        "status": "COMPLETED",
+        "findings": [
+          {
+            "tool": "slither",
+            "detector": "timestamp",
+            "impact": "Low",
+            "confidence": "Medium",
+            "description": "ClockGate.allowed(uint256) (pilot-timestamp-01.sol#3-6) uses timestamp for comparisons\n\tDangerous comparisons:\n\t- require(bool,string)(block.timestamp >= deadline,wait) (pilot-timestamp-01.sol#4)\n",
+            "lines": [
+              3,
+              4,
+              5,
+              6
+            ]
+          }
+        ],
+        "error": null,
+        "analyzer_seconds": 0.0208,
+        "static_projection": {
+          "overall_verdict": "WATCH",
+          "assessment": {
+            "policy": "evidence-adequacy-v1",
+            "coverage": "INCOMPLETE",
+            "coverage_reasons": [
+              "ml_evidence_unavailable_or_ineligible",
+              "ml_class_vector_incomplete_or_invalid",
+              "ml_input_coverage_not_established",
+              "completed_fast_screen_scope_not_established",
+              "slither_empty_screen_not_established",
+              "aderyn_completion_not_established",
+              "aderyn_empty_screen_not_established",
+              "signals_or_errors_require_review",
+              "ml_no_flag_label_not_established"
+            ],
+            "abstained": false,
+            "direct_signal_classes": [
+              "Timestamp"
+            ],
+            "raw_fusion_verdicts": {
+              "Timestamp": "SAFE"
+            },
+            "direct_signal_scores": {
+              "Timestamp": 0.1067
+            },
+            "direct_signal_sources": {
+              "Timestamp": [
+                "slither"
+              ]
+            },
+            "assurance": "NOT_ESTABLISHED",
+            "scope": "Historical ML and static screening signals; not class-negative evidence.",
+            "risk_probability_scope": "Historical ML flagged-class score; not calibrated contract risk.",
+            "raw_fusion_scores": {
+              "Timestamp": 0.1067
+            }
+          },
+          "verdicts": {
+            "Timestamp": "WATCH"
+          },
+          "recommendation": "Target-specific signals require manual review; no safety assurance. Coverage limitations: ml_evidence_unavailable_or_ineligible, ml_class_vector_incomplete_or_invalid, ml_input_coverage_not_established, completed_fast_screen_scope_not_established, slither_empty_screen_not_established, aderyn_completion_not_established, aderyn_empty_screen_not_established, signals_or_errors_require_review, ml_no_flag_label_not_established.\n\nML assessment failed \u2014 manual review required. Check that the inference server (port 8001) is running.",
+          "vulnerability_verdicts": [
+            {
+              "vulnerability_class": "Timestamp",
+              "probability": 0.0,
+              "ml_probability_available": false,
+              "verdict": "WATCH",
+              "evidence_sources": [
+                "slither"
+              ],
+              "direct_evidence_sources": [
+                "slither"
+              ],
+              "severity": "UNKNOWN",
+              "confidence": 0.1067
+            }
+          ]
+        },
+        "synthetic_context_projection": {
+          "overall_verdict": "WATCH",
+          "assessment": {
+            "policy": "evidence-adequacy-v1",
+            "coverage": "INCOMPLETE",
+            "coverage_reasons": [
+              "ml_evidence_unavailable_or_ineligible",
+              "ml_class_vector_incomplete_or_invalid",
+              "ml_input_coverage_not_established",
+              "completed_fast_screen_scope_not_established",
+              "slither_empty_screen_not_established",
+              "aderyn_completion_not_established",
+              "aderyn_empty_screen_not_established",
+              "signals_or_errors_require_review",
+              "ml_no_flag_label_not_established"
+            ],
+            "abstained": false,
+            "direct_signal_classes": [
+              "Timestamp"
+            ],
+            "raw_fusion_verdicts": {
+              "Reentrancy": "CONFIRMED",
+              "Timestamp": "SAFE"
+            },
+            "direct_signal_scores": {
+              "Timestamp": 0.1067
+            },
+            "direct_signal_sources": {
+              "Timestamp": [
+                "slither"
+              ]
+            },
+            "assurance": "NOT_ESTABLISHED",
+            "scope": "Historical ML and static screening signals; not class-negative evidence.",
+            "risk_probability_scope": "Historical ML flagged-class score; not calibrated contract risk.",
+            "raw_fusion_scores": {
+              "Reentrancy": 1.0,
+              "Timestamp": 0.1067
+            }
+          },
+          "verdicts": {
+            "Reentrancy": "INCONCLUSIVE",
+            "Timestamp": "WATCH"
+          },
+          "recommendation": "Target-specific signals require manual review; no safety assurance. Coverage limitations: ml_evidence_unavailable_or_ineligible, ml_class_vector_incomplete_or_invalid, ml_input_coverage_not_established, completed_fast_screen_scope_not_established, slither_empty_screen_not_established, aderyn_completion_not_established, aderyn_empty_screen_not_established, signals_or_errors_require_review, ml_no_flag_label_not_established.\n\nML assessment failed \u2014 manual review required. Check that the inference server (port 8001) is running.",
+          "vulnerability_verdicts": [
+            {
+              "vulnerability_class": "Reentrancy",
+              "probability": 0.0,
+              "ml_probability_available": false,
+              "verdict": "INCONCLUSIVE",
+              "evidence_sources": [
+                "rag"
+              ],
+              "direct_evidence_sources": [],
+              "severity": "UNKNOWN",
+              "confidence": 0.0
+            },
+            {
+              "vulnerability_class": "Timestamp",
+              "probability": 0.0,
+              "ml_probability_available": false,
+              "verdict": "WATCH",
+              "evidence_sources": [
+                "slither"
+              ],
+              "direct_evidence_sources": [
+                "slither"
+              ],
+              "severity": "UNKNOWN",
+              "confidence": 0.1067
+            }
+          ]
+        },
+        "historical_raw_fusion_with_context": "CONFIRMED",
+        "rubric": {
+          "execution_status_matches_expected": true,
+          "expected_detector_and_line_observed": true,
+          "no_unsupported_safety_assurance": true,
+          "direct_observation_retained": true,
+          "context_only_not_promoted": true
+        },
+        "slither_version": "0.11.5",
+        "compiler_version": "solc, the solidity compiler commandline interface\nVersion: 0.8.22+commit.4fc1097e.Linux.g++\n",
+        "compiler_sha256": "8be0aeb74fc1b8213292a09a84cb524a403602526df87ecad5f5cd2a7ea7d089"
+      }
+    },
+    {
+      "command": [
+        "unshare",
+        "-Urn",
+        "--",
+        "/home/motafeq/projects/sentinel/agents/.venv/bin/python",
+        "/tmp/s4-utility-pilot.py",
+        "--cases",
+        "/home/motafeq/projects/sentinel/docs/plan/system-modernization/evidence/2026-11-26_s4_01_003/utility_cases.json",
+        "--compiler",
+        "/home/motafeq/.solc-select/artifacts/solc-0.8.22/solc-0.8.22",
+        "--case",
+        "arithmetic-01"
+      ],
+      "exit_code": 0,
+      "stderr": "2026-11-26 20:55:28.035 | DEBUG    | src.orchestration.verdict.fuse:fuse:176 - fuse | 0 classes from 0 evidence items\n2026-11-26 20:55:28.036 | DEBUG    | src.orchestration.verdict.fuse:fuse:176 - fuse | 0 classes from 0 evidence items\n2026-11-26 20:55:28.036 | INFO     | src.orchestration.nodes.synthesizer:synthesizer:509 - synthesizer complete | label=unknown | verdict=INCONCLUSIVE | risk_prob=0.000 | top_vuln=None | confirmed=0 | suspicious=0 | path=deep | rag_chunks=0 | prior_audits=0 | static_findings=0\n2026-11-26 20:55:28.037 | DEBUG    | src.orchestration.verdict.fuse:fuse:176 - fuse | 1 classes from 1 evidence items\n2026-11-26 20:55:28.037 | DEBUG    | src.orchestration.verdict.fuse:fuse:176 - fuse | 0 classes from 0 evidence items\n2026-11-26 20:55:28.037 | INFO     | src.orchestration.nodes.synthesizer:synthesizer:509 - synthesizer complete | label=unknown | verdict=INCONCLUSIVE | risk_prob=0.000 | top_vuln=None | confirmed=0 | suspicious=0 | path=deep | rag_chunks=0 | prior_audits=0 | static_findings=0\n2026-11-26 20:55:28.037 | DEBUG    | src.orchestration.verdict.fuse:fuse:176 - fuse | 1 classes from 1 evidence items\n",
+      "stdout": "{\"case\": \"arithmetic-01\", \"source_sha256\": \"184008553ce830ba992a78384ad376be929e9b490be29c7b54ec8cd4cde65dfc\", \"status\": \"COMPLETED\", \"findings\": [], \"error\": null, \"analyzer_seconds\": 0.0083, \"static_projection\": {\"overall_verdict\": \"INCONCLUSIVE\", \"assessment\": {\"policy\": \"evidence-adequacy-v1\", \"coverage\": \"INCOMPLETE\", \"coverage_reasons\": [\"ml_evidence_unavailable_or_ineligible\", \"ml_class_vector_incomplete_or_invalid\", \"ml_input_coverage_not_established\", \"completed_fast_screen_scope_not_established\", \"slither_empty_screen_not_established\", \"aderyn_completion_not_established\", \"aderyn_empty_screen_not_established\", \"ml_no_flag_label_not_established\"], \"abstained\": true, \"direct_signal_classes\": [], \"raw_fusion_verdicts\": {}, \"direct_signal_scores\": {}, \"direct_signal_sources\": {}, \"assurance\": \"NOT_ESTABLISHED\", \"scope\": \"Historical ML and static screening signals; not class-negative evidence.\", \"risk_probability_scope\": \"Historical ML flagged-class score; not calibrated contract risk.\", \"raw_fusion_scores\": {}}, \"verdicts\": {}, \"recommendation\": \"INCONCLUSIVE: evidence or coverage is insufficient; manual review required. Coverage limitations: ml_evidence_unavailable_or_ineligible, ml_class_vector_incomplete_or_invalid, ml_input_coverage_not_established, completed_fast_screen_scope_not_established, slither_empty_screen_not_established, aderyn_completion_not_established, aderyn_empty_screen_not_established, ml_no_flag_label_not_established.\\n\\nML assessment failed \\u2014 manual review required. Check that the inference server (port 8001) is running.\", \"vulnerability_verdicts\": []}, \"synthetic_context_projection\": {\"overall_verdict\": \"INCONCLUSIVE\", \"assessment\": {\"policy\": \"evidence-adequacy-v1\", \"coverage\": \"INCOMPLETE\", \"coverage_reasons\": [\"ml_evidence_unavailable_or_ineligible\", \"ml_class_vector_incomplete_or_invalid\", \"ml_input_coverage_not_established\", \"completed_fast_screen_scope_not_established\", \"slither_empty_screen_not_established\", \"aderyn_completion_not_established\", \"aderyn_empty_screen_not_established\", \"signals_or_errors_require_review\", \"ml_no_flag_label_not_established\"], \"abstained\": true, \"direct_signal_classes\": [], \"raw_fusion_verdicts\": {\"Reentrancy\": \"CONFIRMED\"}, \"direct_signal_scores\": {}, \"direct_signal_sources\": {}, \"assurance\": \"NOT_ESTABLISHED\", \"scope\": \"Historical ML and static screening signals; not class-negative evidence.\", \"risk_probability_scope\": \"Historical ML flagged-class score; not calibrated contract risk.\", \"raw_fusion_scores\": {\"Reentrancy\": 1.0}}, \"verdicts\": {\"Reentrancy\": \"INCONCLUSIVE\"}, \"recommendation\": \"INCONCLUSIVE: evidence or coverage is insufficient; manual review required. Coverage limitations: ml_evidence_unavailable_or_ineligible, ml_class_vector_incomplete_or_invalid, ml_input_coverage_not_established, completed_fast_screen_scope_not_established, slither_empty_screen_not_established, aderyn_completion_not_established, aderyn_empty_screen_not_established, signals_or_errors_require_review, ml_no_flag_label_not_established.\\n\\nML assessment failed \\u2014 manual review required. Check that the inference server (port 8001) is running.\", \"vulnerability_verdicts\": [{\"vulnerability_class\": \"Reentrancy\", \"probability\": 0.0, \"ml_probability_available\": false, \"verdict\": \"INCONCLUSIVE\", \"evidence_sources\": [\"rag\"], \"direct_evidence_sources\": [], \"severity\": \"UNKNOWN\", \"confidence\": 0.0}]}, \"historical_raw_fusion_with_context\": \"CONFIRMED\", \"rubric\": {\"execution_status_matches_expected\": true, \"expected_detector_and_line_observed\": true, \"no_unsupported_safety_assurance\": true, \"direct_observation_retained\": true, \"context_only_not_promoted\": true}, \"slither_version\": \"0.11.5\", \"compiler_version\": \"solc, the solidity compiler commandline interface\\nVersion: 0.8.22+commit.4fc1097e.Linux.g++\\n\", \"compiler_sha256\": \"8be0aeb74fc1b8213292a09a84cb524a403602526df87ecad5f5cd2a7ea7d089\"}\n",
+      "result": {
+        "case": "arithmetic-01",
+        "source_sha256": "184008553ce830ba992a78384ad376be929e9b490be29c7b54ec8cd4cde65dfc",
+        "status": "COMPLETED",
+        "findings": [],
+        "error": null,
+        "analyzer_seconds": 0.0083,
+        "static_projection": {
+          "overall_verdict": "INCONCLUSIVE",
+          "assessment": {
+            "policy": "evidence-adequacy-v1",
+            "coverage": "INCOMPLETE",
+            "coverage_reasons": [
+              "ml_evidence_unavailable_or_ineligible",
+              "ml_class_vector_incomplete_or_invalid",
+              "ml_input_coverage_not_established",
+              "completed_fast_screen_scope_not_established",
+              "slither_empty_screen_not_established",
+              "aderyn_completion_not_established",
+              "aderyn_empty_screen_not_established",
+              "ml_no_flag_label_not_established"
+            ],
+            "abstained": true,
+            "direct_signal_classes": [],
+            "raw_fusion_verdicts": {},
+            "direct_signal_scores": {},
+            "direct_signal_sources": {},
+            "assurance": "NOT_ESTABLISHED",
+            "scope": "Historical ML and static screening signals; not class-negative evidence.",
+            "risk_probability_scope": "Historical ML flagged-class score; not calibrated contract risk.",
+            "raw_fusion_scores": {}
+          },
+          "verdicts": {},
+          "recommendation": "INCONCLUSIVE: evidence or coverage is insufficient; manual review required. Coverage limitations: ml_evidence_unavailable_or_ineligible, ml_class_vector_incomplete_or_invalid, ml_input_coverage_not_established, completed_fast_screen_scope_not_established, slither_empty_screen_not_established, aderyn_completion_not_established, aderyn_empty_screen_not_established, ml_no_flag_label_not_established.\n\nML assessment failed \u2014 manual review required. Check that the inference server (port 8001) is running.",
+          "vulnerability_verdicts": []
+        },
+        "synthetic_context_projection": {
+          "overall_verdict": "INCONCLUSIVE",
+          "assessment": {
+            "policy": "evidence-adequacy-v1",
+            "coverage": "INCOMPLETE",
+            "coverage_reasons": [
+              "ml_evidence_unavailable_or_ineligible",
+              "ml_class_vector_incomplete_or_invalid",
+              "ml_input_coverage_not_established",
+              "completed_fast_screen_scope_not_established",
+              "slither_empty_screen_not_established",
+              "aderyn_completion_not_established",
+              "aderyn_empty_screen_not_established",
+              "signals_or_errors_require_review",
+              "ml_no_flag_label_not_established"
+            ],
+            "abstained": true,
+            "direct_signal_classes": [],
+            "raw_fusion_verdicts": {
+              "Reentrancy": "CONFIRMED"
+            },
+            "direct_signal_scores": {},
+            "direct_signal_sources": {},
+            "assurance": "NOT_ESTABLISHED",
+            "scope": "Historical ML and static screening signals; not class-negative evidence.",
+            "risk_probability_scope": "Historical ML flagged-class score; not calibrated contract risk.",
+            "raw_fusion_scores": {
+              "Reentrancy": 1.0
+            }
+          },
+          "verdicts": {
+            "Reentrancy": "INCONCLUSIVE"
+          },
+          "recommendation": "INCONCLUSIVE: evidence or coverage is insufficient; manual review required. Coverage limitations: ml_evidence_unavailable_or_ineligible, ml_class_vector_incomplete_or_invalid, ml_input_coverage_not_established, completed_fast_screen_scope_not_established, slither_empty_screen_not_established, aderyn_completion_not_established, aderyn_empty_screen_not_established, signals_or_errors_require_review, ml_no_flag_label_not_established.\n\nML assessment failed \u2014 manual review required. Check that the inference server (port 8001) is running.",
+          "vulnerability_verdicts": [
+            {
+              "vulnerability_class": "Reentrancy",
+              "probability": 0.0,
+              "ml_probability_available": false,
+              "verdict": "INCONCLUSIVE",
+              "evidence_sources": [
+                "rag"
+              ],
+              "direct_evidence_sources": [],
+              "severity": "UNKNOWN",
+              "confidence": 0.0
+            }
+          ]
+        },
+        "historical_raw_fusion_with_context": "CONFIRMED",
+        "rubric": {
+          "execution_status_matches_expected": true,
+          "expected_detector_and_line_observed": true,
+          "no_unsupported_safety_assurance": true,
+          "direct_observation_retained": true,
+          "context_only_not_promoted": true
+        },
+        "slither_version": "0.11.5",
+        "compiler_version": "solc, the solidity compiler commandline interface\nVersion: 0.8.22+commit.4fc1097e.Linux.g++\n",
+        "compiler_sha256": "8be0aeb74fc1b8213292a09a84cb524a403602526df87ecad5f5cd2a7ea7d089"
+      }
+    },
+    {
+      "command": [
+        "unshare",
+        "-Urn",
+        "--",
+        "/home/motafeq/projects/sentinel/agents/.venv/bin/python",
+        "/tmp/s4-utility-pilot.py",
+        "--cases",
+        "/home/motafeq/projects/sentinel/docs/plan/system-modernization/evidence/2026-11-26_s4_01_003/utility_cases.json",
+        "--compiler",
+        "/home/motafeq/.solc-select/artifacts/solc-0.8.22/solc-0.8.22",
+        "--case",
+        "compile-01"
+      ],
+      "exit_code": 0,
+      "stderr": "2026-11-26 20:55:31.198 | DEBUG    | src.orchestration.verdict.fuse:fuse:176 - fuse | 0 classes from 0 evidence items\n2026-11-26 20:55:31.199 | DEBUG    | src.orchestration.verdict.fuse:fuse:176 - fuse | 0 classes from 0 evidence items\n2026-11-26 20:55:31.199 | INFO     | src.orchestration.nodes.synthesizer:synthesizer:509 - synthesizer complete | label=unknown | verdict=INCONCLUSIVE | risk_prob=0.000 | top_vuln=None | confirmed=0 | suspicious=0 | path=deep | rag_chunks=0 | prior_audits=0 | static_findings=0\n2026-11-26 20:55:31.199 | DEBUG    | src.orchestration.verdict.fuse:fuse:176 - fuse | 1 classes from 1 evidence items\n2026-11-26 20:55:31.199 | DEBUG    | src.orchestration.verdict.fuse:fuse:176 - fuse | 0 classes from 0 evidence items\n2026-11-26 20:55:31.199 | INFO     | src.orchestration.nodes.synthesizer:synthesizer:509 - synthesizer complete | label=unknown | verdict=INCONCLUSIVE | risk_prob=0.000 | top_vuln=None | confirmed=0 | suspicious=0 | path=deep | rag_chunks=0 | prior_audits=0 | static_findings=0\n2026-11-26 20:55:31.200 | DEBUG    | src.orchestration.verdict.fuse:fuse:176 - fuse | 1 classes from 1 evidence items\n",
+      "stdout": "{\"case\": \"compile-01\", \"source_sha256\": \"3c4a5f3f1fc72f17cc7087b5eb46cc74f4fead385d4deb2f9df0ce3b444fbb3c\", \"status\": \"FAILED\", \"findings\": [], \"error\": \"SlitherError: Invalid compilation: \\nInvalid solc compilation Error: Expected type name\\n --> pilot-compile-01.sol:2:31:\\n  |\\n2 | contract Broken { function f( external {} }\\n  |                               ^^^^^^^^\\n\\n\", \"analyzer_seconds\": 0.0036, \"static_projection\": {\"overall_verdict\": \"INCONCLUSIVE\", \"assessment\": {\"policy\": \"evidence-adequacy-v1\", \"coverage\": \"INCOMPLETE\", \"coverage_reasons\": [\"ml_evidence_unavailable_or_ineligible\", \"ml_class_vector_incomplete_or_invalid\", \"ml_input_coverage_not_established\", \"completed_fast_screen_scope_not_established\", \"slither_completion_not_established\", \"slither_empty_screen_not_established\", \"aderyn_completion_not_established\", \"aderyn_empty_screen_not_established\", \"signals_or_errors_require_review\", \"ml_no_flag_label_not_established\"], \"abstained\": true, \"direct_signal_classes\": [], \"raw_fusion_verdicts\": {}, \"direct_signal_scores\": {}, \"direct_signal_sources\": {}, \"assurance\": \"NOT_ESTABLISHED\", \"scope\": \"Historical ML and static screening signals; not class-negative evidence.\", \"risk_probability_scope\": \"Historical ML flagged-class score; not calibrated contract risk.\", \"raw_fusion_scores\": {}}, \"verdicts\": {}, \"recommendation\": \"INCONCLUSIVE: evidence or coverage is insufficient; manual review required. Coverage limitations: ml_evidence_unavailable_or_ineligible, ml_class_vector_incomplete_or_invalid, ml_input_coverage_not_established, completed_fast_screen_scope_not_established, slither_completion_not_established, slither_empty_screen_not_established, aderyn_completion_not_established, aderyn_empty_screen_not_established, signals_or_errors_require_review, ml_no_flag_label_not_established.\\n\\nML assessment failed \\u2014 manual review required. Check that the inference server (port 8001) is running.\", \"vulnerability_verdicts\": []}, \"synthetic_context_projection\": {\"overall_verdict\": \"INCONCLUSIVE\", \"assessment\": {\"policy\": \"evidence-adequacy-v1\", \"coverage\": \"INCOMPLETE\", \"coverage_reasons\": [\"ml_evidence_unavailable_or_ineligible\", \"ml_class_vector_incomplete_or_invalid\", \"ml_input_coverage_not_established\", \"completed_fast_screen_scope_not_established\", \"slither_completion_not_established\", \"slither_empty_screen_not_established\", \"aderyn_completion_not_established\", \"aderyn_empty_screen_not_established\", \"signals_or_errors_require_review\", \"ml_no_flag_label_not_established\"], \"abstained\": true, \"direct_signal_classes\": [], \"raw_fusion_verdicts\": {\"Reentrancy\": \"CONFIRMED\"}, \"direct_signal_scores\": {}, \"direct_signal_sources\": {}, \"assurance\": \"NOT_ESTABLISHED\", \"scope\": \"Historical ML and static screening signals; not class-negative evidence.\", \"risk_probability_scope\": \"Historical ML flagged-class score; not calibrated contract risk.\", \"raw_fusion_scores\": {\"Reentrancy\": 1.0}}, \"verdicts\": {\"Reentrancy\": \"INCONCLUSIVE\"}, \"recommendation\": \"INCONCLUSIVE: evidence or coverage is insufficient; manual review required. Coverage limitations: ml_evidence_unavailable_or_ineligible, ml_class_vector_incomplete_or_invalid, ml_input_coverage_not_established, completed_fast_screen_scope_not_established, slither_completion_not_established, slither_empty_screen_not_established, aderyn_completion_not_established, aderyn_empty_screen_not_established, signals_or_errors_require_review, ml_no_flag_label_not_established.\\n\\nML assessment failed \\u2014 manual review required. Check that the inference server (port 8001) is running.\", \"vulnerability_verdicts\": [{\"vulnerability_class\": \"Reentrancy\", \"probability\": 0.0, \"ml_probability_available\": false, \"verdict\": \"INCONCLUSIVE\", \"evidence_sources\": [\"rag\"], \"direct_evidence_sources\": [], \"severity\": \"UNKNOWN\", \"confidence\": 0.0}]}, \"historical_raw_fusion_with_context\": \"CONFIRMED\", \"rubric\": {\"execution_status_matches_expected\": true, \"expected_detector_and_line_observed\": true, \"no_unsupported_safety_assurance\": true, \"direct_observation_retained\": true, \"context_only_not_promoted\": true}, \"slither_version\": \"0.11.5\", \"compiler_version\": \"solc, the solidity compiler commandline interface\\nVersion: 0.8.22+commit.4fc1097e.Linux.g++\\n\", \"compiler_sha256\": \"8be0aeb74fc1b8213292a09a84cb524a403602526df87ecad5f5cd2a7ea7d089\"}\n",
+      "result": {
+        "case": "compile-01",
+        "source_sha256": "3c4a5f3f1fc72f17cc7087b5eb46cc74f4fead385d4deb2f9df0ce3b444fbb3c",
+        "status": "FAILED",
+        "findings": [],
+        "error": "SlitherError: Invalid compilation: \nInvalid solc compilation Error: Expected type name\n --> pilot-compile-01.sol:2:31:\n  |\n2 | contract Broken { function f( external {} }\n  |                               ^^^^^^^^\n\n",
+        "analyzer_seconds": 0.0036,
+        "static_projection": {
+          "overall_verdict": "INCONCLUSIVE",
+          "assessment": {
+            "policy": "evidence-adequacy-v1",
+            "coverage": "INCOMPLETE",
+            "coverage_reasons": [
+              "ml_evidence_unavailable_or_ineligible",
+              "ml_class_vector_incomplete_or_invalid",
+              "ml_input_coverage_not_established",
+              "completed_fast_screen_scope_not_established",
+              "slither_completion_not_established",
+              "slither_empty_screen_not_established",
+              "aderyn_completion_not_established",
+              "aderyn_empty_screen_not_established",
+              "signals_or_errors_require_review",
+              "ml_no_flag_label_not_established"
+            ],
+            "abstained": true,
+            "direct_signal_classes": [],
+            "raw_fusion_verdicts": {},
+            "direct_signal_scores": {},
+            "direct_signal_sources": {},
+            "assurance": "NOT_ESTABLISHED",
+            "scope": "Historical ML and static screening signals; not class-negative evidence.",
+            "risk_probability_scope": "Historical ML flagged-class score; not calibrated contract risk.",
+            "raw_fusion_scores": {}
+          },
+          "verdicts": {},
+          "recommendation": "INCONCLUSIVE: evidence or coverage is insufficient; manual review required. Coverage limitations: ml_evidence_unavailable_or_ineligible, ml_class_vector_incomplete_or_invalid, ml_input_coverage_not_established, completed_fast_screen_scope_not_established, slither_completion_not_established, slither_empty_screen_not_established, aderyn_completion_not_established, aderyn_empty_screen_not_established, signals_or_errors_require_review, ml_no_flag_label_not_established.\n\nML assessment failed \u2014 manual review required. Check that the inference server (port 8001) is running.",
+          "vulnerability_verdicts": []
+        },
+        "synthetic_context_projection": {
+          "overall_verdict": "INCONCLUSIVE",
+          "assessment": {
+            "policy": "evidence-adequacy-v1",
+            "coverage": "INCOMPLETE",
+            "coverage_reasons": [
+              "ml_evidence_unavailable_or_ineligible",
+              "ml_class_vector_incomplete_or_invalid",
+              "ml_input_coverage_not_established",
+              "completed_fast_screen_scope_not_established",
+              "slither_completion_not_established",
+              "slither_empty_screen_not_established",
+              "aderyn_completion_not_established",
+              "aderyn_empty_screen_not_established",
+              "signals_or_errors_require_review",
+              "ml_no_flag_label_not_established"
+            ],
+            "abstained": true,
+            "direct_signal_classes": [],
+            "raw_fusion_verdicts": {
+              "Reentrancy": "CONFIRMED"
+            },
+            "direct_signal_scores": {},
+            "direct_signal_sources": {},
+            "assurance": "NOT_ESTABLISHED",
+            "scope": "Historical ML and static screening signals; not class-negative evidence.",
+            "risk_probability_scope": "Historical ML flagged-class score; not calibrated contract risk.",
+            "raw_fusion_scores": {
+              "Reentrancy": 1.0
+            }
+          },
+          "verdicts": {
+            "Reentrancy": "INCONCLUSIVE"
+          },
+          "recommendation": "INCONCLUSIVE: evidence or coverage is insufficient; manual review required. Coverage limitations: ml_evidence_unavailable_or_ineligible, ml_class_vector_incomplete_or_invalid, ml_input_coverage_not_established, completed_fast_screen_scope_not_established, slither_completion_not_established, slither_empty_screen_not_established, aderyn_completion_not_established, aderyn_empty_screen_not_established, signals_or_errors_require_review, ml_no_flag_label_not_established.\n\nML assessment failed \u2014 manual review required. Check that the inference server (port 8001) is running.",
+          "vulnerability_verdicts": [
+            {
+              "vulnerability_class": "Reentrancy",
+              "probability": 0.0,
+              "ml_probability_available": false,
+              "verdict": "INCONCLUSIVE",
+              "evidence_sources": [
+                "rag"
+              ],
+              "direct_evidence_sources": [],
+              "severity": "UNKNOWN",
+              "confidence": 0.0
+            }
+          ]
+        },
+        "historical_raw_fusion_with_context": "CONFIRMED",
+        "rubric": {
+          "execution_status_matches_expected": true,
+          "expected_detector_and_line_observed": true,
+          "no_unsupported_safety_assurance": true,
+          "direct_observation_retained": true,
+          "context_only_not_promoted": true
+        },
+        "slither_version": "0.11.5",
+        "compiler_version": "solc, the solidity compiler commandline interface\nVersion: 0.8.22+commit.4fc1097e.Linux.g++\n",
+        "compiler_sha256": "8be0aeb74fc1b8213292a09a84cb524a403602526df87ecad5f5cd2a7ea7d089"
+      }
+    }
+  ]
+}

@@ -53,3 +53,27 @@ Gate L-G0: source/label inventory reconciled with existing R4 evidence. L-G1: ca
 ## 5. Execution order and relationship to S4
 
 This is an early, independent DATA priority: S4-03-L0 can start alongside S4-01/S4-02 once its exact baseline is captured; do not wait for all runtime architecture work. S4-01-003 analyst utility evaluation must remain separate from R4 training/acceptance roles; no leakage into future optimizer populations. L3/L4 current external dataset/tool/model research should occur when L0 reveals gaps, using primary sources and actual license/version verification. No external models or tools are selected yet. Prior accepted data and review records remain intact. Record every candidate experiment and decision under S4/R4, preserve unsuccessful review attempts, publish only admissible evidence. User explicitly requested this priority on 2026-11-26.
+
+## 6. L0A measured inventory (2026-11-26)
+
+[Exact inventory evidence](../evidence/2026-11-26_s4_01_003/label_inventory.json) at ee9a2e0202bb0a729c60a05906b71bd3195e67b6. Seven logical artifact digests agree with the committed manifest, local manifest bytes match committed manifest, 225,400 long cells match 22,540 wide target rows across checked fields, no recorded group spans incompatible roles (22,394 groups). This is read-only byte/structural reconciliation, not class adjudication, raw source validation or a full representation rehash.
+
+| Class | Positive targets | Effective loss cells | Outcome-metric cells | Confirmed negatives |
+|---|---:|---:|---:|---:|
+| CallToUnknown | 101 | 76 | 25 | 0 |
+| DenialOfService | 6 | 3 | 3 | 0 |
+| ExternalBug | 67 | 43 | 24 | 0 |
+| GasException | 0 | 0 | 0 | 0 |
+| IntegerUO | 64 | 41 | 23 | 0 |
+| MishandledException | 49 | 40 | 9 | 0 |
+| Reentrancy | 80 | 59 | 21 | 0 |
+| Timestamp | 54 | 37 | 17 | 0 |
+| TransactionOrderDependence | 659 | 633 | 21 | 0 |
+| UnusedReturn | 0 | 0 | 0 | 0 |
+| Total | 1,080 | 932 | 143 | 0 |
+
+171,083 UNKNOWN; 53,843 NOT_REVIEWED (includes 606 weak TOD targets); 474 CONFIRMED_POSITIVE. No target-zero cells, 224,320 null targets. Primary sources: DIVE 22,054 contracts (606 weak positive targets, 601 effective loss, no metric cells), SolidiFI 343 (343 strong targets, 240 effective loss, 103 metric), SmartBugs curated 143 (131 strong targets, 91 effective loss, 40 metric). All 225,400 historical_state fields in this V3 projection are HISTORICAL_MISSING; native claims are preserved separately, not evidence of all historical source labels missing. L0B must trace this projection and reconstruct native label semantics from source claim/ledger artifacts and raw inputs. Claims are counted as occurrences across class cells, not unique evidence; SHA fields present does not establish content/licensing.
+
+Priority: first investigate GasException and UnusedReturn (no target-positive or metric support), then DenialOfService (only six strong positives). TOD has 633/932 effective loss cells, 601 from weak DIVE claims, so measure source/label shortcuts and bias before acquiring more TOD examples. ExternalBug has 16,605 NOT_REVIEWED cells; prioritize stratified review for evidence yield, not automatic relabeling. Negative acquisition remains class-specific under R4; these counts do not authorize training, threshold fitting or new labels. Counts of distinct recorded groups do not prove statistical independence.
+
+L0A complete; L0B next: native claim state/crosswalk/unique source records and actual source/license/compiler availability, deduplicated by source identity, verify representative raw source hashes and trace historical-state projection. Then select bounded pilot for L1/L2/L3, prioritizing under-supported classes and negative evaluation coverage. L-G0 remains open.
