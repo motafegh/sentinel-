@@ -77,7 +77,9 @@ Instead:
 3. execute and validate them;
 4. surface consequential tradeoffs/results to Ali.
 
-Still stop for genuinely non-routine decisions that cannot be inferred safely, such as destructive loss of protected data/history, real production deployment/funds/keys, irreversible external actions, or choices that change the project's intended product/career direction rather than implementation quality.
+Ali explicitly extended delegation on 2026-11-26 to project direction, architecture/design and engineering decisions. Make and record evidence-based choices without stopping merely for routine approval, including selecting a better product scope or design. Preserve R4/domain gate semantics and immutable evidence; lack of evidence is a blocker, not an approval question.
+
+Still stop for destructive loss of protected data/history, real production deployment/funds/keys, irreversible external actions, material external cost or private data transfer that cannot be safely inferred from authorization. Do not equate design authority with permission to bypass scientific, security or release gates.
 
 ## Plan before code
 

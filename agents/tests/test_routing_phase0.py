@@ -181,7 +181,7 @@ class TestBuildRoutingDecisions:
     def test_fast_path_decision_string(self):
         ml = _ml([("Reentrancy", 0.10)])
         decisions = build_routing_decisions(ml)
-        assert any("fast path" in d for d in decisions)
+        assert any("screen eligibility still required" in d for d in decisions)
 
     def test_deep_path_decision_contains_class_and_tools(self):
         ml = _ml([("Reentrancy", 0.87)])
@@ -355,6 +355,8 @@ class TestEvidenceRouterNode:
 
         state = live_ml_state(
             {
+                "quick_screen_hits": {"slither": [], "aderyn": []},
+                "tool_status": {"slither": {"ran": True}, "aderyn": {"ran": True}},
                 "ml_result": {
                     "label": "safe",
                     "vulnerabilities": [{"vulnerability_class": "Reentrancy", "probability": 0.10}],

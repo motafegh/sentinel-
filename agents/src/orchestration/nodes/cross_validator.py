@@ -62,7 +62,7 @@ async def cross_validator(state: AuditState) -> dict[str, Any]:
         logger.info("cross_validator | no flagged classes — skipping")
         return {}
 
-    if not _llm_enabled():
+    if not _llm_enabled(state):
         logger.info("cross_validator | LLM disabled (AGENTS_DISABLE_LLM) — rule-based fallback")
         return {}
 

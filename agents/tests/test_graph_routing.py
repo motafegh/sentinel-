@@ -182,7 +182,8 @@ class TestRouteFromEvidenceRouter:
 
     def test_all_below_threshold_routes_to_synthesizer(self, ml_low):
         # ml_low has Reentrancy at 0.10 — below DEEP_THRESHOLD[0.35], no screen hits
-        state: AuditState = {"ml_result": ml_low, "quick_screen_hits": {}}
+        state: AuditState = {"ml_result": ml_low, "quick_screen_hits": {"slither": [], "aderyn": []},
+                             "tool_status": {"slither": {"ran": True}, "aderyn": {"ran": True}}}
         result = _route_from_evidence_router(state)
         assert result == "synthesizer"
 
@@ -228,6 +229,7 @@ class TestRouteFromEvidenceRouter:
         state: AuditState = {
             "ml_result": ml_low,
             "quick_screen_hits": {"slither": [], "aderyn": []},
+            "tool_status": {"slither": {"ran": True}, "aderyn": {"ran": True}},
         }
         result = _route_from_evidence_router(state)
         assert result == "synthesizer"
@@ -780,15 +782,19 @@ class TestFullGraphIntegration:
     @pytest.mark.asyncio
     async def test_fast_path_end_to_end(self):
         # ml_fast has all classes below DEEP_THRESHOLDS → fast path
-        async def mock_fast(url, tool, args):
-            if tool == "predict":
+        async def mock_fast(server_url, tool_name, arguments):
+            if tool_name == "predict":
                 return _ml_three_tier(
                     suspicious=[("Reentrancy", 0.10)],
-                    contract_code=args["contract_code"],
+                    contract_code=arguments["contract_code"],
                 )
             return {"error": "should not be called on fast path"}
 
-        graph = build_graph(use_checkpointer=False)
+        with patch("src.orchestration.graph.quick_screen", new=AsyncMock(return_value={
+            "quick_screen_hits": {"slither": [], "aderyn": []},
+            "tool_status": {"slither": {"ran": True}, "aderyn": {"ran": True}},
+        })):
+            graph = build_graph(use_checkpointer=False)
         initial_state = {
             "contract_code": "pragma solidity ^0.8.0;\ncontract Safe {}",
             "contract_address": "0xDEAD",
@@ -1406,3 +1412,59 @@ class TestQuickScreenNode:
                 "UNCONFIRMED",
                 "ML_ONLY",
             )
+
+
+class TestS4RoutingContract:
+    @pytest.mark.parametrize("statuses", [
+        {},
+        {"slither": {"ran": True}, "aderyn": {"ran": False}},
+        {"slither": {"ran": False}, "aderyn": {"ran": False}},
+        {"slither": {"ran": True}, "aderyn": {"ran": "true"}},
+    ])
+    def test_unavailable_screen_does_not_qualify_fast_path(self, ml_low, statuses):
+        state = {"contract_code": _DEFAULT_CONTRACT_CODE, "ml_result": ml_low,
+                 "quick_screen_hits": {"slither": [], "aderyn": []},
+                 "tool_status": statuses}
+        assert "static_analysis" in _route_from_evidence_router(state)
+
+    def test_explicit_completed_screens_allow_fast_path(self, ml_low):
+        state = {"contract_code": _DEFAULT_CONTRACT_CODE, "ml_result": ml_low,
+                 "quick_screen_hits": {"slither": [], "aderyn": []},
+                 "tool_status": {"slither": {"ran": True}, "aderyn": {"ran": True}}}
+        assert _route_from_evidence_router(state) == "synthesizer"
+
+    def test_missing_hit_list_does_not_qualify_fast_path(self, ml_low):
+        state = {"contract_code": _DEFAULT_CONTRACT_CODE, "ml_result": ml_low,
+                 "quick_screen_hits": {"slither": []},
+                 "tool_status": {"slither": {"ran": True}, "aderyn": {"ran": True}}}
+        assert "static_analysis" in _route_from_evidence_router(state)
+
+    @pytest.mark.asyncio
+    async def test_router_records_actual_deep_path_even_when_results_empty(self, ml_low):
+        from src.orchestration.nodes.evidence_router import evidence_router
+        state = {"contract_code": _DEFAULT_CONTRACT_CODE, "ml_result": ml_low,
+                 "quick_screen_hits": {"slither": [], "aderyn": []},
+                 "tool_status": {"slither": {"ran": False}, "aderyn": {"ran": False}}}
+        update = await evidence_router(state)
+        assert update["analysis_path"] == "deep"
+        assert "static_analysis" in _route_from_evidence_router({**state, **update})
+        with patch("src.orchestration.nodes.synthesizer.persist_report", return_value={}):
+            report = (await synthesizer({**state, **update}))["final_report"]
+        assert report["path_taken"] == "deep"
+
+    @pytest.mark.asyncio
+    async def test_disabled_job_never_calls_any_llm_factory(self, base_state, ml_high, monkeypatch):
+        from src.orchestration.nodes.reflection import reflection
+        monkeypatch.delenv("AGENTS_DISABLE_LLM", raising=False)
+        monkeypatch.delenv("SENTINEL_DETERMINISTIC", raising=False)
+        state = {**base_state, "ml_result": ml_high, "no_llm": True}
+        with patch("src.llm.client.get_strong_llm") as strong, \
+             patch("src.llm.client.get_fast_llm") as fast, \
+             patch("src.orchestration.nodes.synthesizer.persist_report", return_value={}):
+            assert await cross_validator(state) == {}
+            result = await synthesizer(state)
+            assert result["final_report"]["narrative"] is None
+            critique = await reflection({**state, **result})
+            assert critique["reflection_notes"]["llm_used"] is False
+            strong.assert_not_called()
+            fast.assert_not_called()

@@ -162,7 +162,10 @@ async def synthesizer(state: AuditState) -> dict[str, Any]:
         top_vuln_name = None
 
     # Determine which path was taken.
-    path_taken = "deep" if (rag_results or static_findings) else "fast"
+    path_taken = state.get("analysis_path")
+    if path_taken not in ("fast", "deep"):
+        # Direct legacy synthesizer callers do not execute the router.
+        path_taken = "deep" if (rag_results or static_findings) else "fast"
 
     # ── P2 Shape A: fuse() is the sole verdict producer ───────────────────────
     # Every channel upstream (consensus_engine, cross_validator) emits Evidence
@@ -275,7 +278,7 @@ async def synthesizer(state: AuditState) -> dict[str, Any]:
     # (LLM unavailable, timeout, malformed response).
     narrative: str | None = None
     injection_matches: list[Any] = []
-    if ml_result and _llm_enabled():
+    if ml_result and _llm_enabled(state):
         try:
             from langchain_core.messages import HumanMessage, SystemMessage
             from src.llm.client import get_strong_llm

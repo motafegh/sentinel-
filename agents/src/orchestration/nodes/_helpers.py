@@ -26,14 +26,16 @@ from src.orchestration.timeouts import (
 from src.orchestration.routing import CLASS_TO_DETECTORS
 
 
-def _llm_enabled() -> bool:
+def _llm_enabled(state: dict[str, Any] | None = None) -> bool:
     """
-    False when AGENTS_DISABLE_LLM is truthy OR SENTINEL_DETERMINISTIC is set.
+    False for a disabled job or either process-wide disable flag.
 
     P5 (2026-06-26): SENTINEL_DETERMINISTIC=1 disables LLM calls to ensure
     reproducible verdicts (LLM outputs are non-deterministic even at temp=0).
     Nodes then use rule-based fallback.
     """
+    if state is not None and state.get("no_llm") is True:
+        return False
     if os.getenv("SENTINEL_DETERMINISTIC", "").strip().lower() in ("1", "true", "yes"):
         return False
     return os.getenv("AGENTS_DISABLE_LLM", "").strip().lower() not in ("1", "true", "yes")

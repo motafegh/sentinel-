@@ -606,6 +606,33 @@ class TestGatewayE2E:
                 time.sleep(0.05)
             data = resp.json()
             assert data["metadata"].get("_effective_no_llm") is True
+            assert graph.last_state is not None
+            assert graph.last_state["no_llm"] is True
+
+            resp = client.post("/audit", json={"contract_code": VALID_SOLIDITY, "metadata": {"_effective_no_llm": True}})
+            assert resp.status_code == 202
+            job_id = resp.json()["job_id"]
+            for _ in range(50):
+                resp = client.get(f"/audit/{job_id}")
+                if resp.json()["status"] in ("completed", "failed"):
+                    break
+                time.sleep(0.05)
+            assert graph.last_state["no_llm"] is False
+
+    def test_app_no_llm_default_is_job_scoped(self):
+        graph = _StubGraph()
+        app = create_app(store=JobStore(), graph_factory=lambda: graph,
+                         no_llm=True, skip_service_probes=True, auth_enabled=False)
+        with TestClient(app) as client:
+            resp = client.post("/audit?no_llm=false", json={"contract_code": VALID_SOLIDITY})
+            assert resp.status_code == 202
+            job_id = resp.json()["job_id"]
+            for _ in range(50):
+                resp = client.get(f"/audit/{job_id}")
+                if resp.json()["status"] in ("completed", "failed"):
+                    break
+                time.sleep(0.05)
+            assert graph.last_state["no_llm"] is True
 
     def test_listening_on_test_mode(self):
         """Sanity: the app serves a valid OpenAPI schema."""

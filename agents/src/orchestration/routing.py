@@ -132,6 +132,40 @@ def compute_active_tools(ml_result: dict[str, Any]) -> list[str]:
     return sorted(active)
 
 
+def choose_analysis_route(state: dict[str, Any]) -> tuple[str | list[str], str]:
+    """One routing decision for the graph edge and recorded path.
+
+    Empty hits are meaningful only with explicit successful screen execution.
+    Missing, malformed or unavailable screen evidence must escalate.
+    """
+    from src.orchestration.provenance import eligible_ml_result
+
+    ml_result = eligible_ml_result(state, purpose="routing")
+    active = compute_active_tools(ml_result)
+    hits = state.get("quick_screen_hits")
+    statuses = state.get("tool_status")
+    hits = hits if isinstance(hits, dict) else {}
+    statuses = statuses if isinstance(statuses, dict) else {}
+    screen_clear = all(
+        isinstance(hits.get(tool), list)
+        and not hits[tool]
+        and isinstance(statuses.get(tool), dict)
+        and statuses[tool].get("ran") is True
+        for tool in ("slither", "aderyn")
+    )
+    if not ml_result:
+        active = ["static_analysis"]
+        reason = "ML provenance unavailable or invalid"
+    elif not active and screen_clear:
+        return "synthesizer", "ML below thresholds and both screens completed without hits"
+    elif not screen_clear:
+        active = sorted(set(active + ["static_analysis"]))
+        reason = "static screen hit, unavailable or incomplete"
+    else:
+        reason = "ML investigation threshold reached"
+    return sorted(set(active + ["graph_explain", "formal_verification"])), reason
+
+
 def build_routing_decisions(ml_result: dict[str, Any]) -> list[str]:
     """
     Build human-readable routing decision strings for AuditState.routing_decisions.
@@ -157,7 +191,7 @@ def build_routing_decisions(ml_result: dict[str, Any]) -> list[str]:
             )
 
     if not active_any:
-        decisions.append("all classes below per-class threshold → fast path")
+        decisions.append("no class crossed a configured routing threshold; screen eligibility still required")
 
     return decisions
 

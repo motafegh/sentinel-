@@ -31,7 +31,7 @@ at import time. Compilation happens on the first POST /audit.
 
 `--no-llm` SUPPORT
 ==================
-The gateway respects the `AUDIT_NO_LLM` env var (or `audit_no_llm` query
+The gateway respects the `AUDIT_NO_LLM` env var (or `no_llm` query
 param) to skip LLM-dependent nodes (cross_validator debate, synthesizer
 narrative). Useful for smoke tests and CI gates.
 
@@ -108,8 +108,8 @@ def create_app(
         graph_factory: Callable that returns a compiled LangGraph. If None,
             uses `src.orchestration.graph.build_graph(use_checkpointer=False)`.
             Tests can pass a stub to avoid loading the real graph.
-        no_llm: If True, patches the LLM client to raise immediately (matches
-            `run_real_audit.py --no-llm`). If None, reads `AUDIT_NO_LLM` env.
+        no_llm: If True, disables LLM calls for every job in this app.
+            If None, reads `AUDIT_NO_LLM` env.
         skip_service_probes: If True, `/health` does NOT probe upstream
             services. Useful for tests where ml_api/mcp_* are not running.
 
@@ -125,8 +125,6 @@ def create_app(
     # Resolve `no_llm` against env var (None means "use env").
     if no_llm is None:
         no_llm = AUDIT_NO_LLM_DEFAULT
-    if no_llm:
-        _patch_no_llm()
 
     # Resolve the graph factory.
     if graph_factory is None:
@@ -301,8 +299,10 @@ def create_app(
         contract_address = req.contract_address or _derive_address(req.contract_code)
 
         # Apply the per-request no_llm override.
-        effective_no_llm = no_llm or app.state.no_llm
-        if effective_no_llm and not app.state.no_llm:
+        effective_no_llm = bool(no_llm or app.state.no_llm)
+        # Reserved metadata is server-owned; the graph receives the typed job flag.
+        req.metadata.pop("_effective_no_llm", None)
+        if effective_no_llm:
             req.metadata["_effective_no_llm"] = True
 
         req.metadata["tenant_id"] = tenant_id
@@ -321,6 +321,7 @@ def create_app(
                 store=store,
                 graph_factory=app.state.graph_factory,
                 audit_timeout_s=req.audit_timeout_s,
+                no_llm=effective_no_llm,
             ),
             name=f"audit-{record.job_id[:8]}",
         )
@@ -384,6 +385,7 @@ async def _run_job(
     store: JobStore,
     graph_factory: Any,
     audit_timeout_s: float,
+    no_llm: bool = False,
 ) -> None:
     """Execute the audit for one job, updating the store as it goes.
 
@@ -414,6 +416,7 @@ async def _run_job(
             "contract_code": record.contract_code,
             "contract_address": record.contract_address,
             "job_id": record.job_id,
+            "no_llm": no_llm,
         }
         result = await asyncio.wait_for(
             graph.ainvoke(initial_state),
@@ -537,36 +540,7 @@ async def _probe_services(timeout: float = 1.5) -> list[ServiceHealth]:
     return results
 
 
-# ── --no-llm patch (mirrors run_real_audit.py:_patch_no_llm) ───────────
-def _patch_no_llm() -> None:
-    """Replace the LLM client with a stub that raises immediately.
 
-    This is the same pattern as `run_real_audit.py:_patch_no_llm`. It
-    patches both the canonical location and the import locations in
-    `graph.py` and `nodes.py` (which captured the symbol at import time).
-    """
-    from src.llm import client as llm_client
-
-    class _StubLLM:
-        def invoke(self, *a, **kw):
-            raise RuntimeError("LLM disabled by --no-llm mode")
-
-    def _stub_strong_llm(*a, **kw):
-        return _StubLLM()
-
-    llm_client.get_strong_llm = _stub_strong_llm
-    import src.orchestration.graph as graph_mod
-    import src.orchestration.nodes as nodes_mod
-
-    for mod in (graph_mod, nodes_mod):
-        if hasattr(mod, "get_strong_llm"):
-            mod.get_strong_llm = _stub_strong_llm
-    logger.warning(
-        "--no-llm MODE: cross_validator → rule-based verdicts; " "synthesizer narrative → None"
-    )
-
-
-# ── Helpers ─────────────────────────────────────────────────────────────
 def _derive_address(contract_code: str) -> str:
     """Generate a deterministic 0x... address from contract source code.
 

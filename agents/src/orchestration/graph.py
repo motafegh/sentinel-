@@ -79,8 +79,7 @@ from src.orchestration.nodes import (
     synthesizer,
     visualizer,
 )
-from src.orchestration.provenance import eligible_ml_result
-from src.orchestration.routing import compute_active_tools
+from src.orchestration.routing import choose_analysis_route
 from src.orchestration.state import AuditState
 from src.orchestration.timing import timed_node
 
@@ -90,61 +89,10 @@ from src.orchestration.timing import timed_node
 
 
 def _route_from_evidence_router(state: AuditState) -> str | list[str]:
-    """
-    Decide which path to take after evidence_router has logged its decisions.
-
-    Returns:
-        list[str]    — node names to fan out to in parallel (deep path)
-        "synthesizer" — fast path: skip directly to synthesizer
-
-    Two-signal fast-path gate (A3):
-        Fast path requires BOTH signals to agree it is safe:
-          1. ML — all class probabilities below DEEP_THRESHOLDS
-          2. quick_screen — zero High/Critical Slither or Aderyn hits
-
-        If quick_screen fires but ML did not, we still go deep (with at least
-        static_analysis), because two independent tools disagreeing warrants
-        human-level scrutiny.
-
-    RECALL — evidence_router node already called compute_active_tools and
-    stored results in routing_decisions for auditability. This function calls
-    it again (cheap — pure dict lookup) to produce the LangGraph branch target.
-    The two calls must be consistent; routing.py is the single source of truth.
-    """
-    ml_result = eligible_ml_result(state, purpose="routing")
-    active = compute_active_tools(ml_result)
-
-    # Check quick_screen escalation signal.
-    quick_hits = state.get("quick_screen_hits", {})
-    has_screen_hits = bool(quick_hits.get("slither") or quick_hits.get("aderyn"))
-
-    if not ml_result:
-        logger.info("_route_from_evidence_router | invalid/unavailable ML → deep analysis")
-        active = ["static_analysis"]
-    elif not active and not has_screen_hits:
-        logger.info("_route_from_evidence_router | fast path (ML safe + screen clean)")
-        return "synthesizer"
-
-    # quick_screen fired but ML did not → minimal deep path (static_analysis only).
-    if not active and has_screen_hits:
-        logger.info(
-            "_route_from_evidence_router | screen-escalated deep path "
-            "(ML safe but quick_screen hit: slither={} aderyn={})",
-            quick_hits.get("slither", []),
-            quick_hits.get("aderyn", []),
-        )
-        active = ["static_analysis"]
-
-    # graph_explain always joins the deep-path fan-out (Phase 1 hotspot analysis).
-    # formal_verification (P8a) joins the deep-path fan-out for symbolic execution.
-    deep_nodes = sorted(set(active + ["graph_explain", "formal_verification"]))
-    logger.info("_route_from_evidence_router | deep path → {}", deep_nodes)
-    return deep_nodes
-
-
-# ---------------------------------------------------------------------------
-# Graph builder
-# ---------------------------------------------------------------------------
+    """Route from the same decision function used to record the branch."""
+    target, reason = choose_analysis_route(state)
+    logger.info("_route_from_evidence_router | {} -> {}", reason, target)
+    return target
 
 
 def build_graph(use_checkpointer: bool = True) -> Any:

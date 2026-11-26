@@ -9,7 +9,7 @@ from loguru import logger
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
 from src.orchestration.provenance import eligible_ml_result
-from src.orchestration.routing import build_routing_decisions, compute_active_tools
+from src.orchestration.routing import build_routing_decisions, choose_analysis_route
 from src.orchestration.state import AuditState
 
 
@@ -27,30 +27,8 @@ async def evidence_router(state: AuditState) -> dict[str, Any]:
     """
     ml_result = eligible_ml_result(state, purpose="routing")
     decisions = build_routing_decisions(ml_result)
-
-    # Log quick_screen signal alongside ML per-class decisions.
-    quick_screen_hits = state.get("quick_screen_hits", {})
-    slither_hits = quick_screen_hits.get("slither", [])
-    aderyn_hits = quick_screen_hits.get("aderyn", [])
-
-    active = compute_active_tools(ml_result)
-    if not ml_result:
-        decisions.append("ML provenance unavailable or invalid → fail-closed deep analysis")
-    if slither_hits or aderyn_hits:
-        escalation = (
-            f"quick_screen: slither={slither_hits[:3]} aderyn={aderyn_hits[:3]}"
-            f" → escalate to deep path (overrides fast-path even if ML safe)"
-        )
-        decisions.append(escalation)
-        logger.info("evidence_router | {}", escalation)
-    elif not active:
-        decisions.append("quick_screen: no hits, ML safe → fast path confirmed")
-
-    logger.info(
-        "evidence_router | active_tools={} | quick_screen_slither={} | quick_screen_aderyn={}",
-        active or ["fast-path"],
-        len(slither_hits),
-        len(aderyn_hits),
-    )
-
-    return {"routing_decisions": decisions}
+    target, reason = choose_analysis_route(state)
+    path = "fast" if target == "synthesizer" else "deep"
+    decisions.append(f"analysis_path={path}: {path} path selected: {reason}")
+    logger.info("evidence_router | path={} | reason={}", path, reason)
+    return {"routing_decisions": decisions, "analysis_path": path}

@@ -110,7 +110,7 @@ async def reflection(state: AuditState) -> dict[str, Any]:
     }
 
     # ── Optional LLM narrative summary ───────────────────────────────────────
-    if _llm_enabled() and vuln_verdicts:
+    if _llm_enabled(state) and vuln_verdicts:
         try:
             from langchain_core.messages import HumanMessage, SystemMessage
             from src.llm.client import get_strong_llm

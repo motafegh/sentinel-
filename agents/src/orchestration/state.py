@@ -69,6 +69,8 @@ class AuditState(TypedDict, total=False):
     # ── Input (set by caller, never changed by nodes) ──────────────────────
     contract_code:    str           # raw Solidity source to audit
     contract_address: str           # on-chain address (for audit registry lookup)
+    no_llm:           bool          # server-derived per-job LLM disable flag
+    analysis_path:    str           # explicit fast/deep routing decision
     job_id:           str           # canonical UUID — safe filesystem key (R0.2)
 
     # ── ML evidence ─────────────────────────────────────────────────────────

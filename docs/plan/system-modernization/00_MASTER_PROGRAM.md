@@ -40,7 +40,7 @@ Scope: all DATA, ML/inference, AGENTS/LLM/RAG/MCP, ZKML, contracts, cross-module
 
 If source behavior contradicts accepted semantics, resolve with the appropriate owner; neither source nor prose silently changes the other. Use versioned decisions for material semantic, protocol, interface, architectural or authority changes, not every reversible refactor.
 
-Ali owns consequential scope decisions; assistants own delegated routine execution and evidence stewardship. Separate authorization is required for destructive history/data changes, production exposure, real keys/funds, irreversible deployment/upgrade, material external cost/data transfer or product-direction change. S4 grants none of these permissions.
+Ali retains project ownership and delegated project direction, architecture/design and engineering decisions on 2026-11-26. Assistants make evidence-based choices and record trade-offs without repeated approval. Separate authorization remains required for destructive history/data changes, production exposure, real keys/funds, irreversible deployment/upgrade or material external cost/private data transfer. S4 grants none of these permissions.
 
 ## 3. Protected boundaries
 
@@ -90,7 +90,7 @@ Outputs: baseline inventory, coverage/run evidence, initial findings register an
 - Trace actual entry points, runtime/offline flows, interfaces, state ownership, trust/deployment topology. Separate Run12 operations, R4 research and proof/chain.
 - Define intended users, tasks, inputs/outputs and failure expectations; distinguish intended from validated usefulness.
 - Compare deterministic analyzer/report baseline and incremental ML, RAG, agent, formal, proof/chain contributions and costs. Identify complexity not serving a meaningful task.
-- Map semantic contracts, coupling, duplication and alternatives. Propose scope/non-goals, including separate research or retained legacy tracks; escalate material product changes.
+- Map semantic contracts, coupling, duplication and alternatives. Propose scope/non-goals, including separate research or retained legacy tracks; record material product decisions and trade-offs under delegated authority.
 
 Outputs: architecture/capability matrix, use-case hypotheses, interface map, options/scope proposal. Gate S4-G01: actual vs intended behavior distinguished; each significant capability has purpose, testable claim, trust boundary or explicit open question.
 
@@ -164,7 +164,7 @@ Outputs: lifecycle/ownership map, debt register, documentation/CI and retention 
 - Register question, baseline, pinned candidates, data/roles, budgets and criteria before execution; include no-change/simpler controls.
 - Compare retain, repair, refactor, modernize, replace or retire across correctness, safety, latency/resources, maintainability, provenance, compatibility, cost, rollback and learning.
 - Research current official releases/docs/advisories for selected alternatives; do not select by recency, popularity or unrelated benchmark.
-- Isolate experiments; preserve adverse/inconclusive results and rejected alternatives; escalate material scope/domain changes.
+- Isolate experiments; preserve adverse/inconclusive results and rejected alternatives; record material scope decisions; route domain changes through their owning authority.
 
 Outputs: decision index and experiment packets. Gate S4-G09: consequential choices supported by inspectable comparisons and compatibility/rollback or explicitly deferred.
 

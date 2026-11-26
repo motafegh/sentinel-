@@ -183,3 +183,12 @@ class TestReproducibilityE2E:
             # Verify the verdict is as expected
             assert "Reentrancy" in result1
             assert result1["Reentrancy"].verdict_provable in ("CONFIRMED", "LIKELY")
+
+def test_job_no_llm_overrides_enabled_process(monkeypatch):
+    from src.orchestration.nodes._helpers import _llm_enabled
+    monkeypatch.delenv("AGENTS_DISABLE_LLM", raising=False)
+    monkeypatch.delenv("SENTINEL_DETERMINISTIC", raising=False)
+    assert not _llm_enabled({"no_llm": True})
+    assert _llm_enabled({"no_llm": False})
+    monkeypatch.setenv("AGENTS_DISABLE_LLM", "1")
+    assert not _llm_enabled({"no_llm": False})
