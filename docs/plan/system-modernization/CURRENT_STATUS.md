@@ -73,9 +73,13 @@ Inspected 604d882dac7958baed50c3cafb957b5d060ae28e. [Evidence](evidence/2026-11-
 
 Inspected 820bc1457f3260c54c946c704f7695240b19f1d4. [Evidence](evidence/2026-11-27_s4_03_l1b/WORKING_RECORD.md). Complementary direct-return helper fixture pass after retained compilation/API failures, 16/16 parsed, 730 function/modifier inventory entries, 10 direct sites/four contracts. 11 primary reviewed cells (five UnusedReturn positive candidates including two missing native claim, six insufficient); no admission, no complete semantic scope claim, risk unestablished. 11/11 neutral source-only local packets validated with tamper and extra-member rejection. Independent review pending and no DIVE redistribution. Prior exact CI 2/2 success. L1B complete for primary preparation, L-G1 open.
 
+## Completed slice: S4-03-L3A
+
+Inspected 40ee9feb93c54ae303fe5b0f0a64106e503aa7b4. [External source acquisition plan](module-audits/S4-03_L3_EXTERNAL_SOURCE_ACQUISITION.md), [research catalog](evidence/2026-11-27_s4_03_l3a/source_catalog.json). 13 discovery entries compared to current registry and legacy config; new official DIVE locator/dataset license identified, exact archive equivalence unresolved. Gas Gauge, CVE Smart Contracts, FORGE Curated prioritized; Bastet/ScaBench and new EVMbench for project evaluation, Sourcify/DISL for targeted source research only. No download/ingestion, new label or training authorization. Prior CI 2/2 success.
+
 ## Next bounded slices
 
-S4-03-L1C isolated independent review/adjudication, enforce review reservations in any successor before admission; no need to block other tracks. L3 GasException evidence source research independently ready. S4-01-003B coverage-aware evaluator/actual graph and S4-02 dedicated AGENTS CI/environment remain independently eligible. L-G1/G01 open; no training/promotion.
+L3B0 DIVE official archive metadata/equivalence preflight; L3B1 Gas Gauge bounded source-result audit; L3B2 CVE and L3B3 FORGE Curated follow in bounded stages. L1C independent review remains pending; S4-01-003B and S4-02 independently eligible. Audit legacy config seam before new connector activation. L-G1/G01 open; no training/promotion.
 
 ## Known initial blockers and independent work
 
@@ -85,4 +89,4 @@ S4-03-L1C isolated independent review/adjudication, enforce review reservations 
 - R4-GAP-007 isolated independent review remains pending; confirmed negatives zero, M5/full training and G8 not authorized. That separate evidence path can proceed without S4 context.
 - ZKML proof scope, read-only audit MCP, production signing/deployment and accepted DATA/ML roots unchanged.
 
-Next actions: L1C isolated review, L3 GasException source research, S4-01-003B utility evaluation and S4-02 parallel eligible; no new training without admissible evidence.
+Next actions: L3B bounded acquisition preflight, L1C independent review, S4-01-003B utility evaluation and S4-02 parallel eligible; no training without admissible evidence.

@@ -1,0 +1,13 @@
+# S4-03-L3A external source discovery and acquisition design
+
+User requested fresh research into new datasets/contracts and integration into the program. Baseline 40ee9feb93c54ae303fe5b0f0a64106e503aa7b4. Read root governance, S4 label program/current status, DATA config and actual V3 registry. Compare original source owners and scholarly archives; verify public repository metadata and representative directories where possible. No bulk download, source execution, paid service, credential access, dataset ingestion, labels or training. Prior exact SHA Portfolio showcase 46003970546 and Security hygiene 46003970463 both success. WSL reported 714 GiB available on its filesystem; host physical capacity may differ. Prefer bounded pilots rather than bulk acquisition.
+
+## Existing source distinction
+
+Accepted V3 only DIVE, SmartBugs Curated and SolidiFI. Existing deferred/configured families: DeFiHackLabs, Web3Bugs, DISL, Bastet, FORGE, ScrawlD, REKT, Ethernaut, OpenZeppelin Contracts, solidity-defi-vulnerabilities, DeFiVulnLabs, SC-Bench, SmartBugs Wild, Slither Audited, CLEAR, Messi-Q, ScaBench, BCCC. Not assumed imported. Legacy config contains unsafe/stale descriptions (DISL as non_vulnerable_only, OpenZeppelin as clean negatives, SolidiFI certainty, historic crosswalk/merge settings); R4 authority supersedes these for V3 and successors. Do not enable legacy connectors or execute post_clone_cmd from configuration. Prioritize fixing this configuration seam in S4-03/S4-02 before acquisition integration; actual historical behavior not newly reproduced here.
+
+## Research disposition
+
+See [source catalog](source_catalog.json) and [acquisition plan](../../module-audits/S4-03_L3_EXTERNAL_SOURCE_ACQUISITION.md). Source catalog is a discovery snapshot, not import approval. Metadata checked 2026-11-27; GitHub branch heads recorded, not downloaded bytes. Archive release pin may differ from observed HEAD. Dataset/third-party source licenses remain separate. DIVE published locator and dataset-level license now identified from author paper and repo, but local archive equivalence unresolved; Zenodo record direct open failed, do not claim file checksums or actual download. All other download sizes/counts are published not measured unless stated. New R4 positive authority must be explicitly approved. No confirmed negatives. Local review packets and existing accepted artifacts unchanged.
+
+L3A complete for research/design. L3B first small metadata/source audit and provenance reconciliation; L1C independent review still pending. No need to block independent AGENTS or dependency tracks. New acquisition plan controls prospective research only; no changes to frozen source registry, roles, taxonomy, target masks, training or deployment.

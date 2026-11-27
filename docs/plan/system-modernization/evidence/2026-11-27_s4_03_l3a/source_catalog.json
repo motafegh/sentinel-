@@ -1,0 +1,178 @@
+{
+  "schema": "s4-source-discovery-v1",
+  "date": "2026-11-27",
+  "baseline": "40ee9feb93c54ae303fe5b0f0a64106e503aa7b4",
+  "scope": "Public metadata discovery only, no import approval. Existing plan classification against data_module/config.yaml and active V3 registry, not exhaustive all historical docs.",
+  "entries": [
+    {
+      "id": "dive_archive",
+      "origin": "https://doi.org/10.5281/zenodo.18519253",
+      "existing_plan_status": "ACTIVE_FAMILY_NEW_OFFICIAL_LOCATOR",
+      "priority": "P0",
+      "prospective_use": "existing provenance reconciliation",
+      "reported_scope": "22330 contracts; deployed 2016-2024; eight automated annotation classes",
+      "license_observation": "Paper reports dataset CC BY 4.0; framework CC BY-NC 4.0",
+      "admission_blocker": "Direct archive open failed; exact local CSV/source equivalence and per-contract rights unresolved",
+      "paper": "https://pmc.ncbi.nlm.nih.gov/articles/PMC13121623/",
+      "framework_repo": "https://github.com/DIVE4Data/DIVE",
+      "framework_head": "e83cd39633f6c34340c10a5c00371243d34110fe"
+    },
+    {
+      "id": "gas_gauge",
+      "origin": "https://github.com/gasgauge/gasgauge.github.io",
+      "existing_plan_status": "NEW_TO_CHECKED_CONFIG_REGISTRY",
+      "priority": "P0",
+      "prospective_use": "GasException / DoS candidates and scoped runtime controls",
+      "reported_scope": "Upstream benchmark loops/no loops and Results directories verified; project reports 1000 real-world contracts",
+      "license_observation": "Repository GPL-3.0 per GitHub; individual contracts separate",
+      "admission_blocker": "Old toolchain; distinguish loop detection, actual OOG and permanent DoS; source identity, licenses and results linkage",
+      "head": "7795ecd73e31b875fb199c36a74ab8ecd74f870d",
+      "paper_or_docs": "https://gasgauge.github.io/",
+      "dirs": [
+        "Benchmark/loops",
+        "Benchmark/no loops",
+        "Results"
+      ]
+    },
+    {
+      "id": "cve_smart_contracts",
+      "origin": "https://zenodo.org/records/22172881",
+      "existing_plan_status": "NEW_TO_CHECKED_CONFIG_REGISTRY",
+      "priority": "P0",
+      "prospective_use": "localized historical positive candidate claims, RAG evidence and code/deployment identity",
+      "reported_scope": "2026-08-14 release; 491 non-refuted matched contract records with function locations, 26 project records separately, 408.2 MB archive",
+      "license_observation": "Original data CC BY 4.0; original software MIT; third-party terms retained",
+      "admission_blocker": "Correspondence validated, vulnerability claims not independently verified; overlap VeriSmart/SmartFix, SmartBugs and existing corpus; CVE-specific scope",
+      "release_pin": "ed62986909d00f7260e38178fe9a6cd5064c9ef6",
+      "observed_head": "1128b7aae666df541a5ffcf56782df17113c3d36",
+      "release_md5": "df23415fcbe89cb2cc23406fe01c4f59",
+      "repo": "https://github.com/smartbugs/CVE-Smart-Contracts"
+    },
+    {
+      "id": "forge_curated",
+      "origin": "https://github.com/shenyimings/FORGE-Curated",
+      "existing_plan_status": "NEW_VARIANT_OF_DEFERRED_FORGE",
+      "priority": "P0",
+      "prospective_use": "modern project-level audit findings, RAG and localized candidate mining",
+      "reported_scope": "Reports Dec 2024-Feb 2026 from 11 audit teams; raw project sources, findings, unmatched-source records, reports; ongoing verification",
+      "license_observation": "Repository MIT; report/source-specific terms remain",
+      "admission_blocker": "Verify actual source-to-finding links, source licenses and overlap; exclude gas optimization as automatic vulnerability; HF copy incomplete",
+      "head": "c2829d451d37581dae71aba610506ba3b161e371",
+      "card": "https://huggingface.co/datasets/Seuilping/FORGE-Curated"
+    },
+    {
+      "id": "bastet",
+      "origin": "https://github.com/OneSavieLabs/Bastet",
+      "existing_plan_status": "ALREADY_DEFERRED_REFRESH_2026_PAPER",
+      "priority": "P1",
+      "prospective_use": "expert root-cause annotations and taxonomy bridge",
+      "reported_scope": "June 2026 preprint 4402 findings/394 reports, 849 fully annotated; two-annotator consensus claimed",
+      "license_observation": "Repository Apache-2.0; audit/code rights separate",
+      "admission_blocker": "Actual annotation release access/layout and exact code mapping not established; repo dataset directory has README and scan_queue; do not run n8n workflows",
+      "head": "ab695807c24419ab4434ea6498f0008b083c0fdd",
+      "paper": "https://arxiv.org/abs/2606.03387"
+    },
+    {
+      "id": "evmbench",
+      "origin": "https://github.com/paradigmxyz/evmbench",
+      "existing_plan_status": "NEW_TO_CHECKED_CONFIG_REGISTRY",
+      "priority": "P1",
+      "prospective_use": "AGENTS detect/patch evaluation, project-level case study only initially",
+      "reported_scope": "Feb 18 2026 launch reports 117 curated vulnerabilities from 40 audits; current repo may differ",
+      "license_observation": "Harness Apache-2.0; individual project/contest rights separate",
+      "admission_blocker": "Public-answer/model/RAG contamination; source dependency pins; read-only detect pilot first, local offline synthetic/historical harness only; no live targets",
+      "head": "fe75a2d68df89a30f12218e419fc33dc7b5a92e5",
+      "announcement": "https://openai.com/index/introducing-evmbench/",
+      "critique": "https://www.openzeppelin.com/news/openai-evmbench-audit"
+    },
+    {
+      "id": "scabench",
+      "origin": "https://github.com/scabench-org/scabench",
+      "existing_plan_status": "ALREADY_DEFERRED",
+      "priority": "P1",
+      "prospective_use": "project-level AGENTS evaluation and candidate evidence",
+      "reported_scope": "2025-08-18 release: 31 projects, 555 findings including 114 high/critical",
+      "license_observation": "Repository MIT; audited code/report terms separate",
+      "admission_blocker": "No automatic checkout scripts; source commits and report match, leakage against other audit datasets",
+      "head": "eec0020939a47bbc06a98a7348a90908b96f4b4d"
+    },
+    {
+      "id": "bit_smartcontract_benchmark",
+      "origin": "https://github.com/bit-smartcontract-analysis/smartcontract-benchmark",
+      "existing_plan_status": "NEW_TO_CHECKED_CONFIG_REGISTRY",
+      "priority": "P1",
+      "prospective_use": "GasException candidate discovery and small controls",
+      "reported_scope": "389 labeled tests, 60 gasless send, 17 labeled safe; separate 110 small and 20000 scaled cases",
+      "license_observation": "No license observed in repository metadata or root listing; unresolved",
+      "admission_blocker": "Gasless send != OOG by default, 17 safe not class negatives; no acquisition until rights review",
+      "head": "8b903aae40648ad0ead87662857c6685542710d5"
+    },
+    {
+      "id": "sarmf_bench",
+      "origin": "https://data.mendeley.com/datasets/kd3vcpnn9v/2",
+      "existing_plan_status": "NEW_TO_CHECKED_CONFIG_REGISTRY",
+      "priority": "P1",
+      "prospective_use": "small analyzer method regression fixture",
+      "reported_scope": "2026-03-16 v2: five hand-designed contracts, Slither 0.11.5 JSON",
+      "license_observation": "Not verified in retrieved landing page",
+      "admission_blocker": "Detector output is not independent gold; check license before source acquisition"
+    },
+    {
+      "id": "scbench_msr2026",
+      "origin": "https://arxiv.org/abs/2603.00890",
+      "existing_plan_status": "NEW_DISTINCT_FROM_EXISTING_SC_BENCH_AND_SCABENCH",
+      "priority": "P2",
+      "prospective_use": "candidate class-specific audit/metrics, reentrancy and arithmetic",
+      "reported_scope": "MSR 2026 paper reports evaluation of 653 real-world contracts, three classes incl suicidal termination",
+      "license_observation": "Artifact download and license unresolved",
+      "admission_blocker": "Find authors replication artifact; avoid taxonomy mapping of suicidal termination by default; no assumption negatives eligible"
+    },
+    {
+      "id": "sourcify",
+      "origin": "https://docs.sourcify.dev/docs/repository/download-dataset/",
+      "existing_plan_status": "NEW_TO_CHECKED_CONFIG_REGISTRY",
+      "priority": "P1",
+      "prospective_use": "verified source identity, build context and unlabeled source recovery",
+      "reported_scope": "Daily v2 Parquet tables and targeted API; no vulnerability labels",
+      "license_observation": "Source-file SPDX and original rights; verification does not grant blanket reuse",
+      "admission_blocker": "Snapshot and exact file hash, chain/address, compiler/import metadata; sample not full sync; no verified-safe assumption",
+      "terms": "https://verify.sourcify.dev/"
+    },
+    {
+      "id": "disl",
+      "origin": "https://huggingface.co/datasets/ASSERT-KTH/DISL",
+      "existing_plan_status": "ALREADY_EXCLUDED_UNAVAILABLE_LOCATOR_FOUND",
+      "priority": "P2",
+      "prospective_use": "unlabeled research only if approved",
+      "reported_scope": "514506 unique deployed Solidity files per publisher",
+      "license_observation": "Not verified here",
+      "admission_blocker": "No negative labels; no bulk import; exact HF revision and rights before use"
+    },
+    {
+      "id": "aggregate_2026",
+      "origin": "https://github.com/CoderDamien/smart-contract-vuln-dataset",
+      "existing_plan_status": "NEW_TO_CHECKED_CONFIG_REGISTRY",
+      "priority": "P3",
+      "prospective_use": "discovery index only",
+      "reported_scope": "Aggregates eight upstream sources; publication/archive status not established",
+      "license_observation": "Upstream license review flags unresolved redistribution",
+      "admission_blocker": "Duplicates our existing sources; derived labels not independent; prefer original providers",
+      "license_notes": "https://github.com/CoderDamien/smart-contract-vuln-dataset/blob/master/metadata/upstream_license_review.md"
+    }
+  ],
+  "source_bytes_acquired": 0,
+  "labels_admitted": 0,
+  "training_authorized": false,
+  "prior_ci": [
+    {
+      "id": 46003970546,
+      "name": "Portfolio showcase",
+      "conclusion": "success"
+    },
+    {
+      "id": 46003970463,
+      "name": "Security hygiene",
+      "conclusion": "success"
+    }
+  ]
+}
