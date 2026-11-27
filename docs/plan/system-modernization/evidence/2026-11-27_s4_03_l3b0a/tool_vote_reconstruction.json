@@ -1,0 +1,569 @@
+{
+  "archive_sha256": "fba327761d8aec2b75c19acf97211f85a83e48fa900304ca942a8a7ed863baaf",
+  "tool_sha256": "dd4226b8024ad1b9a9f8d12d43de2ea4125ed63d3548229678fdfcf67161fb70",
+  "label_sha256": "a260946ec7741ca4212648a0568f419a32e7cac96c9c0dca1fe3d812bb43f029",
+  "category_order": [
+    "Reentrancy",
+    "Access Control",
+    "Arithmetic",
+    "Unchecked Return Values",
+    "DoS",
+    "Bad Randomness",
+    "Front Running",
+    "Time manipulation"
+  ],
+  "profile": {
+    "rows": 26071,
+    "distinct_ids": 22330,
+    "repeated_ids": 3741,
+    "extra_rows": 3741,
+    "multiplicity_histogram": {
+      "1": 18589,
+      "2": 3741
+    },
+    "exact_duplicate_extra_rows": 0,
+    "duplicate_ids_with_conflicting_nonblank": 0,
+    "duplicate_ids_with_blank_and_nonblank": 3741,
+    "duplicate_ids_all_rows_identical": 0,
+    "all_blank_rows": 0,
+    "all_blank_first_ids": 0,
+    "all_blank_last_ids": 0,
+    "all_blank_ids": 0,
+    "first_more_nonblank_than_last": 382,
+    "last_more_nonblank_than_first": 3206,
+    "conflicting_tool_cells": 0
+  },
+  "voters": [
+    [
+      "Mythril",
+      "Slither",
+      "Solhint"
+    ],
+    [
+      "MAIAN",
+      "Mythril",
+      "Semgrep",
+      "Slither",
+      "Solhint",
+      "VeriSmart"
+    ],
+    [
+      "Mythril",
+      "Slither",
+      "VeriSmart"
+    ],
+    [
+      "Mythril",
+      "Slither",
+      "Solhint"
+    ],
+    [
+      "Mythril",
+      "Slither",
+      "Solhint"
+    ],
+    [
+      "Mythril",
+      "Slither",
+      "Solhint"
+    ],
+    [
+      "Mythril"
+    ],
+    [
+      "Mythril",
+      "Slither",
+      "Solhint"
+    ]
+  ],
+  "inverters": {
+    "1": {
+      "Slither": "Semgrep"
+    },
+    "5": {
+      "Slither": "MAIAN"
+    },
+    "6": {
+      "Slither": "Semgrep",
+      "Solhint": "Semgrep"
+    }
+  },
+  "replay_counts": {
+    "first": {
+      "Reentrancy": {
+        "replay_0_published_0": 10930,
+        "replay_1_published_1": 11400
+      },
+      "Access Control": {
+        "replay_0_published_0": 5495,
+        "replay_1_published_1": 16723,
+        "replay_1_published_0": 112
+      },
+      "Arithmetic": {
+        "replay_0_published_0": 12716,
+        "replay_1_published_1": 9542,
+        "replay_1_published_0": 72
+      },
+      "Unchecked Return Values": {
+        "replay_0_published_0": 16419,
+        "replay_1_published_1": 5911
+      },
+      "DoS": {
+        "replay_1_published_1": 3781,
+        "replay_0_published_0": 17920,
+        "replay_1_published_0": 629
+      },
+      "Bad Randomness": {
+        "replay_0_published_0": 21696,
+        "replay_1_published_1": 634
+      },
+      "Front Running": {
+        "replay_0_published_0": 21724,
+        "replay_1_published_1": 606
+      },
+      "Time manipulation": {
+        "replay_0_published_0": 13911,
+        "replay_1_published_1": 6322,
+        "replay_1_published_0": 2097
+      }
+    },
+    "last": {
+      "Reentrancy": {
+        "replay_0_published_0": 8952,
+        "replay_1_published_1": 11202,
+        "replay_1_published_0": 1978,
+        "replay_0_published_1": 198
+      },
+      "Access Control": {
+        "replay_0_published_0": 3563,
+        "replay_1_published_1": 16660,
+        "replay_1_published_0": 2044,
+        "replay_0_published_1": 63
+      },
+      "Arithmetic": {
+        "replay_0_published_0": 12365,
+        "replay_1_published_1": 8822,
+        "replay_1_published_0": 423,
+        "replay_0_published_1": 720
+      },
+      "Unchecked Return Values": {
+        "replay_0_published_0": 15539,
+        "replay_1_published_1": 5842,
+        "replay_1_published_0": 880,
+        "replay_0_published_1": 69
+      },
+      "DoS": {
+        "replay_1_published_1": 3733,
+        "replay_0_published_0": 17379,
+        "replay_1_published_0": 1170,
+        "replay_0_published_1": 48
+      },
+      "Bad Randomness": {
+        "replay_0_published_0": 21651,
+        "replay_1_published_1": 630,
+        "replay_1_published_0": 45,
+        "replay_0_published_1": 4
+      },
+      "Front Running": {
+        "replay_0_published_0": 21724,
+        "replay_1_published_1": 606
+      },
+      "Time manipulation": {
+        "replay_0_published_0": 15596,
+        "replay_1_published_1": 6230,
+        "replay_0_published_1": 92,
+        "replay_1_published_0": 412
+      }
+    },
+    "unambiguous_union": {
+      "Reentrancy": {
+        "replay_0_published_0": 9029,
+        "replay_1_published_1": 11394,
+        "replay_1_published_0": 1901,
+        "replay_0_published_1": 6
+      },
+      "Access Control": {
+        "replay_0_published_0": 3518,
+        "replay_1_published_1": 16723,
+        "replay_1_published_0": 2089
+      },
+      "Arithmetic": {
+        "replay_0_published_0": 12302,
+        "replay_1_published_1": 9542,
+        "replay_1_published_0": 486
+      },
+      "Unchecked Return Values": {
+        "replay_0_published_0": 15539,
+        "replay_1_published_1": 5911,
+        "replay_1_published_0": 880
+      },
+      "DoS": {
+        "replay_1_published_1": 3781,
+        "replay_0_published_0": 17379,
+        "replay_1_published_0": 1170
+      },
+      "Bad Randomness": {
+        "replay_0_published_0": 21651,
+        "replay_1_published_1": 634,
+        "replay_1_published_0": 45
+      },
+      "Front Running": {
+        "replay_0_published_0": 21724,
+        "replay_1_published_1": 606
+      },
+      "Time manipulation": {
+        "replay_0_published_0": 15908,
+        "replay_1_published_1": 6230,
+        "replay_0_published_1": 92,
+        "replay_1_published_0": 100
+      }
+    }
+  },
+  "coverage": {
+    "first": {
+      "Reentrancy": {
+        "no_eligible_response": 3489,
+        "no_eligible_response_published_positive": 0,
+        "one_or_more_positive_before_inversion": 11686,
+        "eligible_positive_after_inversion": 11400,
+        "eligible_disagreement": 10925,
+        "inverted_vote": 323,
+        "majority_empty_tie_positive": 0
+      },
+      "Access Control": {
+        "no_eligible_response": 0,
+        "no_eligible_response_published_positive": 0,
+        "one_or_more_positive_before_inversion": 16835,
+        "eligible_positive_after_inversion": 16835,
+        "eligible_disagreement": 16807,
+        "inverted_vote": 0,
+        "majority_empty_tie_positive": 0
+      },
+      "Arithmetic": {
+        "no_eligible_response": 3047,
+        "no_eligible_response_published_positive": 0,
+        "one_or_more_positive_before_inversion": 9614,
+        "eligible_positive_after_inversion": 9614,
+        "eligible_disagreement": 7321,
+        "inverted_vote": 0,
+        "majority_empty_tie_positive": 0
+      },
+      "Unchecked Return Values": {
+        "no_eligible_response": 3489,
+        "no_eligible_response_published_positive": 0,
+        "one_or_more_positive_before_inversion": 5911,
+        "eligible_positive_after_inversion": 5911,
+        "eligible_disagreement": 4936,
+        "inverted_vote": 0,
+        "majority_empty_tie_positive": 0
+      },
+      "DoS": {
+        "no_eligible_response": 3489,
+        "no_eligible_response_published_positive": 0,
+        "one_or_more_positive_before_inversion": 4483,
+        "eligible_positive_after_inversion": 4410,
+        "eligible_disagreement": 4245,
+        "inverted_vote": 92,
+        "majority_empty_tie_positive": 0
+      },
+      "Bad Randomness": {
+        "no_eligible_response": 3489,
+        "no_eligible_response_published_positive": 0,
+        "one_or_more_positive_before_inversion": 647,
+        "eligible_positive_after_inversion": 634,
+        "eligible_disagreement": 605,
+        "inverted_vote": 13,
+        "majority_empty_tie_positive": 0
+      },
+      "Front Running": {
+        "no_eligible_response": 7098,
+        "no_eligible_response_published_positive": 0,
+        "one_or_more_positive_before_inversion": 606,
+        "eligible_positive_after_inversion": 606,
+        "eligible_disagreement": 0,
+        "inverted_vote": 0,
+        "majority_empty_tie_positive": 0
+      },
+      "Time manipulation": {
+        "no_eligible_response": 3489,
+        "no_eligible_response_published_positive": 1392,
+        "one_or_more_positive_before_inversion": 9286,
+        "eligible_positive_after_inversion": 9286,
+        "eligible_disagreement": 6972,
+        "inverted_vote": 0,
+        "majority_empty_tie_positive": 3489
+      }
+    },
+    "last": {
+      "Reentrancy": {
+        "no_eligible_response": 452,
+        "no_eligible_response_published_positive": 198,
+        "one_or_more_positive_before_inversion": 13466,
+        "eligible_positive_after_inversion": 13180,
+        "eligible_disagreement": 12542,
+        "inverted_vote": 323,
+        "majority_empty_tie_positive": 0
+      },
+      "Access Control": {
+        "no_eligible_response": 0,
+        "no_eligible_response_published_positive": 0,
+        "one_or_more_positive_before_inversion": 18704,
+        "eligible_positive_after_inversion": 18704,
+        "eligible_disagreement": 17460,
+        "inverted_vote": 0,
+        "majority_empty_tie_positive": 0
+      },
+      "Arithmetic": {
+        "no_eligible_response": 922,
+        "no_eligible_response_published_positive": 30,
+        "one_or_more_positive_before_inversion": 9245,
+        "eligible_positive_after_inversion": 9245,
+        "eligible_disagreement": 7454,
+        "inverted_vote": 0,
+        "majority_empty_tie_positive": 0
+      },
+      "Unchecked Return Values": {
+        "no_eligible_response": 452,
+        "no_eligible_response_published_positive": 69,
+        "one_or_more_positive_before_inversion": 6722,
+        "eligible_positive_after_inversion": 6722,
+        "eligible_disagreement": 5458,
+        "inverted_vote": 0,
+        "majority_empty_tie_positive": 0
+      },
+      "DoS": {
+        "no_eligible_response": 452,
+        "no_eligible_response_published_positive": 48,
+        "one_or_more_positive_before_inversion": 4976,
+        "eligible_positive_after_inversion": 4903,
+        "eligible_disagreement": 4639,
+        "inverted_vote": 92,
+        "majority_empty_tie_positive": 0
+      },
+      "Bad Randomness": {
+        "no_eligible_response": 452,
+        "no_eligible_response_published_positive": 4,
+        "one_or_more_positive_before_inversion": 688,
+        "eligible_positive_after_inversion": 675,
+        "eligible_disagreement": 636,
+        "inverted_vote": 13,
+        "majority_empty_tie_positive": 0
+      },
+      "Front Running": {
+        "no_eligible_response": 5765,
+        "no_eligible_response_published_positive": 0,
+        "one_or_more_positive_before_inversion": 606,
+        "eligible_positive_after_inversion": 606,
+        "eligible_disagreement": 0,
+        "inverted_vote": 0,
+        "majority_empty_tie_positive": 0
+      },
+      "Time manipulation": {
+        "no_eligible_response": 452,
+        "no_eligible_response_published_positive": 40,
+        "one_or_more_positive_before_inversion": 10629,
+        "eligible_positive_after_inversion": 10629,
+        "eligible_disagreement": 8050,
+        "inverted_vote": 0,
+        "majority_empty_tie_positive": 452
+      }
+    },
+    "unambiguous_union": {
+      "Reentrancy": {
+        "no_eligible_response": 100,
+        "no_eligible_response_published_positive": 0,
+        "one_or_more_positive_before_inversion": 13664,
+        "eligible_positive_after_inversion": 13295,
+        "eligible_disagreement": 12660,
+        "inverted_vote": 418,
+        "majority_empty_tie_positive": 0
+      },
+      "Access Control": {
+        "no_eligible_response": 0,
+        "no_eligible_response_published_positive": 0,
+        "one_or_more_positive_before_inversion": 18812,
+        "eligible_positive_after_inversion": 18812,
+        "eligible_disagreement": 18789,
+        "inverted_vote": 0,
+        "majority_empty_tie_positive": 0
+      },
+      "Arithmetic": {
+        "no_eligible_response": 632,
+        "no_eligible_response_published_positive": 0,
+        "one_or_more_positive_before_inversion": 10028,
+        "eligible_positive_after_inversion": 10028,
+        "eligible_disagreement": 8275,
+        "inverted_vote": 0,
+        "majority_empty_tie_positive": 0
+      },
+      "Unchecked Return Values": {
+        "no_eligible_response": 100,
+        "no_eligible_response_published_positive": 0,
+        "one_or_more_positive_before_inversion": 6791,
+        "eligible_positive_after_inversion": 6791,
+        "eligible_disagreement": 5525,
+        "inverted_vote": 0,
+        "majority_empty_tie_positive": 0
+      },
+      "DoS": {
+        "no_eligible_response": 100,
+        "no_eligible_response_published_positive": 0,
+        "one_or_more_positive_before_inversion": 5024,
+        "eligible_positive_after_inversion": 4951,
+        "eligible_disagreement": 4681,
+        "inverted_vote": 92,
+        "majority_empty_tie_positive": 0
+      },
+      "Bad Randomness": {
+        "no_eligible_response": 100,
+        "no_eligible_response_published_positive": 0,
+        "one_or_more_positive_before_inversion": 692,
+        "eligible_positive_after_inversion": 679,
+        "eligible_disagreement": 638,
+        "inverted_vote": 13,
+        "majority_empty_tie_positive": 0
+      },
+      "Front Running": {
+        "no_eligible_response": 5440,
+        "no_eligible_response_published_positive": 0,
+        "one_or_more_positive_before_inversion": 606,
+        "eligible_positive_after_inversion": 606,
+        "eligible_disagreement": 0,
+        "inverted_vote": 0,
+        "majority_empty_tie_positive": 0
+      },
+      "Time manipulation": {
+        "no_eligible_response": 100,
+        "no_eligible_response_published_positive": 0,
+        "one_or_more_positive_before_inversion": 10669,
+        "eligible_positive_after_inversion": 10669,
+        "eligible_disagreement": 8076,
+        "inverted_vote": 0,
+        "majority_empty_tie_positive": 100
+      }
+    }
+  },
+  "repeated_id_replay_counts": {
+    "first": {
+      "Reentrancy": {
+        "replay_0_published_0": 3543,
+        "replay_1_published_1": 198
+      },
+      "Access Control": {
+        "replay_0_published_0": 3424,
+        "replay_1_published_1": 271,
+        "replay_1_published_0": 46
+      },
+      "Arithmetic": {
+        "replay_0_published_0": 2819,
+        "replay_1_published_1": 859,
+        "replay_1_published_0": 63
+      },
+      "Unchecked Return Values": {
+        "replay_0_published_0": 3672,
+        "replay_1_published_1": 69
+      },
+      "DoS": {
+        "replay_0_published_0": 3693,
+        "replay_1_published_1": 48
+      },
+      "Bad Randomness": {
+        "replay_0_published_0": 3737,
+        "replay_1_published_1": 4
+      },
+      "Front Running": {
+        "replay_0_published_0": 3741
+      },
+      "Time manipulation": {
+        "replay_1_published_0": 1997,
+        "replay_1_published_1": 1432,
+        "replay_0_published_0": 312
+      }
+    },
+    "last": {
+      "Reentrancy": {
+        "replay_1_published_0": 1978,
+        "replay_0_published_0": 1565,
+        "replay_0_published_1": 198
+      },
+      "Access Control": {
+        "replay_0_published_0": 1492,
+        "replay_1_published_0": 1978,
+        "replay_1_published_1": 208,
+        "replay_0_published_1": 63
+      },
+      "Arithmetic": {
+        "replay_0_published_0": 2468,
+        "replay_1_published_0": 414,
+        "replay_1_published_1": 139,
+        "replay_0_published_1": 720
+      },
+      "Unchecked Return Values": {
+        "replay_0_published_0": 2792,
+        "replay_1_published_0": 880,
+        "replay_0_published_1": 69
+      },
+      "DoS": {
+        "replay_0_published_0": 3152,
+        "replay_1_published_0": 541,
+        "replay_0_published_1": 48
+      },
+      "Bad Randomness": {
+        "replay_0_published_0": 3692,
+        "replay_1_published_0": 45,
+        "replay_0_published_1": 4
+      },
+      "Front Running": {
+        "replay_0_published_0": 3741
+      },
+      "Time manipulation": {
+        "replay_0_published_0": 1997,
+        "replay_1_published_1": 1340,
+        "replay_0_published_1": 92,
+        "replay_1_published_0": 312
+      }
+    },
+    "unambiguous_union": {
+      "Reentrancy": {
+        "replay_1_published_0": 1901,
+        "replay_0_published_0": 1642,
+        "replay_1_published_1": 192,
+        "replay_0_published_1": 6
+      },
+      "Access Control": {
+        "replay_0_published_0": 1447,
+        "replay_1_published_0": 2023,
+        "replay_1_published_1": 271
+      },
+      "Arithmetic": {
+        "replay_0_published_0": 2405,
+        "replay_1_published_0": 477,
+        "replay_1_published_1": 859
+      },
+      "Unchecked Return Values": {
+        "replay_0_published_0": 2792,
+        "replay_1_published_0": 880,
+        "replay_1_published_1": 69
+      },
+      "DoS": {
+        "replay_0_published_0": 3152,
+        "replay_1_published_0": 541,
+        "replay_1_published_1": 48
+      },
+      "Bad Randomness": {
+        "replay_0_published_0": 3692,
+        "replay_1_published_0": 45,
+        "replay_1_published_1": 4
+      },
+      "Front Running": {
+        "replay_0_published_0": 3741
+      },
+      "Time manipulation": {
+        "replay_0_published_0": 2309,
+        "replay_1_published_1": 1340,
+        "replay_0_published_1": 92
+      }
+    }
+  },
+  "limits": "Hypothesis replay from published Table 8 and inspected current election.py; no exact original voting config or site-level refiner inputs. No eligible response remains unknown for Sentinel even if literal upstream tie would produce 1. Union conflict treated as missing only for sensitivity. Counts are annotation disagreement, not false positives/negatives."
+}

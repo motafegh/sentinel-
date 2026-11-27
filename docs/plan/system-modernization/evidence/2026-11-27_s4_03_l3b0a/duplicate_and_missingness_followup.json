@@ -1,0 +1,112 @@
+{
+  "duplicate_tool_presence_patterns": {
+    "first=MAIAN,Semgrep;last=Slither": 149,
+    "first=MAIAN,Semgrep;last=Mythril,Slither": 608,
+    "first=MAIAN,Semgrep;last=Slither,Solhint": 995,
+    "first=MAIAN,Semgrep;last=Mythril,Slither,Solhint": 81,
+    "first=MAIAN,Semgrep;last=Mythril": 520,
+    "first=MAIAN,Semgrep,VeriSmart;last=Slither,Solhint": 474,
+    "first=MAIAN,Semgrep,VeriSmart;last=Mythril,Slither,Solhint": 316,
+    "first=MAIAN,Semgrep;last=Mythril,Solhint": 8,
+    "first=MAIAN,Semgrep,VeriSmart;last=Mythril,Slither": 112,
+    "first=MAIAN,Semgrep,VeriSmart;last=Solhint": 5,
+    "first=MAIAN,Semgrep;last=Solhint": 5,
+    "first=MAIAN,Semgrep,VeriSmart;last=Slither": 17,
+    "first=MAIAN,Semgrep,VeriSmart;last=Mythril,Solhint": 13,
+    "first=Mythril;last=Semgrep": 118,
+    "first=Mythril,Slither;last=Semgrep": 158,
+    "first=Mythril,Slither,Solhint;last=Semgrep,VeriSmart": 10,
+    "first=Mythril,Slither;last=Semgrep,VeriSmart": 33,
+    "first=Mythril,Slither,Solhint;last=Semgrep": 6,
+    "first=Semgrep;last=Slither,Solhint": 20,
+    "first=Semgrep,VeriSmart;last=Slither,Solhint": 23,
+    "first=Semgrep,VeriSmart;last=Slither": 4,
+    "first=Semgrep;last=Slither": 34,
+    "first=Semgrep,VeriSmart;last=Solhint": 3,
+    "first=Semgrep;last=Solhint": 2,
+    "first=Slither,Solhint;last=VeriSmart": 26,
+    "first=Slither;last=VeriSmart": 1
+  },
+  "duplicate_tool_presence_by_tool": {
+    "MAIAN": {
+      "first_1_last_0": 3303,
+      "first_0_last_0": 438
+    },
+    "Mythril": {
+      "first_0_last_0": 1758,
+      "first_0_last_1": 1658,
+      "first_1_last_0": 325
+    },
+    "Semgrep": {
+      "first_1_last_0": 3389,
+      "first_0_last_1": 325,
+      "first_0_last_0": 27
+    },
+    "Slither": {
+      "first_0_last_1": 2833,
+      "first_0_last_0": 674,
+      "first_1_last_0": 234
+    },
+    "Solhint": {
+      "first_0_last_0": 1754,
+      "first_0_last_1": 1945,
+      "first_1_last_0": 42
+    },
+    "VeriSmart": {
+      "first_0_last_0": 2704,
+      "first_1_last_0": 967,
+      "first_0_last_1": 70
+    }
+  },
+  "timestamp_no_first_response_breakdown": {
+    "published_positive_no_first_eligible": 1392,
+    "repeated_id": 1392,
+    "union_positive_vote": 1383,
+    "union_majority_positive": 1300,
+    "union_majority_negative": 92,
+    "union_only_zero_votes": 9
+  },
+  "all_tool_union_class_observations": {
+    "Reentrancy": {
+      "published_positive_no_any_tool_positive": 0,
+      "published_positive_no_any_tool_observation": 0,
+      "published_zero_any_tool_positive": 2585
+    },
+    "Access Control": {
+      "published_positive_no_any_tool_positive": 0,
+      "published_positive_no_any_tool_observation": 0,
+      "published_zero_any_tool_positive": 2089
+    },
+    "Arithmetic": {
+      "published_positive_no_any_tool_positive": 0,
+      "published_positive_no_any_tool_observation": 0,
+      "published_zero_any_tool_positive": 492
+    },
+    "Unchecked Return Values": {
+      "published_positive_no_any_tool_positive": 0,
+      "published_positive_no_any_tool_observation": 0,
+      "published_zero_any_tool_positive": 880
+    },
+    "DoS": {
+      "published_positive_no_any_tool_positive": 0,
+      "published_positive_no_any_tool_observation": 0,
+      "published_zero_any_tool_positive": 2289
+    },
+    "Bad Randomness": {
+      "published_positive_no_any_tool_positive": 0,
+      "published_positive_no_any_tool_observation": 0,
+      "published_zero_any_tool_positive": 63
+    },
+    "Front Running": {
+      "published_positive_no_any_tool_positive": 0,
+      "published_positive_no_any_tool_observation": 0,
+      "published_zero_any_tool_positive": 0
+    },
+    "Time manipulation": {
+      "published_positive_no_any_tool_positive": 9,
+      "published_positive_no_any_tool_observation": 0,
+      "published_zero_any_tool_positive": 4356
+    }
+  },
+  "limits": "No response or zero observations are not ground truth. Repeated-row semantics remain unproven; observed nonblank agreement permits a descriptive union only, not independent voting or label admission."
+}

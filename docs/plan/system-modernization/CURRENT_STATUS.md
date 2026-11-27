@@ -81,9 +81,13 @@ Inspected 40ee9feb93c54ae303fe5b0f0a64106e503aa7b4. [External source acquisition
 
 Inspected 099b9d66c8a7edaae5323dcbb09cbe6b48b76a4d. [Evidence](evidence/2026-11-27_s4_03_l3b/WORKING_RECORD.md). DIVE official label ZIP verified, local CSV exact match all 22,330 records; additional six-tool results (26,071 rows) profiled, semantics pending. Gas Gauge 2,000 paths/1,683 distinct blobs; frozen 10 paths, 9 source paths and 10 reports verified, four author aggregate logs verified. Source rights and exact run-source identity unresolved, no staging/compile or class truth. Prior exact CI 2/2 green. Both preflight slices PASS_WITH_LIMITATIONS; no new labels or training.
 
+## Completed slice: S4-03-L3B0A
+
+Inspected 38d15e1b9ce281193eb064f12278cf22b196571c. [Evidence](evidence/2026-11-27_s4_03_l3b0a/WORKING_RECORD.md). DIVE 3,741 repeated IDs with complementary observations and no conflicting nonblank values. First-row published-rule replay contains all published positives, four categories exact; remaining extra positives consistent with heuristic removal, exact validator not rerun. Nine published Time positives lack positive tool observation in either row; 880 native Unchecked Return Values zeros have positive observation. No ground truth inference. All 22,330 original source names/size/CRC32 match official raw ZIP directory fetched by bounded ranges; full archive checksum not verified. PASS_WITH_LIMITATIONS; prior CI 2/2 green.
+
 ## Next bounded slices
 
-L3B0A DIVE raw archive equivalence and native tool-result semantics; L3B1 follow-up Gas Gauge rights/source-run provenance; L3B2 CVE preflight and L3B3 FORGE Curated independently ready in order. L1C independent review pending; S4-01-003B and S4-02 independently eligible. Audit legacy config seam before connector activation. L-G1/G01 open; no training/promotion.
+L3B0B evidence-only tool observation ledger and bounded disagreement review triage; L3B2 CVE preflight independently ready (then FORGE Curated). Gas Gauge rights/run linkage follow-up; L1C independent reviews pending. S4-01-003B and S4-02 independently eligible. Audit legacy integration seam before enabling sources. L-G1/G01 open; no training/promotion.
 
 ## Known initial blockers and independent work
 
@@ -93,4 +97,4 @@ L3B0A DIVE raw archive equivalence and native tool-result semantics; L3B1 follow
 - R4-GAP-007 isolated independent review remains pending; confirmed negatives zero, M5/full training and G8 not authorized. That separate evidence path can proceed without S4 context.
 - ZKML proof scope, read-only audit MCP, production signing/deployment and accepted DATA/ML roots unchanged.
 
-Next actions: L3B0A DIVE tool/raw provenance, L3B1 follow-up and L3B2 CVE preflight; L1C, S4-01-003B and S4-02 parallel eligible. No training without admissible evidence.
+Next actions: L3B0B evidence-only observations and L3B2 CVE preflight; L3B1 follow-up, L1C, S4-01-003B and S4-02 independently eligible. No training without admissible evidence.

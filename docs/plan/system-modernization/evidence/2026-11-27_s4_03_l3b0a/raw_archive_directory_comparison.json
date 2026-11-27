@@ -1,0 +1,25 @@
+{
+  "expected_archive_bytes": 546748517,
+  "archive_checksum_verified": false,
+  "full_archive_downloaded": false,
+  "comparison": "CRC32 and uncompressed size only, not cryptographic source equality",
+  "directory_sha256": "af9a912340846c0e0ce07a424db6775801b435036c3616254f53dadb3ebfdca6",
+  "directory_entries": 44687,
+  "top_prefix_counts": {
+    "Raw": 22345,
+    "__MACOSX": 22342
+  },
+  "solidity_member_count": 22330,
+  "solidity_parents": {
+    "Raw/PRE/Source codes": 22330
+  },
+  "local_solidity_paths": 22330,
+  "unique_archive_solidity_basenames": 22330,
+  "ambiguous_archive_basenames": 0,
+  "local_only": 0,
+  "archive_only": 0,
+  "comparison_counts": {
+    "size_crc_match": 22330
+  },
+  "status": "DIRECTORY_COMPARISON_COMPLETE"
+}

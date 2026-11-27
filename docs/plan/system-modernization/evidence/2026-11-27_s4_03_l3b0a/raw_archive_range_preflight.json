@@ -1,0 +1,21 @@
+{
+  "expected_size": 546748517,
+  "published_checksum": "md5:23b9557e9de3fb6ce3e636a097c64bfd",
+  "requested_range": [
+    546682960,
+    546748516
+  ],
+  "max_bytes": 65557,
+  "full_archive_downloaded": false,
+  "archive_checksum_verified": false,
+  "source_equivalence": "NOT_ESTABLISHED",
+  "http_status": 206,
+  "content_range": "bytes 546682960-546748516/546748517",
+  "content_length": "65557",
+  "disposition": "ZIP_DIRECTORY_METADATA_ONLY",
+  "tail_sha256": "9c725a772faeea9aaab330af8b3626e75aa32cea28183b8134aeb9282e9f680a",
+  "eocd_entries": 44687,
+  "central_directory_bytes": 4692006,
+  "central_directory_offset": 542056489,
+  "zip64_possible": false
+}
