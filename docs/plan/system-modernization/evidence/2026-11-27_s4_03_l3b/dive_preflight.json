@@ -1,0 +1,100 @@
+{
+  "zenodo_record": {
+    "url": "https://zenodo.org/api/records/18519253",
+    "status": 200,
+    "sha256": "f2d2f313d51525c808cb52d5706e46e78dfb4ba3d41848525f0954a1e04a8afc",
+    "data": {
+      "id": 18519253,
+      "conceptrecid": "15680735",
+      "title": "DIVE: A Multi-Label Smart Contract Vulnerability Dataset",
+      "license": {
+        "id": "cc-by-4.0"
+      },
+      "files": [
+        {
+          "key": "DIVE_Raw_Data.zip",
+          "size": 546748517,
+          "checksum": "md5:23b9557e9de3fb6ce3e636a097c64bfd",
+          "links": {
+            "self": "https://zenodo.org/api/records/18519253/files/DIVE_Raw_Data.zip/content"
+          }
+        },
+        {
+          "key": "Feature list.xlsx",
+          "size": 45411,
+          "checksum": "md5:7938743c46ef4301d3f6cb38cfd21b37",
+          "links": {
+            "self": "https://zenodo.org/api/records/18519253/files/Feature%20list.xlsx/content"
+          }
+        },
+        {
+          "key": "DIVE_Labels.zip",
+          "size": 253939,
+          "checksum": "md5:ace7aaebd19e040ca78f578fb5ecc6cf",
+          "links": {
+            "self": "https://zenodo.org/api/records/18519253/files/DIVE_Labels.zip/content"
+          }
+        },
+        {
+          "key": "DIVE_Preprocessed_Data.zip",
+          "size": 16330057,
+          "checksum": "md5:03af6da3e7427ca2f780f6e9b4d10c0e",
+          "links": {
+            "self": "https://zenodo.org/api/records/18519253/files/DIVE_Preprocessed_Data.zip/content"
+          }
+        },
+        {
+          "key": "EDA_and_Profiling_Reports.zip",
+          "size": 593961997,
+          "checksum": "md5:de4e30d8f219599a8030c558afa9dc2b",
+          "links": {
+            "self": "https://zenodo.org/api/records/18519253/files/EDA_and_Profiling_Reports.zip/content"
+          }
+        }
+      ]
+    }
+  },
+  "datacite": {
+    "url": "https://api.datacite.org/dois/10.5281/zenodo.18519253",
+    "status": 200,
+    "sha256": "c7e323b71900f271eab5a353fd1030c304ba0c593cfafeca593d44f17beadfb4",
+    "data": {
+      "doi": "10.5281/zenodo.18519253",
+      "titles": [
+        {
+          "title": "DIVE: A Multi-Label Smart Contract Vulnerability Dataset"
+        }
+      ],
+      "rightsList": [
+        {
+          "rights": "Creative Commons Attribution 4.0 International",
+          "rightsUri": "https://creativecommons.org/licenses/by/4.0/legalcode",
+          "schemeUri": "https://spdx.org/licenses/",
+          "rightsIdentifier": "cc-by-4.0",
+          "rightsIdentifierScheme": "SPDX"
+        }
+      ],
+      "url": "https://zenodo.org/doi/10.5281/zenodo.18519253",
+      "version": null,
+      "relatedIdentifiers": [
+        {
+          "relationType": "IsPublishedIn",
+          "relatedIdentifier": "10.1038/s41597-026-07025-5",
+          "resourceTypeGeneral": "Text",
+          "relatedIdentifierType": "DOI"
+        },
+        {
+          "relationType": "IsVersionOf",
+          "relatedIdentifier": "10.5281/zenodo.15680735",
+          "relatedIdentifierType": "DOI"
+        }
+      ],
+      "sizes": [],
+      "publicationYear": 2026
+    }
+  },
+  "local_csv": {
+    "bytes": 502606,
+    "sha256": "a260946ec7741ca4212648a0568f419a32e7cac96c9c0dca1fe3d812bb43f029"
+  }
+}

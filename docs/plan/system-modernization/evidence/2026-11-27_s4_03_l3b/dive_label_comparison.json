@@ -1,0 +1,80 @@
+{
+  "expected_archive": {
+    "key": "DIVE_Labels.zip",
+    "size": 253939,
+    "checksum": "md5:ace7aaebd19e040ca78f578fb5ecc6cf",
+    "links": {
+      "self": "https://zenodo.org/api/records/18519253/files/DIVE_Labels.zip/content"
+    }
+  },
+  "local_csv": {
+    "bytes": 502606,
+    "sha256": "a260946ec7741ca4212648a0568f419a32e7cac96c9c0dca1fe3d812bb43f029"
+  },
+  "status": "COMPARED",
+  "archive_sha256": "fba327761d8aec2b75c19acf97211f85a83e48fa900304ca942a8a7ed863baaf",
+  "archive_bytes": 253939,
+  "archive_md5_verified": true,
+  "members": [
+    {
+      "path": "Labels/",
+      "size": 0
+    },
+    {
+      "path": "Labels/.DS_Store",
+      "size": 6148
+    },
+    {
+      "path": "__MACOSX/Labels/._.DS_Store",
+      "size": 120
+    },
+    {
+      "path": "Labels/Tool_Results.csv",
+      "size": 1976612
+    },
+    {
+      "path": "__MACOSX/Labels/._Tool_Results.csv",
+      "size": 287
+    },
+    {
+      "path": "Labels/DIVE_Labels.csv",
+      "size": 502606
+    },
+    {
+      "path": "__MACOSX/Labels/._DIVE_Labels.csv",
+      "size": 287
+    }
+  ],
+  "published_csv_sha256": "a260946ec7741ca4212648a0568f419a32e7cac96c9c0dca1fe3d812bb43f029",
+  "published_csv_bytes": 502606,
+  "byte_identical": true,
+  "local_columns": [
+    "contractID",
+    "Reentrancy",
+    "Access Control",
+    "Arithmetic",
+    "Unchecked Return Values",
+    "DoS",
+    "Bad Randomness",
+    "Front Running",
+    "Time manipulation"
+  ],
+  "published_columns": [
+    "contractID",
+    "Reentrancy",
+    "Access Control",
+    "Arithmetic",
+    "Unchecked Return Values",
+    "DoS",
+    "Bad Randomness",
+    "Front Running",
+    "Time manipulation"
+  ],
+  "local_rows": 22330,
+  "published_rows": 22330,
+  "local_only": 0,
+  "published_only": 0,
+  "changed_shared_records": 0,
+  "changed_fields": {},
+  "same_keyed_csv": true
+}

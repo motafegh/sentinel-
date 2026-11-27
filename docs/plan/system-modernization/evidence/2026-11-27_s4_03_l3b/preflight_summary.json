@@ -1,0 +1,42 @@
+{
+  "baseline": "099b9d66c8a7edaae5323dcbb09cbe6b48b76a4d",
+  "dive": {
+    "record_id": 18519253,
+    "license": {
+      "id": "cc-by-4.0"
+    },
+    "label_archive_checksum_verified": true,
+    "local_published_csv_exact": true,
+    "label_rows": 22330,
+    "tool_table_rows": 26071,
+    "tool_table_distinct_ids": 22330,
+    "tool_columns": 48,
+    "raw_archive_equivalence": "NOT_ESTABLISHED",
+    "raw_archive_bytes": 546748517
+  },
+  "gas_gauge": {
+    "pinned_tree": "7795ecd73e31b875fb199c36a74ab8ecd74f870d",
+    "source_paths": 2000,
+    "distinct_source_blobs": 1683,
+    "ambiguous_casefolded_stems": 2,
+    "frozen_sample_paths": 10,
+    "frozen_sample_distinct_blobs": 9,
+    "verified_source_paths": 9,
+    "verified_distinct_source_blobs": 8,
+    "verified_slither_report_paths": 10,
+    "verified_author_aggregate_reports": 4,
+    "raw_exact_match_paths": 0,
+    "explicit_spdx_paths": 1,
+    "source_run_identity": "NOT_ESTABLISHED",
+    "source_rights": "NOT_ADJUDICATED",
+    "runtime_reproduction": "NOT_RUN"
+  },
+  "disposition": {
+    "L3B0": "PASS_WITH_LIMITATIONS_LABEL_PROVENANCE_ONLY",
+    "L3B1": "PASS_WITH_LIMITATIONS_METADATA_PREFLIGHT_ONLY",
+    "new_labels": 0,
+    "source_files_staged": 0,
+    "training_authorized": false,
+    "next": "L3B0A tool result semantics and raw archive comparison preflight; L3B2 CVE bounded preflight independently ready"
+  }
+}

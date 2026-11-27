@@ -1,0 +1,102 @@
+{
+  "pin": "7795ecd73e31b875fb199c36a74ab8ecd74f870d",
+  "results": [
+    {
+      "path": "Results/our results/finder/loop/Result_finder.txt",
+      "expected_bytes": 818153,
+      "git_blob": "f0add0a9f84cfada4df821077788c16b94f437df",
+      "status": "VERIFIED_BLOB",
+      "sha256": "e175c9d72de844c0a2cabcbb700226d366646454711ec92232e7c4c84dbeb65a",
+      "bytes": 818153,
+      "line_count": 11472,
+      "selected_stem_mentions": 5,
+      "per_selected_stem_counts": {
+        "0x8401d5cb939f1ed07a9f52f1e58f493961ffdbc9": 1,
+        "0x0073a236ee3dbd8a133f8d9d4717c0d6a042e392": 1,
+        "0x331513bedb4ec777e950201a6ca6848d198bbbb1": 1,
+        "0x38b704ba216c762565da03d1603935d0f579ef01": 1,
+        "0x3d1be3fef769399cce7e504e85324d622f23cf85": 1,
+        "0xeedac64009067f8543d149ce1bea869b5312fb7f": 0,
+        "0x94371dae62e159b563ec6810ad7f752239e6e50c": 0,
+        "0x7bf69162b122a08b89e5c8529a242593300ffa51": 0,
+        "0x8bfb7ac05bf9bdc6bc3a635d4dd209c8ba39e554": 0,
+        "0xb53189eb5ab4a0c866736b3a17ac5a847cdb5b55": 0
+      },
+      "contains_out_of_gas_text": false,
+      "contains_threshold_text": false
+    },
+    {
+      "path": "Results/our results/finder/noloop/Results.txt",
+      "expected_bytes": 321484,
+      "git_blob": "4cbfca30b34dea72f572adf7d95ef1687623b2c6",
+      "status": "VERIFIED_BLOB",
+      "sha256": "355d22b0849b47394edc49021dc01ad2c821a0e9d65b5af11372a8801eb39c2c",
+      "bytes": 321484,
+      "line_count": 7000,
+      "selected_stem_mentions": 5,
+      "per_selected_stem_counts": {
+        "0x8401d5cb939f1ed07a9f52f1e58f493961ffdbc9": 0,
+        "0x0073a236ee3dbd8a133f8d9d4717c0d6a042e392": 0,
+        "0x331513bedb4ec777e950201a6ca6848d198bbbb1": 0,
+        "0x38b704ba216c762565da03d1603935d0f579ef01": 0,
+        "0x3d1be3fef769399cce7e504e85324d622f23cf85": 0,
+        "0xeedac64009067f8543d149ce1bea869b5312fb7f": 1,
+        "0x94371dae62e159b563ec6810ad7f752239e6e50c": 1,
+        "0x7bf69162b122a08b89e5c8529a242593300ffa51": 1,
+        "0x8bfb7ac05bf9bdc6bc3a635d4dd209c8ba39e554": 1,
+        "0xb53189eb5ab4a0c866736b3a17ac5a847cdb5b55": 1
+      },
+      "contains_out_of_gas_text": false,
+      "contains_threshold_text": false
+    },
+    {
+      "path": "Results/our results/fuzzer/Result_fuzzer.txt",
+      "expected_bytes": 1737399,
+      "git_blob": "3e95585fb255120e7e989d6b8b22790c9583c8bb",
+      "status": "VERIFIED_BLOB",
+      "sha256": "124bd051b55685fc370e74e4b9d8c7d5420c49458e0d7e57bf0a3f8642c848d1",
+      "bytes": 1737399,
+      "line_count": 29887,
+      "selected_stem_mentions": 5,
+      "per_selected_stem_counts": {
+        "0x8401d5cb939f1ed07a9f52f1e58f493961ffdbc9": 1,
+        "0x0073a236ee3dbd8a133f8d9d4717c0d6a042e392": 1,
+        "0x331513bedb4ec777e950201a6ca6848d198bbbb1": 1,
+        "0x38b704ba216c762565da03d1603935d0f579ef01": 1,
+        "0x3d1be3fef769399cce7e504e85324d622f23cf85": 1,
+        "0xeedac64009067f8543d149ce1bea869b5312fb7f": 0,
+        "0x94371dae62e159b563ec6810ad7f752239e6e50c": 0,
+        "0x7bf69162b122a08b89e5c8529a242593300ffa51": 0,
+        "0x8bfb7ac05bf9bdc6bc3a635d4dd209c8ba39e554": 0,
+        "0xb53189eb5ab4a0c866736b3a17ac5a847cdb5b55": 0
+      },
+      "contains_out_of_gas_text": true,
+      "contains_threshold_text": false
+    },
+    {
+      "path": "Results/our results/threshold/Result_threshold.txt",
+      "expected_bytes": 2312151,
+      "git_blob": "c33dc2bd05c27fb06753208236aa80c62f31b1b2",
+      "status": "VERIFIED_BLOB",
+      "sha256": "593aa548a9aca4648bec2f3ba9e24937c813dbaee1ad5ff472dda14b675c8711",
+      "bytes": 2312151,
+      "line_count": 40511,
+      "selected_stem_mentions": 5,
+      "per_selected_stem_counts": {
+        "0x8401d5cb939f1ed07a9f52f1e58f493961ffdbc9": 1,
+        "0x0073a236ee3dbd8a133f8d9d4717c0d6a042e392": 1,
+        "0x331513bedb4ec777e950201a6ca6848d198bbbb1": 1,
+        "0x38b704ba216c762565da03d1603935d0f579ef01": 1,
+        "0x3d1be3fef769399cce7e504e85324d622f23cf85": 1,
+        "0xeedac64009067f8543d149ce1bea869b5312fb7f": 0,
+        "0x94371dae62e159b563ec6810ad7f752239e6e50c": 0,
+        "0x7bf69162b122a08b89e5c8529a242593300ffa51": 0,
+        "0x8bfb7ac05bf9bdc6bc3a635d4dd209c8ba39e554": 0,
+        "0xb53189eb5ab4a0c866736b3a17ac5a847cdb5b55": 0
+      },
+      "contains_out_of_gas_text": false,
+      "contains_threshold_text": true
+    }
+  ],
+  "limits": "Literal case-stem and keyword presence only; no authenticated source/run identity, execution settings or reproduced gas failure. Reports read in memory, no upstream source redistribution."
+}

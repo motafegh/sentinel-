@@ -1,0 +1,460 @@
+{
+  "archive_sha256": "fba327761d8aec2b75c19acf97211f85a83e48fa900304ca942a8a7ed863baaf",
+  "member": "Labels/Tool_Results.csv",
+  "sha256": "dd4226b8024ad1b9a9f8d12d43de2ea4125ed63d3548229678fdfcf67161fb70",
+  "bytes": 1976612,
+  "rows": 26071,
+  "columns": [
+    "contractID",
+    "MAIAN_1",
+    "MAIAN_2",
+    "MAIAN_3",
+    "MAIAN_4",
+    "MAIAN_5",
+    "MAIAN_6",
+    "MAIAN_7",
+    "MAIAN_8",
+    "Mythril_1",
+    "Mythril_2",
+    "Mythril_3",
+    "Mythril_4",
+    "Mythril_5",
+    "Mythril_6",
+    "Mythril_7",
+    "Mythril_8",
+    "Semgrep_1",
+    "Semgrep_2",
+    "Semgrep_3",
+    "Semgrep_4",
+    "Semgrep_5",
+    "Semgrep_6",
+    "Semgrep_7",
+    "Semgrep_8",
+    "Slither_1",
+    "Slither_2",
+    "Slither_3",
+    "Slither_4",
+    "Slither_5",
+    "Slither_6",
+    "Slither_7",
+    "Slither_8",
+    "Solhint_1",
+    "Solhint_2",
+    "Solhint_3",
+    "Solhint_4",
+    "Solhint_5",
+    "Solhint_6",
+    "Solhint_7",
+    "Solhint_8",
+    "VeriSmart_1",
+    "VeriSmart_2",
+    "VeriSmart_3",
+    "VeriSmart_4",
+    "VeriSmart_5",
+    "VeriSmart_6",
+    "VeriSmart_7",
+    "VeriSmart_8"
+  ],
+  "column_profiles": {
+    "contractID": {
+      "distinct": 22330,
+      "empty": 0,
+      "value_counts": null
+    },
+    "MAIAN_1": {
+      "distinct": 1,
+      "empty": 26071,
+      "value_counts": {
+        "": 26071
+      }
+    },
+    "MAIAN_2": {
+      "distinct": 3,
+      "empty": 5610,
+      "value_counts": {
+        "0": 20332,
+        "1": 129,
+        "": 5610
+      }
+    },
+    "MAIAN_3": {
+      "distinct": 1,
+      "empty": 26071,
+      "value_counts": {
+        "": 26071
+      }
+    },
+    "MAIAN_4": {
+      "distinct": 1,
+      "empty": 26071,
+      "value_counts": {
+        "": 26071
+      }
+    },
+    "MAIAN_5": {
+      "distinct": 3,
+      "empty": 5610,
+      "value_counts": {
+        "0": 19276,
+        "1": 1185,
+        "": 5610
+      }
+    },
+    "MAIAN_6": {
+      "distinct": 1,
+      "empty": 26071,
+      "value_counts": {
+        "": 26071
+      }
+    },
+    "MAIAN_7": {
+      "distinct": 1,
+      "empty": 26071,
+      "value_counts": {
+        "": 26071
+      }
+    },
+    "MAIAN_8": {
+      "distinct": 1,
+      "empty": 26071,
+      "value_counts": {
+        "": 26071
+      }
+    },
+    "Mythril_1": {
+      "distinct": 3,
+      "empty": 9181,
+      "value_counts": {
+        "0": 13939,
+        "1": 2951,
+        "": 9181
+      }
+    },
+    "Mythril_2": {
+      "distinct": 3,
+      "empty": 9181,
+      "value_counts": {
+        "0": 15922,
+        "": 9181,
+        "1": 968
+      }
+    },
+    "Mythril_3": {
+      "distinct": 3,
+      "empty": 9181,
+      "value_counts": {
+        "0": 14802,
+        "": 9181,
+        "1": 2088
+      }
+    },
+    "Mythril_4": {
+      "distinct": 3,
+      "empty": 9181,
+      "value_counts": {
+        "0": 16741,
+        "": 9181,
+        "1": 149
+      }
+    },
+    "Mythril_5": {
+      "distinct": 3,
+      "empty": 9181,
+      "value_counts": {
+        "0": 15773,
+        "1": 1117,
+        "": 9181
+      }
+    },
+    "Mythril_6": {
+      "distinct": 3,
+      "empty": 9181,
+      "value_counts": {
+        "0": 16510,
+        "": 9181,
+        "1": 380
+      }
+    },
+    "Mythril_7": {
+      "distinct": 3,
+      "empty": 9181,
+      "value_counts": {
+        "0": 16284,
+        "": 9181,
+        "1": 606
+      }
+    },
+    "Mythril_8": {
+      "distinct": 3,
+      "empty": 9181,
+      "value_counts": {
+        "0": 15215,
+        "": 9181,
+        "1": 1675
+      }
+    },
+    "Semgrep_1": {
+      "distinct": 3,
+      "empty": 3842,
+      "value_counts": {
+        "0": 21476,
+        "1": 753,
+        "": 3842
+      }
+    },
+    "Semgrep_2": {
+      "distinct": 3,
+      "empty": 3842,
+      "value_counts": {
+        "0": 22193,
+        "1": 36,
+        "": 3842
+      }
+    },
+    "Semgrep_3": {
+      "distinct": 3,
+      "empty": 3842,
+      "value_counts": {
+        "0": 22220,
+        "1": 9,
+        "": 3842
+      }
+    },
+    "Semgrep_4": {
+      "distinct": 1,
+      "empty": 26071,
+      "value_counts": {
+        "": 26071
+      }
+    },
+    "Semgrep_5": {
+      "distinct": 1,
+      "empty": 26071,
+      "value_counts": {
+        "": 26071
+      }
+    },
+    "Semgrep_6": {
+      "distinct": 3,
+      "empty": 3842,
+      "value_counts": {
+        "0": 22209,
+        "1": 20,
+        "": 3842
+      }
+    },
+    "Semgrep_7": {
+      "distinct": 1,
+      "empty": 26071,
+      "value_counts": {
+        "": 26071
+      }
+    },
+    "Semgrep_8": {
+      "distinct": 2,
+      "empty": 3842,
+      "value_counts": {
+        "0": 22229,
+        "": 3842
+      }
+    },
+    "Slither_1": {
+      "distinct": 3,
+      "empty": 7072,
+      "value_counts": {
+        "0": 7720,
+        "1": 11279,
+        "": 7072
+      }
+    },
+    "Slither_2": {
+      "distinct": 3,
+      "empty": 7072,
+      "value_counts": {
+        "0": 9440,
+        "1": 9559,
+        "": 7072
+      }
+    },
+    "Slither_3": {
+      "distinct": 3,
+      "empty": 7072,
+      "value_counts": {
+        "0": 14726,
+        "1": 4273,
+        "": 7072
+      }
+    },
+    "Slither_4": {
+      "distinct": 3,
+      "empty": 7072,
+      "value_counts": {
+        "0": 12518,
+        "1": 6481,
+        "": 7072
+      }
+    },
+    "Slither_5": {
+      "distinct": 3,
+      "empty": 7072,
+      "value_counts": {
+        "1": 3174,
+        "0": 15825,
+        "": 7072
+      }
+    },
+    "Slither_6": {
+      "distinct": 3,
+      "empty": 7072,
+      "value_counts": {
+        "0": 18698,
+        "": 7072,
+        "1": 301
+      }
+    },
+    "Slither_7": {
+      "distinct": 1,
+      "empty": 26071,
+      "value_counts": {
+        "": 26071
+      }
+    },
+    "Slither_8": {
+      "distinct": 3,
+      "empty": 7072,
+      "value_counts": {
+        "0": 15160,
+        "1": 3839,
+        "": 7072
+      }
+    },
+    "Solhint_1": {
+      "distinct": 3,
+      "empty": 5625,
+      "value_counts": {
+        "0": 19070,
+        "": 5625,
+        "1": 1376
+      }
+    },
+    "Solhint_2": {
+      "distinct": 3,
+      "empty": 5625,
+      "value_counts": {
+        "0": 2970,
+        "": 5625,
+        "1": 17476
+      }
+    },
+    "Solhint_3": {
+      "distinct": 1,
+      "empty": 26071,
+      "value_counts": {
+        "": 26071
+      }
+    },
+    "Solhint_4": {
+      "distinct": 3,
+      "empty": 5625,
+      "value_counts": {
+        "0": 17851,
+        "": 5625,
+        "1": 2595
+      }
+    },
+    "Solhint_5": {
+      "distinct": 3,
+      "empty": 5625,
+      "value_counts": {
+        "1": 1356,
+        "": 5625,
+        "0": 19090
+      }
+    },
+    "Solhint_6": {
+      "distinct": 3,
+      "empty": 5625,
+      "value_counts": {
+        "0": 20337,
+        "": 5625,
+        "1": 109
+      }
+    },
+    "Solhint_7": {
+      "distinct": 1,
+      "empty": 26071,
+      "value_counts": {
+        "": 26071
+      }
+    },
+    "Solhint_8": {
+      "distinct": 3,
+      "empty": 5625,
+      "value_counts": {
+        "0": 9998,
+        "": 5625,
+        "1": 10448
+      }
+    },
+    "VeriSmart_1": {
+      "distinct": 1,
+      "empty": 26071,
+      "value_counts": {
+        "": 26071
+      }
+    },
+    "VeriSmart_2": {
+      "distinct": 3,
+      "empty": 20065,
+      "value_counts": {
+        "": 20065,
+        "0": 4470,
+        "1": 1536
+      }
+    },
+    "VeriSmart_3": {
+      "distinct": 3,
+      "empty": 20065,
+      "value_counts": {
+        "": 20065,
+        "0": 637,
+        "1": 5369
+      }
+    },
+    "VeriSmart_4": {
+      "distinct": 1,
+      "empty": 26071,
+      "value_counts": {
+        "": 26071
+      }
+    },
+    "VeriSmart_5": {
+      "distinct": 1,
+      "empty": 26071,
+      "value_counts": {
+        "": 26071
+      }
+    },
+    "VeriSmart_6": {
+      "distinct": 1,
+      "empty": 26071,
+      "value_counts": {
+        "": 26071
+      }
+    },
+    "VeriSmart_7": {
+      "distinct": 1,
+      "empty": 26071,
+      "value_counts": {
+        "": 26071
+      }
+    },
+    "VeriSmart_8": {
+      "distinct": 1,
+      "empty": 26071,
+      "value_counts": {
+        "": 26071
+      }
+    }
+  }
+}

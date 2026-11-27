@@ -77,9 +77,13 @@ Inspected 820bc1457f3260c54c946c704f7695240b19f1d4. [Evidence](evidence/2026-11-
 
 Inspected 40ee9feb93c54ae303fe5b0f0a64106e503aa7b4. [External source acquisition plan](module-audits/S4-03_L3_EXTERNAL_SOURCE_ACQUISITION.md), [research catalog](evidence/2026-11-27_s4_03_l3a/source_catalog.json). 13 discovery entries compared to current registry and legacy config; new official DIVE locator/dataset license identified, exact archive equivalence unresolved. Gas Gauge, CVE Smart Contracts, FORGE Curated prioritized; Bastet/ScaBench and new EVMbench for project evaluation, Sourcify/DISL for targeted source research only. No download/ingestion, new label or training authorization. Prior CI 2/2 success.
 
+## Completed slice: S4-03-L3B0/B1 preflight
+
+Inspected 099b9d66c8a7edaae5323dcbb09cbe6b48b76a4d. [Evidence](evidence/2026-11-27_s4_03_l3b/WORKING_RECORD.md). DIVE official label ZIP verified, local CSV exact match all 22,330 records; additional six-tool results (26,071 rows) profiled, semantics pending. Gas Gauge 2,000 paths/1,683 distinct blobs; frozen 10 paths, 9 source paths and 10 reports verified, four author aggregate logs verified. Source rights and exact run-source identity unresolved, no staging/compile or class truth. Prior exact CI 2/2 green. Both preflight slices PASS_WITH_LIMITATIONS; no new labels or training.
+
 ## Next bounded slices
 
-L3B0 DIVE official archive metadata/equivalence preflight; L3B1 Gas Gauge bounded source-result audit; L3B2 CVE and L3B3 FORGE Curated follow in bounded stages. L1C independent review remains pending; S4-01-003B and S4-02 independently eligible. Audit legacy config seam before new connector activation. L-G1/G01 open; no training/promotion.
+L3B0A DIVE raw archive equivalence and native tool-result semantics; L3B1 follow-up Gas Gauge rights/source-run provenance; L3B2 CVE preflight and L3B3 FORGE Curated independently ready in order. L1C independent review pending; S4-01-003B and S4-02 independently eligible. Audit legacy config seam before connector activation. L-G1/G01 open; no training/promotion.
 
 ## Known initial blockers and independent work
 
@@ -89,4 +93,4 @@ L3B0 DIVE official archive metadata/equivalence preflight; L3B1 Gas Gauge bounde
 - R4-GAP-007 isolated independent review remains pending; confirmed negatives zero, M5/full training and G8 not authorized. That separate evidence path can proceed without S4 context.
 - ZKML proof scope, read-only audit MCP, production signing/deployment and accepted DATA/ML roots unchanged.
 
-Next actions: L3B bounded acquisition preflight, L1C independent review, S4-01-003B utility evaluation and S4-02 parallel eligible; no training without admissible evidence.
+Next actions: L3B0A DIVE tool/raw provenance, L3B1 follow-up and L3B2 CVE preflight; L1C, S4-01-003B and S4-02 parallel eligible. No training without admissible evidence.
