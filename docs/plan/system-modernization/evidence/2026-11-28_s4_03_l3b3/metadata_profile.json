@@ -1,0 +1,123 @@
+{
+  "pin": "c2829d451d37581dae71aba610506ba3b161e371",
+  "subtrees": {
+    "matched": {
+      "sha": "d5c2e0f9d24f58baec7d0a478e0d5a06d3bfdc33",
+      "truncated": false,
+      "entries": 208
+    },
+    "unmatched": {
+      "sha": "7b2f165ef2346e9fbfc85775e29e45ba47b40b19",
+      "truncated": false,
+      "entries": 115
+    },
+    "reports": {
+      "sha": "6b2ac79b06d9ae245a02df9378c3b7bd8c4d417f",
+      "truncated": false,
+      "entries": 335
+    },
+    "contracts": {
+      "sha": "ccb291ad69180e639f20977bf3ef102400b9c19d",
+      "truncated": false,
+      "entries": 208
+    },
+    "raw": {
+      "sha": "0a5adc32e3320c096e6086cef6715fd3ef3d9992",
+      "truncated": false,
+      "entries": 211
+    }
+  },
+  "report_extensions": {
+    "pdf": 253,
+    "md": 71
+  },
+  "report_auditors": [
+    "Ackee-Blockchain",
+    "BlockSec",
+    "Cantina",
+    "ChainSecurity",
+    "Consensys_Diligence",
+    "MixBytes",
+    "OpenZeppelin",
+    "Sherlock",
+    "TrailofBits",
+    "Zellic",
+    "Zenith"
+  ],
+  "freeze_sha256": "5d148c39b0b380058548d07c3f63c5c2058c3fc0cdc95886a7880f065b5ebe3f",
+  "finding_selection_sha256": "e692a6f4ccbe718b888155cad87ca322e131dca2f652e208512db849eac3ac50",
+  "selected_reports": 10,
+  "verified_reports": 9,
+  "findings_total": 72,
+  "findings_with_sol_mapping": 67,
+  "selected_solidity_files": 9,
+  "severity_counts": {
+    "2": 20,
+    "3": 18,
+    "4": 21,
+    "1": 8,
+    "5": 2,
+    "0": 3
+  },
+  "cwe_counts": {
+    "CWE-691": 5,
+    "CWE-841": 1,
+    "CWE-799": 1,
+    "CWE-707": 12,
+    "CWE-228": 1,
+    "CWE-237": 1,
+    "CWE-710": 13,
+    "CWE-1041": 2,
+    "CWE-435": 7,
+    "CWE-436": 4,
+    "CWE-437": 2,
+    "CWE-1076": 5,
+    "CWE-1078": 3,
+    "CWE-664": 13,
+    "CWE-665": 3,
+    "CWE-909": 1,
+    "CWE-703": 6,
+    "CWE-754": 4,
+    "CWE-693": 5,
+    "CWE-284": 4,
+    "CWE-282": 1,
+    "CWE-115": 2,
+    "CWE-362": 1,
+    "CWE-1068": 2,
+    "CWE-682": 7,
+    "CWE-372": 2,
+    "CWE-404": 3,
+    "CWE-772": 3,
+    "CWE-755": 2,
+    "CWE-248": 1,
+    "CWE-1265": 1,
+    "CWE-394": 1,
+    "CWE-20": 10,
+    "CWE-669": 2,
+    "CWE-1339": 1,
+    "CWE-666": 1,
+    "CWE-672": 1,
+    "CWE-285": 3,
+    "CWE-863": 2,
+    "CWE-358": 3,
+    "CWE-1284": 1,
+    "CWE-390": 1,
+    "CWE-1288": 3,
+    "CWE-1289": 1,
+    "CWE-684": 1,
+    "CWE-440": 1,
+    "CWE-191": 1,
+    "CWE-221": 2,
+    "CWE-834": 1,
+    "CWE-835": 1,
+    "CWE-1419": 2,
+    "CWE-454": 1,
+    "CWE-862": 1,
+    "CWE-1335": 1,
+    "CWE-439": 1,
+    "CWE-1286": 1,
+    "CWE-571": 1,
+    "CWE-1164": 1
+  },
+  "limits": "Sample only, not corpus-wide finding distributions. Severity rank 0 critical 1 high 2 medium 3 low 4 informational 5 other. One mapped Solidity path per report, not a validated vulnerability."
+}

@@ -93,9 +93,13 @@ Inspected d267df59bf92a744a13fc98a094dedb76d29fd7e. [Evidence](evidence/2026-11-
 
 Inspected f5c0dcd415ed376c71b28b3c68e9afffd2a7e29f. [Evidence](evidence/2026-11-27_s4_03_l3b2/WORKING_RECORD.md). CVE 2026-08-14 pinned catalog/index/labels/localizations reconciled; 491 catalog records, 437 arithmetic, rare-class coverage limited. Five frozen cases, 19/20 artifacts verified, 4/4 inspected explorer location ranges in bounds; one DIVE raw source overlap, distributed source byte identity differs. Source rights/run linkage and grouping unresolved; no staging, execution, admission. PASS_WITH_LIMITATIONS; prior CI 5/5 green.
 
+## Completed slice: S4-03-L3B3
+
+Inspected ca12b0adff26fee6f096a39099badfccf6b883f2. [Evidence](evidence/2026-11-28_s4_03_l3b3/WORKING_RECORD.md). FORGE pinned complete subtrees 208 associated/115 unmatched finding reports; 10 frozen, 9 verified, 72 findings, 8 upstream repos. Eight mapped files resolved, six verified, three verified files match claimed audit commit, two numeric ranges in bounds, no exact raw/normalized digest match. Project grouping, rights, version and dependency closure unresolved; no source persistence, execution, labels or RAG admission. PASS_WITH_LIMITATIONS; prior CI 2/2 green.
+
 ## Next bounded slices
 
-L3B3 FORGE Curated preflight next; L3B0C DIVE candidate primary source reviews independently ready; L3B1 Gas Gauge and L3B2 CVE source/run/rights follow-up; L1C independent reviews pending. S4-01-003B and S4-02 independently eligible. Audit legacy integration before enabling source connectors. L-G1/G01 open; no training/promotion.
+L3B0C primary source reviews of 21 frozen DIVE cases next to convert triage into review evidence; L3B1/B2/B3 targeted rights/source/run follow-ups, L3C Bastet/ScaBench/EVMbench eligible; L1C independent reviews pending. S4-01-003B and S4-02 independently eligible. Audit legacy integration before enabling source connectors. L-G1/G01 open; no training/promotion.
 
 ## Known initial blockers and independent work
 
@@ -105,4 +109,4 @@ L3B3 FORGE Curated preflight next; L3B0C DIVE candidate primary source reviews i
 - R4-GAP-007 isolated independent review remains pending; confirmed negatives zero, M5/full training and G8 not authorized. That separate evidence path can proceed without S4 context.
 - ZKML proof scope, read-only audit MCP, production signing/deployment and accepted DATA/ML roots unchanged.
 
-Next actions: L3B3 FORGE preflight, L3B0C candidate review, L3B1/B2 follow-up; L1C, S4-01-003B and S4-02 independently eligible. No training without admissible evidence.
+Next actions: L3B0C candidate primary review, targeted external follow-ups and L3C; L1C, S4-01-003B and S4-02 independently eligible. No training without admissible evidence.

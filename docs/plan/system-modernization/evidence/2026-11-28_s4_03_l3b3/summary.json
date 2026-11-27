@@ -1,0 +1,33 @@
+{
+  "pin": "c2829d451d37581dae71aba610506ba3b161e371",
+  "finding_report_jsons": 323,
+  "matched_report_jsons": 208,
+  "unmatched_report_jsons": 115,
+  "original_report_files": 323,
+  "report_path_matches_sample": 9,
+  "frozen_reports": 10,
+  "verified_reports": 9,
+  "sample_findings": 72,
+  "sample_solidity_mapped_findings": 67,
+  "sample_distinct_repos": 8,
+  "unique_curated_file_paths_resolved": 8,
+  "verified_source_blobs": 6,
+  "upstream_matching_source_blobs_metadata_only_or_verified": 5,
+  "verified_source_blobs_matching_at_least_one_claimed_commit": 3,
+  "raw_gitlink_cases": 7,
+  "raw_curated_blob_matches": 2,
+  "upstream_metadata_attempts": 12,
+  "upstream_metadata_successes": 8,
+  "spdx_counts": {
+    "MIT": 3,
+    "BUSL-1.1": 2,
+    "UNLICENSED": 1
+  },
+  "numeric_same_file_locations_in_bounds": 2,
+  "numeric_same_file_locations_tested": 2,
+  "exact_raw_overlap": 0,
+  "exact_normalized_overlap": 0,
+  "labels_admitted": 0,
+  "source_executed": 0,
+  "source_staged": 0
+}

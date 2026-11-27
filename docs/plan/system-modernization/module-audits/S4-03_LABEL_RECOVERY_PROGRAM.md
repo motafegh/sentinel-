@@ -132,3 +132,7 @@ L-G0 PASS_WITH_LIMITATIONS: accepted logical label and source provenance invento
 ## 14. L3B2 CVE acquisition preflight
 
 [Evidence](../evidence/2026-11-27_s4_03_l3b2/WORKING_RECORD.md). Exact catalog selection/labels/localization keys reconciled, 491 records dominated by 437 arithmetic claims; five frozen cases, 19/20 artifacts verified, 4/4 source unit ranges in bounds, one raw DIVE overlap. Rights, source coordinate transformation, runtime and group lineage unresolved; no admission. L3B3 FORGE next; L3B0C review independent.
+
+## 15. L3B3 FORGE acquisition preflight
+
+[Evidence](../evidence/2026-11-28_s4_03_l3b3/WORKING_RECORD.md). Modern audit dataset verified at pinned subtree level (208 associated/115 unmatched). Nine of ten report JSONs verified, 72 findings, six verified source blobs, three matching a claimed audited revision; project-family, rights, version, source mapping and dependency closure unresolved. No admission. Next L3B0C 21 previously frozen DIVE source reviews, then targeted external follow-ups; L-G1 open.
