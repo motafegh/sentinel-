@@ -1,0 +1,95 @@
+{
+  "accepted_v3_hashes_unchanged": true,
+  "artifact_manifest_sha256": "ad86ec65e285b0a335755c343edce0210e70b924fa25dacea572ba5747712d5c",
+  "artifacts": {
+    "native_category_view.parquet": {
+      "bytes": 1236884,
+      "sha256": "d1f20d963f9cbb52f404e1ad7298932a78eed8eeb64d7f02ea6d26c3541c9d16"
+    },
+    "review_queue.json": {
+      "bytes": 40103,
+      "sha256": "6f899b97ba350f1b0295eb4a40b967183e05b6f4b9c9fef28f48dea07bff806a"
+    },
+    "source_links.parquet": {
+      "bytes": 2907349,
+      "sha256": "10851292f249b535013c4099ad72544f8a17a741f27f6d070c875668b4c58b14"
+    },
+    "tool_rows.parquet": {
+      "bytes": 1230359,
+      "sha256": "8b84423582ccbcbcfebfba015ab35a52c09bd98a324a7b5285a107bff7263ed2"
+    }
+  },
+  "category_cells": 178640,
+  "combined_reserved_groups": 237,
+  "conflicting_native_cells": 0,
+  "distinct_linked_artifacts": 22054,
+  "distinct_linked_groups": 21926,
+  "elapsed_seconds": 16.217,
+  "exclusions": {
+    "dos_zero_no_positive": {
+      "no_accepted_link": 22,
+      "reserved": 170,
+      "role": 250,
+      "size": 1313
+    },
+    "dos_zero_positive": {
+      "reserved": 17,
+      "role": 65,
+      "size": 160
+    },
+    "ur_zero_no_positive": {
+      "no_accepted_link": 10,
+      "reserved": 160,
+      "role": 490,
+      "size": 452
+    },
+    "ur_zero_positive": {
+      "no_accepted_link": 2,
+      "reserved": 8,
+      "size": 249
+    }
+  },
+  "guard_rejects_overlap": true,
+  "ids": 22330,
+  "labels_admitted": 0,
+  "limitations": "Source record join, not original analyzer source/run binding; 22 unlinked IDs retained. Local-only ledger/queue; guard not wired into future builder. No review or source execution.",
+  "literal_tool_cells": 1251408,
+  "new_reserved_groups": 21,
+  "null_tool_cells": 696540,
+  "one_tool_cells": 91237,
+  "prior_reserved_groups": 216,
+  "rows": 26071,
+  "schema": "s4-dive-observations-v1",
+  "selected": {
+    "dos_zero_no_positive": 2,
+    "dos_zero_positive": 4,
+    "time_unsupported_positive": 9,
+    "ur_zero_no_positive": 2,
+    "ur_zero_positive": 4
+  },
+  "source_records_linked": 22308,
+  "strata_eligible": {
+    "dos_zero_no_positive": 14505,
+    "dos_zero_positive": 2047,
+    "time_unsupported_positive": 9,
+    "ur_zero_no_positive": 14427,
+    "ur_zero_positive": 621
+  },
+  "strata_eligible_groups": {
+    "dos_zero_no_positive": 14215,
+    "dos_zero_positive": 2026,
+    "time_unsupported_positive": 9,
+    "ur_zero_no_positive": 14129,
+    "ur_zero_positive": 617
+  },
+  "strata_total": {
+    "dos_zero_no_positive": 16260,
+    "dos_zero_positive": 2289,
+    "time_unsupported_positive": 9,
+    "ur_zero_no_positive": 15539,
+    "ur_zero_positive": 880
+  },
+  "training_authorized": false,
+  "unlinked_native_ids": 22,
+  "zero_tool_cells": 463631
+}

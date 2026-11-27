@@ -85,9 +85,13 @@ Inspected 099b9d66c8a7edaae5323dcbb09cbe6b48b76a4d. [Evidence](evidence/2026-11-
 
 Inspected 38d15e1b9ce281193eb064f12278cf22b196571c. [Evidence](evidence/2026-11-27_s4_03_l3b0a/WORKING_RECORD.md). DIVE 3,741 repeated IDs with complementary observations and no conflicting nonblank values. First-row published-rule replay contains all published positives, four categories exact; remaining extra positives consistent with heuristic removal, exact validator not rerun. Nine published Time positives lack positive tool observation in either row; 880 native Unchecked Return Values zeros have positive observation. No ground truth inference. All 22,330 original source names/size/CRC32 match official raw ZIP directory fetched by bounded ranges; full archive checksum not verified. PASS_WITH_LIMITATIONS; prior CI 2/2 green.
 
+## Completed slice: S4-03-L3B0B
+
+Inspected d267df59bf92a744a13fc98a094dedb76d29fd7e. [Evidence](evidence/2026-11-27_s4_03_l3b0b/WORKING_RECORD.md). Implemented strict evidence-only DIVE observations module and local Parquet ledger. 26,071 rows, 1,251,408 cells (696,540 missing), 178,640 native-category rows, 22,308 original path links/22,054 normalized artifacts, 22 unmatched IDs retained. All 21 frozen review quotas filled, unique groups, combined reservations 237; overlap guard tested but not integrated in successor. 34 focused tests plus governance passed; prior CI 2/2 green. No label/role changes.
+
 ## Next bounded slices
 
-L3B0B evidence-only tool observation ledger and bounded disagreement review triage; L3B2 CVE preflight independently ready (then FORGE Curated). Gas Gauge rights/run linkage follow-up; L1C independent reviews pending. S4-01-003B and S4-02 independently eligible. Audit legacy integration seam before enabling sources. L-G1/G01 open; no training/promotion.
+L3B2 CVE bounded preflight next, then FORGE Curated; L3B0C DIVE candidate primary source reviews independently ready; L3B1 Gas Gauge rights/run linkage follow-up, L1C independent reviews pending. S4-01-003B and S4-02 independently eligible. Audit legacy integration before enabling source connectors. L-G1/G01 open; no training/promotion.
 
 ## Known initial blockers and independent work
 
@@ -97,4 +101,4 @@ L3B0B evidence-only tool observation ledger and bounded disagreement review tria
 - R4-GAP-007 isolated independent review remains pending; confirmed negatives zero, M5/full training and G8 not authorized. That separate evidence path can proceed without S4 context.
 - ZKML proof scope, read-only audit MCP, production signing/deployment and accepted DATA/ML roots unchanged.
 
-Next actions: L3B0B evidence-only observations and L3B2 CVE preflight; L3B1 follow-up, L1C, S4-01-003B and S4-02 independently eligible. No training without admissible evidence.
+Next actions: L3B2 CVE preflight, L3B0C candidate review and FORGE Curated; L3B1 follow-up, L1C, S4-01-003B and S4-02 independently eligible. No training without admissible evidence.
