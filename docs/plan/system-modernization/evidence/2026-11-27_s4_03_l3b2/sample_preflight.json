@@ -1,0 +1,439 @@
+{
+  "pin": "ed62986909d00f7260e38178fe9a6cd5064c9ef6",
+  "selection_sha256": "70f425ac96456d6cf91df2f4a2a23c7a254a6faf15728cb360402a6bf1e1bc40",
+  "tree_subset_sha256": "12f28fb253327822f0ecc065149caa4f246f0ba4d0d89e0961a772b67dcf8bf2",
+  "records": [
+    {
+      "case_id": "CVE-P01",
+      "stratum": "gas",
+      "labels": {
+        "IulianoDiNucci2026": [
+          "4I1",
+          "4A"
+        ],
+        "CWE": [
+          "CWE-400"
+        ],
+        "SWC": [
+          "SWC-128"
+        ]
+      },
+      "blobs": {
+        "source": {
+          "status": "VERIFIED_BLOB",
+          "git_blob": "34c1b1ed6150520d4a9d80c5e3a563c52283783d",
+          "sha256": "5c1a0fbe0edfe44ac68fc116de6ab8bcad1811a84c61413dae4d7682bda3a0ee",
+          "bytes": 11380
+        },
+        "explorer": {
+          "status": "VERIFIED_BLOB",
+          "git_blob": "0679f0e23708492a99c554b17f2d381715a4a375",
+          "sha256": "cdacf1182eb0d44f808cc8d9ba9d168e27957bd497c991fa55e65223bb7ec3d1",
+          "bytes": 20406
+        },
+        "runtime": {
+          "status": "VERIFIED_BLOB",
+          "git_blob": "da0c53adaa3ab79a49f90546f22dbac77c76773d",
+          "sha256": "afd17f7f49c55796ceef931de41fe3e467ba5a7d04d46a68069947b27bd50faf",
+          "bytes": 11250
+        },
+        "cve": {
+          "status": "VERIFIED_BLOB",
+          "git_blob": "fedf2c3c738b9dd9d9a83d00658bcc247fc2c831",
+          "sha256": "ab5b74af20dfb9ed15575cc05369c4652aa5a0ba1374fabb922eac0e2778cccc",
+          "bytes": 5525
+        }
+      },
+      "admission": "NOT_ADMITTED",
+      "source_files_staged": false,
+      "source": {
+        "sha256": "5c1a0fbe0edfe44ac68fc116de6ab8bcad1811a84c61413dae4d7682bda3a0ee",
+        "bytes": 11380,
+        "line_count": 368,
+        "spdx": [],
+        "copyright_notice": false,
+        "pragma_solidity": [
+          "0.4.20"
+        ],
+        "import_directive_count": 0,
+        "raw_manifest_sources": [],
+        "exact_normalized_artifact": false
+      },
+      "explorer": {
+        "compiler_version": "v0.4.20+commit.3155dd80",
+        "contract_name_matches_catalog": true,
+        "optimizer": "1",
+        "runs": "200",
+        "evm_version": "Default",
+        "license_type": "",
+        "unit_count": 1,
+        "settings_retained": false,
+        "source_exact_unit_matches": 0,
+        "source_newline_normalized_unit_matches": 0,
+        "units": [
+          {
+            "sha256": "5d76babefb42bfacdebb6bbfe3c1092ed8f2eced0db75e0a1d813e864017d03e",
+            "bytes": 11746,
+            "line_count": 368,
+            "spdx": [],
+            "copyright_notice": false,
+            "pragma_solidity": [
+              "0.4.20"
+            ],
+            "import_directive_count": 0,
+            "raw_manifest_sources": [],
+            "exact_normalized_artifact": false
+          }
+        ]
+      },
+      "localization_checks": [
+        {
+          "source_unit_found": true,
+          "range_in_bounds": true,
+          "source_unit_sha256": "5d76babefb42bfacdebb6bbfe3c1092ed8f2eced0db75e0a1d813e864017d03e"
+        }
+      ],
+      "rights_disposition": "NO_SPDX_RIGHTS_UNRESOLVED",
+      "runtime_hex_valid": true,
+      "cve_identity_matches": true
+    },
+    {
+      "case_id": "CVE-P02",
+      "stratum": "dos",
+      "labels": {
+        "IulianoDiNucci2026": [
+          "3E"
+        ],
+        "CWE": [
+          "CWE-703"
+        ],
+        "SWC": [
+          "SWC-113"
+        ]
+      },
+      "blobs": {
+        "source": {
+          "status": "UNAVAILABLE",
+          "error_type": "AssertionError",
+          "error": "(15421, 16224)"
+        },
+        "explorer": {
+          "status": "VERIFIED_BLOB",
+          "git_blob": "cff07553e050fba03ce36f31fe7bdbada8d20ae2",
+          "sha256": "f4f593febe249bdaab267cda057a4fb7429f938415c64207cf3e1caab30a659f",
+          "bytes": 32136
+        },
+        "runtime": {
+          "status": "VERIFIED_BLOB",
+          "git_blob": "531696ad6e77149bde1c8f8afcfcacf382fa5c4a",
+          "sha256": "1252f138b9013624eec7adc2bff4ac214aea0efc90e1aa58200f2184f46f2bdd",
+          "bytes": 37694
+        },
+        "cve": {
+          "status": "VERIFIED_BLOB",
+          "git_blob": "1e20bf7c0b15e3df1ec1114f91994d51b95fb95b",
+          "sha256": "5c825dacaf7dd31e6cea7d69c5755f078d53456863781ebaeaba697626d1fde9",
+          "bytes": 5995
+        }
+      },
+      "admission": "NOT_ADMITTED",
+      "source_files_staged": false,
+      "source_analysis_error": {
+        "type": "KeyError",
+        "error": "'source'"
+      },
+      "runtime_hex_valid": true,
+      "cve_identity_matches": true
+    },
+    {
+      "case_id": "CVE-P03",
+      "stratum": "arithmetic",
+      "labels": {
+        "IulianoDiNucci2026": [
+          "6A1"
+        ],
+        "CWE": [
+          "CWE-190"
+        ],
+        "SWC": [
+          "SWC-101"
+        ]
+      },
+      "blobs": {
+        "source": {
+          "status": "VERIFIED_BLOB",
+          "git_blob": "c3e468ed7d81477261058aa10810216aece84217",
+          "sha256": "0cf423c723218e419929d9a873dab01d60874729d19bbaa21f977f12003b9052",
+          "bytes": 7727
+        },
+        "explorer": {
+          "status": "VERIFIED_BLOB",
+          "git_blob": "330358b40ffe9c908237ef1a3530e6591baaa613",
+          "sha256": "a807ddf07b4be7dd8bd1b2ab1d54314201e9773eb82292b265f5c92482a38d82",
+          "bytes": 14439
+        },
+        "runtime": {
+          "status": "VERIFIED_BLOB",
+          "git_blob": "d8142eb86daa428e62235a43a60a63c6535e60ec",
+          "sha256": "6df5d18b75db855d3e12ec9bb28c8dfaf0f58d8218befb5db28465cc93c59555",
+          "bytes": 14018
+        },
+        "cve": {
+          "status": "VERIFIED_BLOB",
+          "git_blob": "a82919a0cca54198677f0734ce1b1b54c7416a34",
+          "sha256": "44a78ef72a9c5de5ad167bd80bf3a30c036c276f19a96de0092e7e1cb2136927",
+          "bytes": 6422
+        }
+      },
+      "admission": "NOT_ADMITTED",
+      "source_files_staged": false,
+      "source": {
+        "sha256": "0cf423c723218e419929d9a873dab01d60874729d19bbaa21f977f12003b9052",
+        "bytes": 7727,
+        "line_count": 172,
+        "spdx": [],
+        "copyright_notice": false,
+        "pragma_solidity": [
+          "^0.4.2"
+        ],
+        "import_directive_count": 0,
+        "raw_manifest_sources": [],
+        "exact_normalized_artifact": false
+      },
+      "explorer": {
+        "compiler_version": "v0.4.17+commit.bdeb9e52",
+        "contract_name_matches_catalog": true,
+        "optimizer": "0",
+        "runs": "200",
+        "evm_version": "Default",
+        "license_type": "",
+        "unit_count": 1,
+        "settings_retained": false,
+        "source_exact_unit_matches": 0,
+        "source_newline_normalized_unit_matches": 0,
+        "units": [
+          {
+            "sha256": "716f737e60f55f76a9b6a27fa2b535ff5db2e31a8df0ca9568409045084116f8",
+            "bytes": 7897,
+            "line_count": 172,
+            "spdx": [],
+            "copyright_notice": false,
+            "pragma_solidity": [
+              "^0.4.2"
+            ],
+            "import_directive_count": 0,
+            "raw_manifest_sources": [],
+            "exact_normalized_artifact": false
+          }
+        ]
+      },
+      "localization_checks": [
+        {
+          "source_unit_found": true,
+          "range_in_bounds": true,
+          "source_unit_sha256": "716f737e60f55f76a9b6a27fa2b535ff5db2e31a8df0ca9568409045084116f8"
+        }
+      ],
+      "rights_disposition": "NO_SPDX_RIGHTS_UNRESOLVED",
+      "runtime_hex_valid": true,
+      "cve_identity_matches": true
+    },
+    {
+      "case_id": "CVE-P04",
+      "stratum": "reentrancy",
+      "labels": {
+        "IulianoDiNucci2026": [
+          "1A1"
+        ],
+        "CWE": [
+          "CWE-841"
+        ],
+        "SWC": [
+          "SWC-107"
+        ]
+      },
+      "blobs": {
+        "source": {
+          "status": "VERIFIED_BLOB",
+          "git_blob": "a4f798fcf4fb58b28ed15bdc4748ca8933747dfb",
+          "sha256": "7bc9c7d26bff2be7888c4638c150befeb87aafda941143a51c2e556dc83848e9",
+          "bytes": 11820
+        },
+        "explorer": {
+          "status": "VERIFIED_BLOB",
+          "git_blob": "6c41f1a0ad033307da8d6c5cd342f304e142d21e",
+          "sha256": "85159a0b9090370331ffc8997295dbda609e634dee67526af9159c93ce8afd40",
+          "bytes": 21468
+        },
+        "runtime": {
+          "status": "VERIFIED_BLOB",
+          "git_blob": "33d3639ce9df9257f31dae5d1eb7ea06466a822f",
+          "sha256": "f5f6eb6a921cf769a550edfc9f7dc1b4434e0b2670de2cfad2e4fbe0cf09758f",
+          "bytes": 13498
+        },
+        "cve": {
+          "status": "VERIFIED_BLOB",
+          "git_blob": "8608e7b9b9ac5319a3ac407db9645e5182f19836",
+          "sha256": "0f7c7549895b8c80ce5236ffb8f4a762dd736f2787f291a107d8a0967c41d87c",
+          "bytes": 5296
+        }
+      },
+      "admission": "NOT_ADMITTED",
+      "source_files_staged": false,
+      "source": {
+        "sha256": "7bc9c7d26bff2be7888c4638c150befeb87aafda941143a51c2e556dc83848e9",
+        "bytes": 11820,
+        "line_count": 362,
+        "spdx": [
+          "MIT"
+        ],
+        "copyright_notice": false,
+        "pragma_solidity": [
+          "^0.8.19"
+        ],
+        "import_directive_count": 0,
+        "raw_manifest_sources": [],
+        "exact_normalized_artifact": false
+      },
+      "explorer": {
+        "compiler_version": "v0.8.19+commit.7dd6d404",
+        "contract_name_matches_catalog": true,
+        "optimizer": "1",
+        "runs": "200",
+        "evm_version": "Default",
+        "license_type": "MIT",
+        "unit_count": 1,
+        "settings_retained": false,
+        "source_exact_unit_matches": 0,
+        "source_newline_normalized_unit_matches": 0,
+        "units": [
+          {
+            "sha256": "c861636f6efa64839785de98bf9674a72e2faf3c4bdb649a349ec5556d81bc98",
+            "bytes": 12180,
+            "line_count": 362,
+            "spdx": [
+              "MIT"
+            ],
+            "copyright_notice": false,
+            "pragma_solidity": [
+              "^0.8.19"
+            ],
+            "import_directive_count": 0,
+            "raw_manifest_sources": [],
+            "exact_normalized_artifact": false
+          }
+        ]
+      },
+      "localization_checks": [
+        {
+          "source_unit_found": true,
+          "range_in_bounds": true,
+          "source_unit_sha256": "c861636f6efa64839785de98bf9674a72e2faf3c4bdb649a349ec5556d81bc98"
+        }
+      ],
+      "rights_disposition": "EXPLICIT_SOURCE_NOTICE_REVIEW_REQUIRED",
+      "runtime_hex_valid": true,
+      "cve_identity_matches": true
+    },
+    {
+      "case_id": "CVE-P05",
+      "stratum": "other",
+      "labels": {
+        "IulianoDiNucci2026": [
+          "6A1"
+        ],
+        "CWE": [
+          "CWE-190"
+        ],
+        "SWC": [
+          "SWC-101"
+        ]
+      },
+      "blobs": {
+        "source": {
+          "status": "VERIFIED_BLOB",
+          "git_blob": "05725b9c3c51a5de0ce9f9c89f027862e8fc8245",
+          "sha256": "abf388e7ff2ec3cee418ea9b717429d92bd4e5bb956d4dc5c94ae4af6758036b",
+          "bytes": 8179
+        },
+        "explorer": {
+          "status": "VERIFIED_BLOB",
+          "git_blob": "1bbe4d26303b497b57f25688b15f3842ff2e60a0",
+          "sha256": "5f2f78693a19a0fee0ed48f198093d47302b55224fd651b36bcc96492a10fbb9",
+          "bytes": 13806
+        },
+        "runtime": {
+          "status": "VERIFIED_BLOB",
+          "git_blob": "72894afaa8b02a341e205d4e5e182193b208a7e2",
+          "sha256": "80c6e28141f7404b6fdb9c101809a8218b3da8e17a2a447fd00d862f005eb445",
+          "bytes": 5916
+        },
+        "cve": {
+          "status": "VERIFIED_BLOB",
+          "git_blob": "f7d8c87403184940c1a3146fa0320fa6f203d5b9",
+          "sha256": "1a7edcb874482979b2687a219e1dc0e599d669704382064b345a95cbccc6a9d5",
+          "bytes": 6362
+        }
+      },
+      "admission": "NOT_ADMITTED",
+      "source_files_staged": false,
+      "source": {
+        "sha256": "abf388e7ff2ec3cee418ea9b717429d92bd4e5bb956d4dc5c94ae4af6758036b",
+        "bytes": 8179,
+        "line_count": 214,
+        "spdx": [],
+        "copyright_notice": true,
+        "pragma_solidity": [
+          "^0.4.18"
+        ],
+        "import_directive_count": 0,
+        "raw_manifest_sources": [],
+        "exact_normalized_artifact": false
+      },
+      "explorer": {
+        "compiler_version": "v0.4.18+commit.9cf6e910",
+        "contract_name_matches_catalog": true,
+        "optimizer": "1",
+        "runs": "200",
+        "evm_version": "Default",
+        "license_type": "",
+        "unit_count": 1,
+        "settings_retained": false,
+        "source_exact_unit_matches": 0,
+        "source_newline_normalized_unit_matches": 0,
+        "units": [
+          {
+            "sha256": "c097a0cfa5abd313b4c429b7b1a0b6b17de3bfebe63235360d2cc36ca7ada6df",
+            "bytes": 8391,
+            "line_count": 214,
+            "spdx": [],
+            "copyright_notice": true,
+            "pragma_solidity": [
+              "^0.4.18"
+            ],
+            "import_directive_count": 0,
+            "raw_manifest_sources": [
+              "dive"
+            ],
+            "exact_normalized_artifact": false
+          }
+        ]
+      },
+      "localization_checks": [
+        {
+          "source_unit_found": true,
+          "range_in_bounds": true,
+          "source_unit_sha256": "c097a0cfa5abd313b4c429b7b1a0b6b17de3bfebe63235360d2cc36ca7ada6df"
+        }
+      ],
+      "rights_disposition": "NO_SPDX_RIGHTS_UNRESOLVED",
+      "runtime_hex_valid": true,
+      "cve_identity_matches": true
+    }
+  ],
+  "elapsed_seconds": 11.459,
+  "source_files_staged": 0,
+  "runtime_reproduced": 0,
+  "labels_admitted": 0,
+  "limits": "Pinned blob bytes and location range bounds only; no AST localization or source-runtime recompilation, no current live-chain queries, no normalized/near-duplicate grouping. SPDX notices not full rights adjudication. Public evidence uses opaque cases and hashes; raw code not persisted."
+}

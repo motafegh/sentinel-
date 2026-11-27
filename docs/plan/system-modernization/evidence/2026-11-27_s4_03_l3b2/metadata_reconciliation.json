@@ -1,0 +1,11 @@
+{
+  "index_count": 568,
+  "validation_contract_count": 542,
+  "actual_label_record_count": 568,
+  "labels_cover_index": true,
+  "catalog_matches_selected_index_validation": true,
+  "localizations_cover_catalog": true,
+  "catalog_labels_equal_full_labels_count": 0,
+  "upstream_refuted_count": 8,
+  "initial_profile_label_records_field_error": "Initial capture counted two top-level JSON envelope keys, not records. Correct count is actual_label_record_count above. Original capture retained."
+}

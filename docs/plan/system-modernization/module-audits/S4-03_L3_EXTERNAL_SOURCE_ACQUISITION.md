@@ -46,3 +46,7 @@ Gas Gauge pinned tree: 2,000 benchmark paths/1,683 distinct blobs, no cross-fold
 ## 6. L3B0B actual observation ledger
 
 [Evidence](../evidence/2026-11-27_s4_03_l3b0b/WORKING_RECORD.md). New isolated research parser/view/selection module and verified local evidence artifacts; 26,071 original rows, 178,640 native category cells, 22,308 accepted source record links with 22 unmatched IDs retained. 21 group-distinct review cases reserved, no accepted targets changed; prospective optimizer overlap guard not integrated. L3B0C review separately ready, prioritize L3B2 CVE acquisition preflight next to maintain multi-source research. No existing legacy connector enabled.
+
+## 7. L3B2 CVE Smart Contracts bounded preflight
+
+[Evidence](../evidence/2026-11-27_s4_03_l3b2/WORKING_RECORD.md). Pinned 2026-08-14 release: 568 index/491 selected catalog, 503 locations, 449 distinct explorer paths; complete label and location reconciliation. 437 primary SWC-101, only one each SWC-128/113/107, no SWC-104/126. Frozen quotas yielded five cases, 19/20 pinned objects verified, 4/4 inspected explorer line ranges in bounds, distributed source differs in byte identity, one explorer source exact DIVE raw overlap; rights and group linkage unresolved. No code persisted or executed; no label/role changes. L3B2 PASS_WITH_LIMITATIONS, prioritize FORGE Curated L3B3 next.

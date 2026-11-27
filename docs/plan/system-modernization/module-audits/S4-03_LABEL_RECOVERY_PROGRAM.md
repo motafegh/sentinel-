@@ -128,3 +128,7 @@ L-G0 PASS_WITH_LIMITATIONS: accepted logical label and source provenance invento
 ## 13. L3B0B evidence-only observation ledger and review queue
 
 [Evidence](../evidence/2026-11-27_s4_03_l3b0b/WORKING_RECORD.md). Implemented strict DIVE row/category preservation with 1,251,408 cells, 696,540 nulls, 178,640 native-category records, 22,308 original path links/22,054 artifacts; 22 unmatched IDs explicit. Separate ignored Parquet root and manifest, no truth inference. 21 unique eligible review groups (9 Time unsupported positives, 4 each UR/DoS zero with positive observation, 2 each no-positive comparison), prior 216 groups excluded, combined prospective reservations 237. Explicit optimizer-overlap guard tested but not integrated into successor. 34 focused tests and governance pass; V3 claims and targets unchanged. L3B0B complete; L3B0C primary review and L3B2 CVE preflight independently ready, prioritize external source next. L-G1 open.
+
+## 14. L3B2 CVE acquisition preflight
+
+[Evidence](../evidence/2026-11-27_s4_03_l3b2/WORKING_RECORD.md). Exact catalog selection/labels/localization keys reconciled, 491 records dominated by 437 arithmetic claims; five frozen cases, 19/20 artifacts verified, 4/4 source unit ranges in bounds, one raw DIVE overlap. Rights, source coordinate transformation, runtime and group lineage unresolved; no admission. L3B3 FORGE next; L3B0C review independent.

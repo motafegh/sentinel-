@@ -1,0 +1,115 @@
+{
+  "pin": "ed62986909d00f7260e38178fe9a6cd5064c9ef6",
+  "metadata_file_hashes": {
+    "cve.json": {
+      "sha256": "25ad6ef3b05f41f47fe24919f564c081996b39bf4f31b97f5d1676cfd4871b0b",
+      "git_blob": "c04a6e79b6d046134ebf8f17758ab29b4e78381a",
+      "bytes": 967352
+    },
+    "data/index.csv": {
+      "sha256": "f56cdd00a86de7db57067c70f8144a191193f3c5610d442d381ad740bc543067",
+      "git_blob": "0f9ff21e4b2e72c65e95f7ee2416fc17226518a1",
+      "bytes": 99835
+    },
+    "validation/validation.csv": {
+      "sha256": "009befdb3264dfaf4957beb9df9f0aa2895338cf92c69f3a3fd9838da59f389b",
+      "git_blob": "5013dfe2c29cda8b2c83b36d606ca191e804eca3",
+      "bytes": 88002
+    },
+    "metadata.json": {
+      "sha256": "b5018e0495c01a3c9984904b2ef920e2ce37a15abb0e8f81d2c78b55bac25540",
+      "git_blob": "562dc077cca838aa7eaf841f5ee01ea978af541f",
+      "bytes": 1699
+    },
+    "localization/locations.json": {
+      "sha256": "2ad4ead252f93dbd0fd925dc2aafcf3a0323cba54b0e9c4cf6d7e2d4f87571d4",
+      "git_blob": "41ec9de4461acddbcc886afb7b03ca17965dea1a",
+      "bytes": 398056
+    },
+    "labeling/labels.json": {
+      "sha256": "a16c754da75406886171287f5108644b3a1d84451653813f3e21a0dfb6e122c2",
+      "git_blob": "78637e0cbd227857b0548de183d49c12c2c7e9e7",
+      "bytes": 436437
+    }
+  },
+  "metadata_coverage": {
+    "index_records": 568,
+    "contract_records": 542,
+    "library_records": 26,
+    "refuted_records": 8,
+    "chains": {
+      "bsc": 1,
+      "ethereum": 541
+    },
+    "validation": {
+      "match": 497,
+      "non_match": 45
+    },
+    "labels": 568,
+    "localizations": 491,
+    "catalog_records": 491
+  },
+  "index_kind_counts": {
+    "contract": 542,
+    "library": 26
+  },
+  "refuted": 8,
+  "catalog": 491,
+  "distinct_explorer_paths": 449,
+  "distinct_runtime_paths": 413,
+  "location_records": 491,
+  "label_records": 2,
+  "catalog_location_count": 503,
+  "swc_primary": {
+    "SWC-101": 437,
+    "NONE": 28,
+    "SWC-121": 1,
+    "SWC-118": 8,
+    "SWC-120": 10,
+    "SWC-113": 1,
+    "SWC-112": 1,
+    "SWC-122": 1,
+    "SWC-115": 1,
+    "SWC-128": 1,
+    "SWC-107": 1,
+    "SWC-105": 1
+  },
+  "swc_any": {
+    "SWC-101": 437,
+    "SWC-121": 1,
+    "SWC-118": 8,
+    "SWC-120": 10,
+    "SWC-113": 1,
+    "SWC-124": 1,
+    "SWC-112": 1,
+    "SWC-122": 1,
+    "SWC-115": 1,
+    "SWC-128": 1,
+    "SWC-107": 1,
+    "SWC-105": 1
+  },
+  "selection_quotas": {
+    "gas": 3,
+    "dos": 2,
+    "return": 2,
+    "arithmetic": 1,
+    "reentrancy": 1,
+    "other": 1
+  },
+  "selection_pools": {
+    "gas": 1,
+    "dos": 1,
+    "return": 0,
+    "arithmetic": 437,
+    "reentrancy": 1,
+    "other": 491
+  },
+  "selected_counts": {
+    "gas": 1,
+    "dos": 1,
+    "arithmetic": 1,
+    "reentrancy": 1,
+    "other": 1
+  },
+  "limits": "Unique explorer record as provisional sample unit, not independent project or leakage group. No claim truth."
+}
