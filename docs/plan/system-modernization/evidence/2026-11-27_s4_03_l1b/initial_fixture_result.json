@@ -1,0 +1,35 @@
+{
+  "case_id": "fixture",
+  "command": [
+    "unshare",
+    "-Urn",
+    "--",
+    "/home/motafeq/projects/sentinel/agents/.venv/bin/python",
+    "/home/motafeq/projects/sentinel/docs/plan/system-modernization/evidence/2026-11-27_s4_03_l1b/return_inventory_capture.py",
+    "--compiler",
+    "/home/motafeq/.solc-select/artifacts/solc-0.8.22/solc-0.8.22",
+    "--source",
+    "/tmp/sentinel-l1b-fc9ae6vs/fixture/target.sol"
+  ],
+  "source_sha256": "45f60d4af34f9e48bcf42600b2cab565a3bd210ad0d9f79934fc97ce38571c0f",
+  "exit_code": 0,
+  "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "stdout_sha256": "be9a3b686ebea9e58f38062528909f000c52f061401b86e8c6d32221377c1629",
+  "inventory": {
+    "status": "FAILED",
+    "error_type": "SlitherError",
+    "error_sha256": "5c79e92064b8152eb8dcbd005df25156f51734749ce32e674a487b1bc612647a",
+    "source_sha256": "45f60d4af34f9e48bcf42600b2cab565a3bd210ad0d9f79934fc97ce38571c0f",
+    "compiler_sha256": "8be0aeb74fc1b8213292a09a84cb524a403602526df87ecad5f5cd2a7ea7d089",
+    "slither_version": "0.11.5"
+  },
+  "wall_seconds": 0.347,
+  "expected_direct_functions": [
+    "discardedInternal",
+    "discardedExternal",
+    "discardedTransfer",
+    "discardedPair"
+  ],
+  "actual_direct_functions": [],
+  "pass": false
+}

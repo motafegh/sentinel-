@@ -1,0 +1,384 @@
+{
+  "case_id": "fixture",
+  "command": [
+    "unshare",
+    "-Urn",
+    "--",
+    "/home/motafeq/projects/sentinel/agents/.venv/bin/python",
+    "/home/motafeq/projects/sentinel/docs/plan/system-modernization/evidence/2026-11-27_s4_03_l1b/return_inventory_capture.py",
+    "--compiler",
+    "/home/motafeq/.solc-select/artifacts/solc-0.8.22/solc-0.8.22",
+    "--source",
+    "/tmp/sentinel-l1b-rqnmrupi/fixture/target.sol"
+  ],
+  "source_sha256": "2b48c28f7f5a38de4688aff3b3d63e0dcca6cfd3e1bb94a7bb48bfd9f133675d",
+  "exit_code": 0,
+  "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "stdout_sha256": "af14a1a378869d80251fc6088a764d564ff376c537f404eb1d28791351e8a000",
+  "inventory": {
+    "status": "COMPLETED",
+    "components": [
+      {
+        "name": "IExample",
+        "lines": [
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "kind": "interface"
+      },
+      {
+        "name": "ReviewFixture",
+        "lines": [
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15,
+          16,
+          17,
+          18,
+          19,
+          20
+        ],
+        "kind": "contract"
+      }
+    ],
+    "functions": [
+      {
+        "function": "IExample.noop()",
+        "lines": [
+          6
+        ],
+        "implemented": null,
+        "visibility": "external",
+        "nodes": 0,
+        "call_kinds": {},
+        "loop_markers": 0
+      },
+      {
+        "function": "IExample.pair()",
+        "lines": [
+          5
+        ],
+        "implemented": null,
+        "visibility": "external",
+        "nodes": 0,
+        "call_kinds": {},
+        "loop_markers": 0
+      },
+      {
+        "function": "IExample.transfer(address,uint256)",
+        "lines": [
+          4
+        ],
+        "implemented": null,
+        "visibility": "external",
+        "nodes": 0,
+        "call_kinds": {},
+        "loop_markers": 0
+      },
+      {
+        "function": "IExample.value()",
+        "lines": [
+          3
+        ],
+        "implemented": null,
+        "visibility": "external",
+        "nodes": 0,
+        "call_kinds": {},
+        "loop_markers": 0
+      },
+      {
+        "function": "ReviewFixture.discardedExternal(IExample)",
+        "lines": [
+          12
+        ],
+        "implemented": true,
+        "visibility": "external",
+        "nodes": 2,
+        "call_kinds": {
+          "HighLevelCall": 1
+        },
+        "loop_markers": 0
+      },
+      {
+        "function": "ReviewFixture.discardedInternal()",
+        "lines": [
+          11
+        ],
+        "implemented": true,
+        "visibility": "external",
+        "nodes": 2,
+        "call_kinds": {
+          "InternalCall": 1
+        },
+        "loop_markers": 0
+      },
+      {
+        "function": "ReviewFixture.discardedPair(IExample)",
+        "lines": [
+          14
+        ],
+        "implemented": true,
+        "visibility": "external",
+        "nodes": 2,
+        "call_kinds": {
+          "HighLevelCall": 1
+        },
+        "loop_markers": 0
+      },
+      {
+        "function": "ReviewFixture.discardedTransfer(IExample)",
+        "lines": [
+          13
+        ],
+        "implemented": true,
+        "visibility": "external",
+        "nodes": 2,
+        "call_kinds": {
+          "HighLevelCall": 1
+        },
+        "loop_markers": 0
+      },
+      {
+        "function": "ReviewFixture.forwarded(IExample)",
+        "lines": [
+          17
+        ],
+        "implemented": true,
+        "visibility": "external",
+        "nodes": 2,
+        "call_kinds": {
+          "HighLevelCall": 1
+        },
+        "loop_markers": 0
+      },
+      {
+        "function": "ReviewFixture.internalValue()",
+        "lines": [
+          9
+        ],
+        "implemented": true,
+        "visibility": "internal",
+        "nodes": 2,
+        "call_kinds": {},
+        "loop_markers": 0
+      },
+      {
+        "function": "ReviewFixture.internalVoid()",
+        "lines": [
+          10
+        ],
+        "implemented": true,
+        "visibility": "internal",
+        "nodes": 1,
+        "call_kinds": {},
+        "loop_markers": 0
+      },
+      {
+        "function": "ReviewFixture.nested(IExample)",
+        "lines": [
+          18
+        ],
+        "implemented": true,
+        "visibility": "external",
+        "nodes": 2,
+        "call_kinds": {
+          "HighLevelCall": 1,
+          "SolidityCall": 1
+        },
+        "loop_markers": 0
+      },
+      {
+        "function": "ReviewFixture.partialTuple(IExample)",
+        "lines": [
+          19
+        ],
+        "implemented": true,
+        "visibility": "external",
+        "nodes": 4,
+        "call_kinds": {
+          "HighLevelCall": 1
+        },
+        "loop_markers": 0
+      },
+      {
+        "function": "ReviewFixture.usedAssignment(IExample)",
+        "lines": [
+          16
+        ],
+        "implemented": true,
+        "visibility": "external",
+        "nodes": 3,
+        "call_kinds": {
+          "HighLevelCall": 1
+        },
+        "loop_markers": 0
+      },
+      {
+        "function": "ReviewFixture.voidOnly(IExample)",
+        "lines": [
+          15
+        ],
+        "implemented": true,
+        "visibility": "external",
+        "nodes": 3,
+        "call_kinds": {
+          "HighLevelCall": 1,
+          "InternalCall": 1
+        },
+        "loop_markers": 0
+      }
+    ],
+    "direct_candidates": [
+      {
+        "function": "ReviewFixture.discardedExternal(IExample)",
+        "callee": "IExample.value()",
+        "call_kind": "HighLevelCall",
+        "return_arity": 1,
+        "lines": [
+          12
+        ],
+        "declaration_lines": [
+          3
+        ],
+        "observation": "DIRECT_DISCARDED_NONVOID_EXPRESSION"
+      },
+      {
+        "function": "ReviewFixture.discardedInternal()",
+        "callee": "ReviewFixture.internalValue()",
+        "call_kind": "InternalCall",
+        "return_arity": 1,
+        "lines": [
+          11
+        ],
+        "declaration_lines": [
+          9
+        ],
+        "observation": "DIRECT_DISCARDED_NONVOID_EXPRESSION"
+      },
+      {
+        "function": "ReviewFixture.discardedPair(IExample)",
+        "callee": "IExample.pair()",
+        "call_kind": "HighLevelCall",
+        "return_arity": 2,
+        "lines": [
+          14
+        ],
+        "declaration_lines": [
+          5
+        ],
+        "observation": "DIRECT_DISCARDED_NONVOID_EXPRESSION"
+      },
+      {
+        "function": "ReviewFixture.discardedTransfer(IExample)",
+        "callee": "IExample.transfer(address,uint256)",
+        "call_kind": "HighLevelCall",
+        "return_arity": 1,
+        "lines": [
+          13
+        ],
+        "declaration_lines": [
+          4
+        ],
+        "observation": "DIRECT_DISCARDED_NONVOID_EXPRESSION"
+      }
+    ],
+    "ambiguous_standalone_calls": [
+      {
+        "function": "ReviewFixture.nested(IExample)",
+        "lines": [
+          18
+        ],
+        "call_kinds": [
+          "HighLevelCall",
+          "SolidityCall"
+        ]
+      }
+    ],
+    "unused_return_detector_findings": [
+      {
+        "detector": "unused-return",
+        "elements": [
+          {
+            "type": "function",
+            "name": "discardedExternal",
+            "lines": [
+              12
+            ]
+          },
+          {
+            "type": "node",
+            "name": "x.value()",
+            "lines": [
+              12
+            ]
+          }
+        ]
+      },
+      {
+        "detector": "unused-return",
+        "elements": [
+          {
+            "type": "function",
+            "name": "partialTuple",
+            "lines": [
+              19
+            ]
+          },
+          {
+            "type": "node",
+            "name": "(a,None) = x.pair()",
+            "lines": [
+              19
+            ]
+          }
+        ]
+      },
+      {
+        "detector": "unused-return",
+        "elements": [
+          {
+            "type": "function",
+            "name": "discardedPair",
+            "lines": [
+              14
+            ]
+          },
+          {
+            "type": "node",
+            "name": "x.pair()",
+            "lines": [
+              14
+            ]
+          }
+        ]
+      }
+    ],
+    "seconds": 0.0309,
+    "source_sha256": "2b48c28f7f5a38de4688aff3b3d63e0dcca6cfd3e1bb94a7bb48bfd9f133675d",
+    "compiler_sha256": "8be0aeb74fc1b8213292a09a84cb524a403602526df87ecad5f5cd2a7ea7d089",
+    "slither_version": "0.11.5"
+  },
+  "wall_seconds": 0.356,
+  "expected_direct_functions": [
+    "discardedInternal",
+    "discardedExternal",
+    "discardedTransfer",
+    "discardedPair"
+  ],
+  "actual_direct_functions": [
+    "discardedExternal",
+    "discardedInternal",
+    "discardedPair",
+    "discardedTransfer"
+  ],
+  "pass": true
+}

@@ -1,0 +1,390 @@
+{
+  "baseline": "820bc1457f3260c54c946c704f7695240b19f1d4",
+  "taxonomy_sha256": "32ea164236aa0e567a5560f65f0ce45f17ed8e8112c2ed06c1b490712f7d6d39",
+  "v3_manifest_sha256": "26b0a4b103010d3f2bcbb6ca08aaec98047dfeb8a4954440aa913c4a7053400f",
+  "pilot_manifest_sha256": "d029e2ad302b7b94c3cd89f5a799a678fb9d747c2a1ee363bdc53d46ff5d7dc3",
+  "records": [
+    {
+      "case_id": "L1A-01",
+      "class": "DenialOfService",
+      "class_index": 1,
+      "contract_id": "c3ef4d19822e4787d8ba3549213ba6743487c4752f709576b9ad0f4aef1499e9",
+      "group_id": "r4grp-48f25c281dcad56ac655b8a4607f6403",
+      "source_sha256": "c3ef4d19822e4787d8ba3549213ba6743487c4752f709576b9ad0f4aef1499e9",
+      "source_path": "data_module/data/sentinel-preprocessed-r4-v2/dive/c3ef4d19822e4787d8ba3549213ba6743487c4752f709576b9ad0f4aef1499e9.sol",
+      "compiler_version": "0.4.25",
+      "native_claim_present": true,
+      "prior_outcome": "NOT_REVIEWED",
+      "prior_target": null,
+      "effective_loss_mask": false,
+      "primary_disposition": "INSUFFICIENT",
+      "evidence_ranges": [
+        [
+          142,
+          163
+        ]
+      ],
+      "reasoning": "Owner-restricted batch distribution and a single-recipient alternative. Cost alone does not establish attacker-induced permanent loss of function.",
+      "security_impact": "NOT_ESTABLISHED",
+      "review_scope": "Structural inventory plus targeted source review; other paths not exhaustively proven.",
+      "independent_review": "PENDING",
+      "admission": "NOT_ADMITTED",
+      "selection": "L1B_PLANNED",
+      "target_change_authorized": false
+    },
+    {
+      "case_id": "L1A-02",
+      "class": "DenialOfService",
+      "class_index": 1,
+      "contract_id": "98de8a5ee7429c88c362a8899bd231658b773d5bf8aa60b2be401f2aeda584f2",
+      "group_id": "r4grp-30f7ec8a15a6de5b0ef753b62bd940ba",
+      "source_sha256": "98de8a5ee7429c88c362a8899bd231658b773d5bf8aa60b2be401f2aeda584f2",
+      "source_path": "data_module/data/sentinel-preprocessed-r4-v2/dive/98de8a5ee7429c88c362a8899bd231658b773d5bf8aa60b2be401f2aeda584f2.sol",
+      "compiler_version": "0.6.12",
+      "native_claim_present": true,
+      "prior_outcome": "NOT_REVIEWED",
+      "prior_target": null,
+      "effective_loss_mask": false,
+      "primary_disposition": "INSUFFICIENT",
+      "evidence_ranges": [
+        [
+          558,
+          568
+        ],
+        [
+          764,
+          770
+        ],
+        [
+          788,
+          802
+        ]
+      ],
+      "reasoning": "Loop requires owner; token-check modifier contains restrictions but no demonstrated attacker-controlled permanent blocking mechanism in reviewed evidence.",
+      "security_impact": "NOT_ESTABLISHED",
+      "review_scope": "Structural inventory plus targeted source review; other paths not exhaustively proven.",
+      "independent_review": "PENDING",
+      "admission": "NOT_ADMITTED",
+      "selection": "L1B_PLANNED",
+      "target_change_authorized": false
+    },
+    {
+      "case_id": "L1A-03",
+      "class": "DenialOfService",
+      "class_index": 1,
+      "contract_id": "d2d6a25fd238aa74c0cdfd16ce9c74d5a35c2aa629379cbe371db4b79a4bf0cb",
+      "group_id": "r4grp-fc44d360bdb1cd5999de5029ceba4545",
+      "source_sha256": "d2d6a25fd238aa74c0cdfd16ce9c74d5a35c2aa629379cbe371db4b79a4bf0cb",
+      "source_path": "data_module/data/sentinel-preprocessed-r4-v2/dive/d2d6a25fd238aa74c0cdfd16ce9c74d5a35c2aa629379cbe371db4b79a4bf0cb.sol",
+      "compiler_version": "0.8.0",
+      "native_claim_present": true,
+      "prior_outcome": "NOT_REVIEWED",
+      "prior_target": null,
+      "effective_loss_mask": false,
+      "primary_disposition": "INSUFFICIENT",
+      "evidence_ranges": [
+        [
+          1045,
+          1066
+        ],
+        [
+          1207,
+          1250
+        ],
+        [
+          1289,
+          1308
+        ],
+        [
+          1375,
+          1380
+        ]
+      ],
+      "reasoning": "Receiver callback and enumeration writes occur in mint-related loops. Supply and non-owner mint amount limits; owner airdrop. No durable attacker-induced essential-function blockage established.",
+      "security_impact": "NOT_ESTABLISHED",
+      "review_scope": "Structural inventory plus targeted source review; no full environmental proof.",
+      "independent_review": "PENDING",
+      "admission": "NOT_ADMITTED",
+      "selection": "L1B_PLANNED",
+      "target_change_authorized": false
+    },
+    {
+      "case_id": "L1A-04",
+      "class": "DenialOfService",
+      "class_index": 1,
+      "contract_id": "11f50b3809298cfdc75607ae3deb17888f6710466d057dc3bf770904bf4237d5",
+      "group_id": "r4grp-0b58e81158e1bfaf4a25872ff3ca0a8f",
+      "source_sha256": "11f50b3809298cfdc75607ae3deb17888f6710466d057dc3bf770904bf4237d5",
+      "source_path": "data_module/data/sentinel-preprocessed-r4-v2/dive/11f50b3809298cfdc75607ae3deb17888f6710466d057dc3bf770904bf4237d5.sol",
+      "compiler_version": "0.8.7",
+      "native_claim_present": true,
+      "prior_outcome": "NOT_REVIEWED",
+      "prior_target": null,
+      "effective_loss_mask": false,
+      "primary_disposition": "INSUFFICIENT",
+      "evidence_ranges": [
+        [
+          656,
+          665
+        ],
+        [
+          711,
+          720
+        ],
+        [
+          726,
+          757
+        ]
+      ],
+      "reasoning": "No requested DoS detector hit. Parsed loop in owner-only fee-exclusion batch; external router setup and ordinary fee logic do not establish permanent blocking. Other paths unresolved.",
+      "security_impact": "NOT_ESTABLISHED",
+      "review_scope": "Structural inventory and selected loop/call paths reviewed; not complete semantic assessment.",
+      "independent_review": "PENDING",
+      "admission": "NOT_ADMITTED",
+      "selection": "L1B_PLANNED",
+      "target_change_authorized": false
+    },
+    {
+      "case_id": "L1A-08",
+      "class": "UnusedReturn",
+      "class_index": 9,
+      "contract_id": "25f30a8ce75a836185779fa597d9fbce4b1420d0fc0b2043547c95ef34513af7",
+      "group_id": "r4grp-6068727e4dddaf65741b9255ef565547",
+      "source_sha256": "25f30a8ce75a836185779fa597d9fbce4b1420d0fc0b2043547c95ef34513af7",
+      "source_path": "data_module/data/sentinel-preprocessed-r4-v2/dive/25f30a8ce75a836185779fa597d9fbce4b1420d0fc0b2043547c95ef34513af7.sol",
+      "compiler_version": "0.8.20",
+      "native_claim_present": false,
+      "prior_outcome": "UNKNOWN",
+      "prior_target": null,
+      "effective_loss_mask": false,
+      "primary_disposition": "SUPPORTS_CLASS_CANDIDATE",
+      "evidence_ranges": [
+        [
+          24,
+          24
+        ],
+        [
+          108,
+          115
+        ],
+        [
+          328,
+          337
+        ]
+      ],
+      "reasoning": "Typed approve boolean and router three-value result are discarded in standalone call statements; literal class applies at these sites. Router nested arguments make helper conservatively omit that call.",
+      "security_impact": "NOT_ESTABLISHED",
+      "review_scope": "Existential positive witness; all components parsed, not full semantic review.",
+      "independent_review": "PENDING",
+      "admission": "NOT_ADMITTED",
+      "selection": "L1B_PLANNED",
+      "target_change_authorized": false
+    },
+    {
+      "case_id": "L1A-09",
+      "class": "UnusedReturn",
+      "class_index": 9,
+      "contract_id": "1435a832d722b1f8dca133b429b3781d7d9ff70402fe0767606b68af28652bce",
+      "group_id": "r4grp-20e96af5c124933fc9954a79f3f2be82",
+      "source_sha256": "1435a832d722b1f8dca133b429b3781d7d9ff70402fe0767606b68af28652bce",
+      "source_path": "data_module/data/sentinel-preprocessed-r4-v2/dive/1435a832d722b1f8dca133b429b3781d7d9ff70402fe0767606b68af28652bce.sol",
+      "compiler_version": "0.4.26",
+      "native_claim_present": true,
+      "prior_outcome": "NOT_REVIEWED",
+      "prior_target": null,
+      "effective_loss_mask": false,
+      "primary_disposition": "INSUFFICIENT",
+      "evidence_ranges": [
+        [
+          1,
+          102
+        ]
+      ],
+      "reasoning": "Read all source; low-level success is checked with require, reseed is void, lucky-number result consumed/returned. No supported discarded nonvoid result identified by review or helper. Builtin and complete semantic coverage not independently established.",
+      "security_impact": "NOT_ESTABLISHED",
+      "review_scope": "Full source read and structural inventory, no negative adjudication.",
+      "independent_review": "PENDING",
+      "admission": "NOT_ADMITTED",
+      "selection": "L1B_PLANNED",
+      "target_change_authorized": false
+    },
+    {
+      "case_id": "L1A-10",
+      "class": "UnusedReturn",
+      "class_index": 9,
+      "contract_id": "55b97aa8d81196e12aefa908b802ef01bae6e1200798e2ae0cceecbc6d8cd20b",
+      "group_id": "r4grp-97de5e76b51fbd43c8ad39742ab9e563",
+      "source_sha256": "55b97aa8d81196e12aefa908b802ef01bae6e1200798e2ae0cceecbc6d8cd20b",
+      "source_path": "data_module/data/sentinel-preprocessed-r4-v2/dive/55b97aa8d81196e12aefa908b802ef01bae6e1200798e2ae0cceecbc6d8cd20b.sol",
+      "compiler_version": "0.4.24",
+      "native_claim_present": true,
+      "prior_outcome": "NOT_REVIEWED",
+      "prior_target": null,
+      "effective_loss_mask": false,
+      "primary_disposition": "INSUFFICIENT",
+      "evidence_ranges": [
+        [
+          1,
+          140
+        ],
+        [
+          145,
+          233
+        ]
+      ],
+      "reasoning": "Reviewed typed callback declaration is void, raw call result checked by assert, transfer helpers returned, value transfer has no return. No supporting witness identified; unreviewed/ambiguous scope prevents negative.",
+      "security_impact": "NOT_ESTABLISHED",
+      "review_scope": "Near-complete source read, structural inventory, no independent assessment.",
+      "independent_review": "PENDING",
+      "admission": "NOT_ADMITTED",
+      "selection": "L1B_PLANNED",
+      "target_change_authorized": false
+    },
+    {
+      "case_id": "L1A-11",
+      "class": "UnusedReturn",
+      "class_index": 9,
+      "contract_id": "06de0432e1f626fa0a89a130d778d0b1dcfdd2261b1bf8d30c7d30bd97151838",
+      "group_id": "r4grp-b4532f8c4702a9a5a05c50e1ff75986f",
+      "source_sha256": "06de0432e1f626fa0a89a130d778d0b1dcfdd2261b1bf8d30c7d30bd97151838",
+      "source_path": "data_module/data/sentinel-preprocessed-r4-v2/dive/06de0432e1f626fa0a89a130d778d0b1dcfdd2261b1bf8d30c7d30bd97151838.sol",
+      "compiler_version": "0.8.18",
+      "native_claim_present": true,
+      "prior_outcome": "NOT_REVIEWED",
+      "prior_target": null,
+      "effective_loss_mask": false,
+      "primary_disposition": "SUPPORTS_CLASS_CANDIDATE",
+      "evidence_ranges": [
+        [
+          84,
+          91
+        ],
+        [
+          260,
+          269
+        ],
+        [
+          399,
+          402
+        ],
+        [
+          425,
+          436
+        ],
+        [
+          526,
+          529
+        ]
+      ],
+      "reasoning": "Typed router triple result and internal basic-transfer boolean discarded. Internal function returns true on successful completion; ignoring a constant-success return does not itself establish security harm.",
+      "security_impact": "NOT_ESTABLISHED",
+      "review_scope": "Existential witness; full parsed inventory, targeted call and declaration review.",
+      "independent_review": "PENDING",
+      "admission": "NOT_ADMITTED",
+      "selection": "L1B_PLANNED",
+      "target_change_authorized": false
+    },
+    {
+      "case_id": "L1A-12",
+      "class": "UnusedReturn",
+      "class_index": 9,
+      "contract_id": "e4966aa8f4c498e564686294914613ca3dd14f0300a02f57ab24511b30e53773",
+      "group_id": "r4grp-ed93e6372c49199b3323d82220d85fdb",
+      "source_sha256": "e4966aa8f4c498e564686294914613ca3dd14f0300a02f57ab24511b30e53773",
+      "source_path": "data_module/data/sentinel-preprocessed-r4-v2/dive/e4966aa8f4c498e564686294914613ca3dd14f0300a02f57ab24511b30e53773.sol",
+      "compiler_version": "0.8.17",
+      "native_claim_present": true,
+      "prior_outcome": "NOT_REVIEWED",
+      "prior_target": null,
+      "effective_loss_mask": false,
+      "primary_disposition": "SUPPORTS_CLASS_CANDIDATE",
+      "evidence_ranges": [
+        [
+          827,
+          842
+        ]
+      ],
+      "reasoning": "Low-level call returns a tuple; second component discarded, success assigned but no subsequent read in the complete enclosing function. Search of source shows only declaration and assignment of success. Direct-expression helper excludes assignment; primary source witness outside its scope.",
+      "security_impact": "NOT_ESTABLISHED",
+      "review_scope": "Targeted full enclosing function and references read; no exploitability conclusion.",
+      "independent_review": "PENDING",
+      "admission": "NOT_ADMITTED",
+      "selection": "L1B_PLANNED",
+      "target_change_authorized": false
+    },
+    {
+      "case_id": "L1A-01",
+      "class": "UnusedReturn",
+      "class_index": 9,
+      "contract_id": "c3ef4d19822e4787d8ba3549213ba6743487c4752f709576b9ad0f4aef1499e9",
+      "group_id": "r4grp-48f25c281dcad56ac655b8a4607f6403",
+      "source_sha256": "c3ef4d19822e4787d8ba3549213ba6743487c4752f709576b9ad0f4aef1499e9",
+      "source_path": "data_module/data/sentinel-preprocessed-r4-v2/dive/c3ef4d19822e4787d8ba3549213ba6743487c4752f709576b9ad0f4aef1499e9.sol",
+      "compiler_version": "0.4.25",
+      "native_claim_present": false,
+      "prior_outcome": "UNKNOWN",
+      "prior_target": null,
+      "effective_loss_mask": false,
+      "primary_disposition": "SUPPORTS_CLASS_CANDIDATE",
+      "evidence_ranges": [
+        [
+          118,
+          118
+        ],
+        [
+          133,
+          140
+        ],
+        [
+          208,
+          208
+        ],
+        [
+          216,
+          221
+        ]
+      ],
+      "reasoning": "Internal distr function declares bool and returns true on success; five standalone calls ignore that return. Literal class applicability supported, not security significance.",
+      "security_impact": "NOT_ESTABLISHED",
+      "review_scope": "Post hoc cross-class candidate, targeted source declaration and calls.",
+      "independent_review": "PENDING",
+      "admission": "NOT_ADMITTED",
+      "selection": "POST_HOC_CROSS_CLASS",
+      "target_change_authorized": false
+    },
+    {
+      "case_id": "L1A-02",
+      "class": "UnusedReturn",
+      "class_index": 9,
+      "contract_id": "98de8a5ee7429c88c362a8899bd231658b773d5bf8aa60b2be401f2aeda584f2",
+      "group_id": "r4grp-30f7ec8a15a6de5b0ef753b62bd940ba",
+      "source_sha256": "98de8a5ee7429c88c362a8899bd231658b773d5bf8aa60b2be401f2aeda584f2",
+      "source_path": "data_module/data/sentinel-preprocessed-r4-v2/dive/98de8a5ee7429c88c362a8899bd231658b773d5bf8aa60b2be401f2aeda584f2.sol",
+      "compiler_version": "0.6.12",
+      "native_claim_present": true,
+      "prior_outcome": "NOT_REVIEWED",
+      "prior_target": null,
+      "effective_loss_mask": false,
+      "primary_disposition": "SUPPORTS_CLASS_CANDIDATE",
+      "evidence_ranges": [
+        [
+          553,
+          568
+        ]
+      ],
+      "reasoning": "Internal transfer returns bool; owner-only batch caller discards return. Implementation returns true on successful completion. Literal discarded-return observation, no demonstrated material risk.",
+      "security_impact": "NOT_ESTABLISHED",
+      "review_scope": "Post hoc cross-class candidate, targeted source declaration and call.",
+      "independent_review": "PENDING",
+      "admission": "NOT_ADMITTED",
+      "selection": "POST_HOC_CROSS_CLASS",
+      "target_change_authorized": false
+    }
+  ],
+  "counts": {
+    "INSUFFICIENT": 6,
+    "SUPPORTS_CLASS_CANDIDATE": 5
+  },
+  "admitted": 0,
+  "limitations": "Primary non-blind, partial scope where stated; no negative, no candidate accepted, no optimizer role change."
+}

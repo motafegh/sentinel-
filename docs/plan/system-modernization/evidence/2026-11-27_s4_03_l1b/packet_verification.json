@@ -1,0 +1,15 @@
+{
+  "checks": {
+    "extra_prior_review_rejected": true,
+    "modified_source_rejected": true
+  },
+  "distinct_source_groups": 9,
+  "independent_reviews_completed": 0,
+  "limitations": "Local packet verification only. Isolation is a procedural requirement, not ensured by ZIP. No upload or redistribution of DIVE sources.",
+  "local_only": true,
+  "packet_count": 11,
+  "private_index_and_packets_gitignored": true,
+  "schema": "s4-local-packet-verification-v1",
+  "source_files_published": false,
+  "validated": 11
+}

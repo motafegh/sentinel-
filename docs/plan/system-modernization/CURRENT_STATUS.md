@@ -20,7 +20,7 @@ Reconnaissance source baseline: 61854a32a2badbcd84b98cef3f3976f070b1341e. The pr
 | S4-00 Baseline | COMPLETE / G00 PASS_WITH_LIMITATIONS |
 | S4-01 Architecture/usefulness | IN_PROGRESS (001/002/003A complete; 003B ready) |
 | S4-02 Dependencies/CI | READY (parallel eligible) |
-| S4-03 DATA | L0A/L0B/L1A COMPLETE; L-G0 PASS_WITH_LIMITATIONS; L1B READY |
+| S4-03 DATA | L0A/L0B/L1A/L1B COMPLETE; L-G0 PASS_WITH_LIMITATIONS; L1C INDEPENDENT REVIEW PENDING |
 | S4-04 ML/inference | NOT_STARTED |
 | S4-05 AGENTS/LLM/RAG | NOT_STARTED |
 | S4-06 ZKML/contracts | NOT_STARTED |
@@ -69,9 +69,13 @@ Inspected ca7e47c6ce7a1aeaf49f9ee5689e0862bf0dbf06. [Native provenance evidence]
 
 Inspected 604d882dac7958baed50c3cafb957b5d060ae28e. [Evidence](evidence/2026-11-26_s4_03_l1a/WORKING_RECORD.md). Frozen 16 distinct DIVE groups (all TRAIN_UNLABELED, excluded R4 reserved groups), 8 annotation calibration files. All 57 spans in bounds; partial exact coordinate anchoring. 16/16 live Slither runs complete with six detectors; DoS native 3/4 and UnusedReturn native 1/4 relevant signals, no mapped claim strata 0/4 each. Three DoS spot-checks insufficient for class confirmation; two source-supported UnusedReturn positive candidates, one cross-class post hoc missing native claim. No labels admitted. L1A complete for triage, L-G1 remains open; reservation recorded not enforced in successor. Previous CI 2/2 green.
 
+## Completed slice: S4-03-L1B
+
+Inspected 820bc1457f3260c54c946c704f7695240b19f1d4. [Evidence](evidence/2026-11-27_s4_03_l1b/WORKING_RECORD.md). Complementary direct-return helper fixture pass after retained compilation/API failures, 16/16 parsed, 730 function/modifier inventory entries, 10 direct sites/four contracts. 11 primary reviewed cells (five UnusedReturn positive candidates including two missing native claim, six insufficient); no admission, no complete semantic scope claim, risk unestablished. 11/11 neutral source-only local packets validated with tamper and extra-member rejection. Independent review pending and no DIVE redistribution. Prior exact CI 2/2 success. L1B complete for primary preparation, L-G1 open.
+
 ## Next bounded slices
 
-S4-03-L1B: complete primary source reviews, independent review design, candidate extraction and no-hit scope, preserve group reservations; L3 GasException candidate-source research independently eligible. S4-01-003B coverage-aware evaluator/actual graph and S4-02 dedicated AGENTS CI/environment remain independently eligible. L-G1/G01 open, no training/promotion.
+S4-03-L1C isolated independent review/adjudication, enforce review reservations in any successor before admission; no need to block other tracks. L3 GasException evidence source research independently ready. S4-01-003B coverage-aware evaluator/actual graph and S4-02 dedicated AGENTS CI/environment remain independently eligible. L-G1/G01 open; no training/promotion.
 
 ## Known initial blockers and independent work
 
@@ -81,4 +85,4 @@ S4-03-L1B: complete primary source reviews, independent review design, candidate
 - R4-GAP-007 isolated independent review remains pending; confirmed negatives zero, M5/full training and G8 not authorized. That separate evidence path can proceed without S4 context.
 - ZKML proof scope, read-only audit MCP, production signing/deployment and accepted DATA/ML roots unchanged.
 
-Next actions: S4-03-L1B source review, L3 GasException research, S4-01-003B utility evaluation and S4-02 parallel eligible; no new training without admissible evidence.
+Next actions: L1C isolated review, L3 GasException source research, S4-01-003B utility evaluation and S4-02 parallel eligible; no new training without admissible evidence.

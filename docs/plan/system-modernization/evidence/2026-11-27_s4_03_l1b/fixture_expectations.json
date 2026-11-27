@@ -1,0 +1,18 @@
+{
+  "compiler": "0.8.22",
+  "direct_discard_expected": [
+    "discardedInternal",
+    "discardedExternal",
+    "discardedTransfer",
+    "discardedPair"
+  ],
+  "direct_discard_not_expected": [
+    "voidOnly",
+    "usedAssignment",
+    "forwarded",
+    "nested",
+    "partialTuple"
+  ],
+  "partialTuple": "outside direct expression helper scope, not a negative",
+  "scope": "method fixture only, not dataset source or ground truth admission"
+}
